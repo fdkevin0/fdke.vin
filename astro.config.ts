@@ -96,6 +96,17 @@ export default defineConfig({
       optimizeDeps: {
           exclude: ["@resvg/resvg-js"],
       },
+      ssr: {
+          external: [
+              "@resvg/resvg-js",
+              "node:child_process",
+              "node:crypto",
+              "node:fs",
+              "node:fs/promises",
+              "node:path",
+              "node:url",
+          ],
+      },
       plugins: [tailwind(), rawFonts([".ttf", ".woff"])],
 	},
 
@@ -107,7 +118,9 @@ export default defineConfig({
       },
 	},
 
-  adapter: cloudflare()
+  adapter: cloudflare({
+    imageService: "cloudflare",
+  })
 });
 
 function rawFonts(ext: string[]) {
