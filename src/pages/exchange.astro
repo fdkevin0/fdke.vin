@@ -1,0 +1,20 @@
+---
+import ExchangeRates from "@/components/ExchangeRates.astro";
+import PageLayout from "@/layouts/Base.astro";
+---
+
+<PageLayout meta={{ title: "Exchange Rates" }}>
+	<section class="space-y-6">
+		<div class="space-y-3">
+			<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
+				Live FX
+			</p>
+			<h1 class="title text-2xl">Exchange Monitor</h1>
+			<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+				Default currency is USD; switch to any supported symbol to see fresh buy, sell, and middle
+				rates.
+			</p>
+		</div>
+		<ExchangeRates defaultCurrency="USD" limit={12} />
+	</section>
+</PageLayout>
