@@ -148,10 +148,11 @@ const { defaultCurrency = "USD", limit = 12 } = Astro.props;
 		#paginationEl: HTMLElement | null;
 		#highlightTime: HTMLElement | null;
 		#highlightMid: HTMLElement | null;
-		#highlightBuySell: HTMLElement | null;
-		#highlightChange: HTMLElement | null;
-		#highlightCompare: HTMLElement | null;
-		#limit: number;
+	#highlightBuySell: HTMLElement | null;
+	#highlightChange: HTMLElement | null;
+	#highlightCompare: HTMLElement | null;
+	#limit: number;
+	#storageKey = "exchange:currency";
 
 		constructor() {
 			super();
@@ -172,53 +173,74 @@ const { defaultCurrency = "USD", limit = 12 } = Astro.props;
 			if (Number.isNaN(this.#limit) || this.#limit <= 0) this.#limit = 12;
 		}
 
-		connectedCallback() {
-			this.#refreshBtn?.addEventListener("click", this.#handleRefresh);
-			this.#currencySelect?.addEventListener("change", this.#handleChange);
-			this.#loadCurrencies().finally(() => {
+	connectedCallback() {
+		this.#refreshBtn?.addEventListener("click", this.#handleRefresh);
+		this.#currencySelect?.addEventListener("change", this.#handleChange);
+		this.#loadCurrencies()
+			.then((initialCurrency) => {
+				const currency =
+					initialCurrency ||
+					this.#currencySelect?.value ||
+					this.dataset.defaultCurrency ||
+					"USD";
+				this.#loadRates(currency);
+			})
+			.catch(() => {
 				const currency = this.#currencySelect?.value || this.dataset.defaultCurrency || "USD";
 				this.#loadRates(currency);
 			});
-		}
+	}
 
 		disconnectedCallback() {
 			this.#refreshBtn?.removeEventListener("click", this.#handleRefresh);
 			this.#currencySelect?.removeEventListener("change", this.#handleChange);
 		}
 
-		#handleChange = () => {
-			const currency = this.#currencySelect?.value;
-			if (currency) this.#loadRates(currency);
-		};
+	#handleChange = () => {
+		const currency = this.#currencySelect?.value;
+		if (currency) {
+			this.#saveCurrency(currency);
+			this.#loadRates(currency);
+		}
+	};
 
 		#handleRefresh = () => {
 			this.#handleChange();
 		};
 
-		async #loadCurrencies() {
-			if (!this.#statusEl) return;
-			this.#setStatus("Loading supported currencies…", false);
-			try {
-				const res = await fetch(currencyEndpoint);
-				if (!res.ok) throw new Error(res.statusText);
-				const list: string[] = await res.json();
-				if (this.#currencySelect && Array.isArray(list)) {
-					this.#currencySelect.innerHTML = "";
-					const defaultValue = this.dataset.defaultCurrency || "USD";
-					list.forEach((code) => {
-						const option = document.createElement("option");
-						option.value = code;
-						option.textContent = code;
-						if (code === defaultValue) option.selected = true;
-						this.#currencySelect?.appendChild(option);
-					});
-				}
-				this.#setStatus("Currencies loaded. You can switch anytime.", false);
-			} catch (error) {
-				console.error("Failed to load currencies", error);
-				this.#setStatus("Unable to load currencies. Using default.", true);
+	async #loadCurrencies() {
+		if (!this.#statusEl) return null;
+		this.#setStatus("Loading supported currencies…", false);
+		let selectedCurrency = this.dataset.defaultCurrency || "USD";
+		try {
+			const res = await fetch(currencyEndpoint);
+			if (!res.ok) throw new Error(res.statusText);
+			const list: string[] = await res.json();
+			if (this.#currencySelect && Array.isArray(list)) {
+				this.#currencySelect.innerHTML = "";
+				const defaultValue = this.dataset.defaultCurrency || "USD";
+				const storedCurrency = this.#getStoredCurrency();
+				list.forEach((code) => {
+					const option = document.createElement("option");
+					option.value = code;
+					option.textContent = code;
+					if (storedCurrency && code === storedCurrency) {
+						option.selected = true;
+						selectedCurrency = storedCurrency;
+					} else if (!storedCurrency && code === defaultValue) {
+						option.selected = true;
+					}
+					this.#currencySelect?.appendChild(option);
+				});
 			}
+			this.#setStatus("Currencies loaded. You can switch anytime.", false);
+			return selectedCurrency;
+		} catch (error) {
+			console.error("Failed to load currencies", error);
+			this.#setStatus("Unable to load currencies. Using default.", true);
+			return selectedCurrency;
 		}
+	}
 
 		async #loadRates(currency: string) {
 			if (!this.#statusEl || !this.#tableBody) return;
@@ -342,12 +364,29 @@ const { defaultCurrency = "USD", limit = 12 } = Astro.props;
 			}).format(value);
 		}
 
-		#setStatus(message: string, isError: boolean) {
-			if (!this.#statusEl) return;
-			this.#statusEl.textContent = message;
-			this.#statusEl.classList.toggle("text-red-600", isError);
-			this.#statusEl.classList.toggle("dark:text-red-400", isError);
+	#setStatus(message: string, isError: boolean) {
+		if (!this.#statusEl) return;
+		this.#statusEl.textContent = message;
+		this.#statusEl.classList.toggle("text-red-600", isError);
+		this.#statusEl.classList.toggle("dark:text-red-400", isError);
+	}
+
+	#getStoredCurrency() {
+		try {
+			return localStorage.getItem(this.#storageKey);
+		} catch (error) {
+			console.warn("Unable to read stored currency", error);
+			return null;
 		}
+	}
+
+	#saveCurrency(currency: string) {
+		try {
+			localStorage.setItem(this.#storageKey, currency);
+		} catch (error) {
+			console.warn("Unable to persist currency preference", error);
+		}
+	}
 	}
 
 	customElements.define("exchange-rates", ExchangeRatesElement);
