@@ -1,0 +1,25 @@
+---
+import HyperfocalCalculator from "@/components/HyperfocalCalculator.astro";
+import PageLayout from "@/layouts/Base.astro";
+---
+
+<PageLayout
+	meta={{
+		title: "Camera",
+		description: "Quick hyperfocal distance calculator for different lenses, apertures, and sensor formats.",
+	}}
+>
+	<section class="space-y-6">
+		<div class="space-y-3">
+			<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
+				Field Tools
+			</p>
+			<h1 class="title text-2xl">Camera</h1>
+			<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+				Use the hyperfocal distance calculator to quickly estimate where to focus for broad
+				depth of field with different focal lengths, apertures, and sensor formats.
+			</p>
+		</div>
+		<HyperfocalCalculator />
+	</section>
+</PageLayout>

@@ -1,0 +1,178 @@
+<hyperfocal-calculator class="block">
+	<div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
+		<form class="space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+			<div class="grid gap-4 sm:grid-cols-2">
+				<label class="space-y-2">
+					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+						Focal length
+					</span>
+					<input
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						inputmode="decimal"
+						min="1"
+						name="focal-length"
+						step="0.1"
+						type="number"
+						value="35"
+					/>
+				</label>
+				<label class="space-y-2">
+					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+						Aperture
+					</span>
+					<input
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						inputmode="decimal"
+						min="0.7"
+						name="aperture"
+						step="0.1"
+						type="number"
+						value="8"
+					/>
+				</label>
+			</div>
+			<div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)]">
+				<label class="space-y-2">
+					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+						Sensor format
+					</span>
+					<select
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						name="sensor-preset"
+					>
+						<option value="0.030">Full frame (0.030 mm CoC)</option>
+						<option value="0.020">APS-C / Super 35 (0.020 mm CoC)</option>
+						<option value="0.015">Micro Four Thirds (0.015 mm CoC)</option>
+						<option value="0.011">1-inch sensor (0.011 mm CoC)</option>
+						<option value="custom">Custom CoC</option>
+					</select>
+				</label>
+				<label class="space-y-2">
+					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+						CoC (mm)
+					</span>
+					<input
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						inputmode="decimal"
+						min="0.001"
+						name="coc"
+						step="0.001"
+						type="number"
+						value="0.030"
+					/>
+					<p class="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+						Circle of Confusion is the largest blur spot that still looks acceptably sharp in
+						the final image. Smaller sensors usually use a smaller CoC value.
+					</p>
+				</label>
+			</div>
+		</form>
+
+		<div class="space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+			<div>
+				<p class="text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+					Hyperfocal distance
+				</p>
+				<p class="title mt-2 text-3xl" data-output>5.14 m</p>
+				<p class="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" data-summary>
+					With a 35 mm lens at f/8 on full frame, focus at 5.14 m to keep depth of field
+					extending from roughly half that distance to infinity.
+				</p>
+			</div>
+			<div class="rounded-md bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-300">
+				<p data-formula>
+					H = f² / (N × c) + f
+				</p>
+				<p class="mt-2">
+					`f` is focal length in mm, `N` is the f-number, and `c` is the circle of confusion
+					in mm.
+				</p>
+			</div>
+		</div>
+	</div>
+</hyperfocal-calculator>
+
+<script>
+	class HyperfocalCalculatorElement extends HTMLElement {
+		connectedCallback() {
+			const form = this.querySelector<HTMLFormElement>("form");
+			const focalLengthInput = this.querySelector<HTMLInputElement>('input[name="focal-length"]');
+			const apertureInput = this.querySelector<HTMLInputElement>('input[name="aperture"]');
+			const cocInput = this.querySelector<HTMLInputElement>('input[name="coc"]');
+			const sensorPresetInput = this.querySelector<HTMLSelectElement>('select[name="sensor-preset"]');
+			const output = this.querySelector<HTMLElement>("[data-output]");
+			const summary = this.querySelector<HTMLElement>("[data-summary]");
+
+			if (
+				!form ||
+				!focalLengthInput ||
+				!apertureInput ||
+				!cocInput ||
+				!sensorPresetInput ||
+				!output ||
+				!summary
+			) {
+				return;
+			}
+
+			const formatDistance = (distanceMm: number) => {
+				if (distanceMm >= 1000) {
+					return `${(distanceMm / 1000).toFixed(2)} m`;
+				}
+
+				return `${Math.round(distanceMm)} mm`;
+			};
+
+			const syncPreset = () => {
+				if (sensorPresetInput.value !== "custom") {
+					cocInput.value = sensorPresetInput.value;
+				}
+			};
+
+			const update = () => {
+				const focalLength = Number(focalLengthInput.value);
+				const aperture = Number(apertureInput.value);
+				const coc = Number(cocInput.value);
+
+				if (
+					!Number.isFinite(focalLength) ||
+					!Number.isFinite(aperture) ||
+					!Number.isFinite(coc) ||
+					focalLength <= 0 ||
+					aperture <= 0 ||
+					coc <= 0
+				) {
+					output.textContent = "Invalid input";
+					summary.textContent = "Enter positive values for focal length, aperture, and CoC.";
+					return;
+				}
+
+				const hyperfocalDistanceMm = (focalLength * focalLength) / (aperture * coc) + focalLength;
+				const nearLimitMm = hyperfocalDistanceMm / 2;
+
+				output.textContent = formatDistance(hyperfocalDistanceMm);
+				summary.textContent =
+					`With a ${focalLength.toFixed(0)} mm lens at f/${aperture.toFixed(1)}, ` +
+					`focus at ${formatDistance(hyperfocalDistanceMm)} to keep depth of field ` +
+					`extending from roughly ${formatDistance(nearLimitMm)} to infinity.`;
+			};
+
+			sensorPresetInput.addEventListener("change", () => {
+				syncPreset();
+				update();
+			});
+
+			cocInput.addEventListener("input", () => {
+				sensorPresetInput.value = "custom";
+				update();
+			});
+
+			form.addEventListener("input", update);
+
+			syncPreset();
+			update();
+		}
+	}
+
+	customElements.define("hyperfocal-calculator", HyperfocalCalculatorElement);
+</script>
