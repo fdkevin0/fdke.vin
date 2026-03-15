@@ -1,0 +1,208 @@
+<equivalent-focal-length-calculator class="block">
+	<div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
+		<form
+			class="space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+			data-equivalent-form
+		>
+			<div class="space-y-2">
+				<p class="text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+					Equivalent focal length
+				</p>
+				<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+					Convert a focal length between common sensor sizes using crop factor.
+				</p>
+			</div>
+			<div class="grid gap-4 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]">
+				<label class="space-y-2">
+					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+						Focal length
+					</span>
+					<input
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						inputmode="decimal"
+						min="1"
+						name="equivalent-focal-length"
+						step="0.1"
+						type="number"
+						value="35"
+					/>
+				</label>
+				<label class="space-y-2">
+					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+						Source sensor
+					</span>
+					<select
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						name="source-crop-factor"
+					>
+						<option value="1.5">APS-C / Super 35 (1.5x)</option>
+						<option value="1">Full frame (1.0x)</option>
+						<option value="1.6">APS-C Canon (1.6x)</option>
+						<option value="2">Micro Four Thirds (2.0x)</option>
+						<option value="2.7">1-inch sensor (2.7x)</option>
+						<option value="custom">Custom crop factor</option>
+					</select>
+				</label>
+			</div>
+			<div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)]">
+				<label class="space-y-2">
+					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+						Target sensor
+					</span>
+					<select
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						name="target-crop-factor"
+					>
+						<option value="1">Full frame (1.0x)</option>
+						<option value="1.5">APS-C / Super 35 (1.5x)</option>
+						<option value="1.6">APS-C Canon (1.6x)</option>
+						<option value="2">Micro Four Thirds (2.0x)</option>
+						<option value="2.7">1-inch sensor (2.7x)</option>
+						<option value="custom">Custom crop factor</option>
+					</select>
+				</label>
+				<label class="space-y-2">
+					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+						Custom crop
+					</span>
+					<input
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						inputmode="decimal"
+						min="0.1"
+						name="custom-crop-factor"
+						step="0.1"
+						type="number"
+						value="1"
+					/>
+				</label>
+			</div>
+		</form>
+
+		<div class="space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+			<div>
+				<p class="text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+					Equivalent focal length
+				</p>
+				<p class="title mt-2 text-3xl" data-output>52.5 mm</p>
+				<p class="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" data-summary>
+					A 35 mm lens on APS-C / Super 35 gives the same angle of view as a 52.5 mm lens on
+					full frame.
+				</p>
+			</div>
+			<div class="rounded-md bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-300">
+				<p>Equivalent focal length = focal length × (target crop factor / source crop factor)</p>
+				<p class="mt-2">
+					Crop factor compares a sensor's angle of view to full frame. This conversion only
+					changes framing equivalence, not the physical focal length of the lens.
+				</p>
+			</div>
+		</div>
+	</div>
+</equivalent-focal-length-calculator>
+
+<script>
+	class EquivalentFocalLengthCalculatorElement extends HTMLElement {
+		connectedCallback() {
+			const form = this.querySelector("[data-equivalent-form]") as HTMLFormElement | null;
+			const focalLengthInput = this.querySelector(
+				'input[name="equivalent-focal-length"]',
+			) as HTMLInputElement | null;
+			const sourceCropFactorInput = this.querySelector(
+				'select[name="source-crop-factor"]',
+			) as HTMLSelectElement | null;
+			const targetCropFactorInput = this.querySelector(
+				'select[name="target-crop-factor"]',
+			) as HTMLSelectElement | null;
+			const customCropFactorInput = this.querySelector(
+				'input[name="custom-crop-factor"]',
+			) as HTMLInputElement | null;
+			const output = this.querySelector("[data-output]") as HTMLElement | null;
+			const summary = this.querySelector("[data-summary]") as HTMLElement | null;
+
+			if (
+				!form ||
+				!focalLengthInput ||
+				!sourceCropFactorInput ||
+				!targetCropFactorInput ||
+				!customCropFactorInput ||
+				!output ||
+				!summary
+			) {
+				return;
+			}
+
+			const cropFactorLabels: Record<string, string> = {
+				"1": "full frame",
+				"1.5": "APS-C / Super 35",
+				"1.6": "APS-C Canon",
+				"2": "Micro Four Thirds",
+				"2.7": "1-inch sensor",
+				custom: "custom sensor",
+			};
+
+			const formatFocalLength = (focalLength: number) => {
+				if (Number.isInteger(focalLength)) {
+					return `${focalLength.toFixed(0)} mm`;
+				}
+
+				return `${focalLength.toFixed(1)} mm`;
+			};
+
+			const getCropFactor = (input: HTMLSelectElement) => {
+				if (input.value === "custom") {
+					return Number(customCropFactorInput.value);
+				}
+
+				return Number(input.value);
+			};
+
+			const getSensorLabel = (input: HTMLSelectElement) => {
+				if (input.value === "custom") {
+					const customCropFactor = Number(customCropFactorInput.value);
+					return Number.isFinite(customCropFactor) && customCropFactor > 0
+						? `custom ${customCropFactor.toFixed(1)}x crop`
+						: cropFactorLabels.custom;
+				}
+
+				return cropFactorLabels[input.value] ?? "selected sensor";
+			};
+
+			const update = () => {
+				const focalLength = Number(focalLengthInput.value);
+				const sourceCropFactor = getCropFactor(sourceCropFactorInput);
+				const targetCropFactor = getCropFactor(targetCropFactorInput);
+
+				if (
+					!Number.isFinite(focalLength) ||
+					!Number.isFinite(sourceCropFactor) ||
+					!Number.isFinite(targetCropFactor) ||
+					focalLength <= 0 ||
+					sourceCropFactor <= 0 ||
+					targetCropFactor <= 0
+				) {
+					output.textContent = "Invalid input";
+					summary.textContent = "Enter positive values for focal length and crop factor.";
+					return;
+				}
+
+				const equivalentFocalLength = focalLength * (targetCropFactor / sourceCropFactor);
+				const sourceLabel = getSensorLabel(sourceCropFactorInput);
+				const targetLabel = getSensorLabel(targetCropFactorInput);
+
+				output.textContent = formatFocalLength(equivalentFocalLength);
+				summary.textContent =
+					`A ${formatFocalLength(focalLength)} lens on ${sourceLabel} gives the same angle ` +
+					`of view as a ${formatFocalLength(equivalentFocalLength)} lens on ${targetLabel}.`;
+			};
+
+			form.addEventListener("input", update);
+
+			update();
+		}
+	}
+
+	customElements.define(
+		"equivalent-focal-length-calculator",
+		EquivalentFocalLengthCalculatorElement,
+	);
+</script>

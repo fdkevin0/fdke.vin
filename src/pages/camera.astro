@@ -1,4 +1,5 @@
 ---
+import EquivalentFocalLengthCalculator from "@/components/EquivalentFocalLengthCalculator.astro";
 import HyperfocalCalculator from "@/components/HyperfocalCalculator.astro";
 import PageLayout from "@/layouts/Base.astro";
 ---
@@ -6,7 +7,8 @@ import PageLayout from "@/layouts/Base.astro";
 <PageLayout
 	meta={{
 		title: "Camera",
-		description: "Quick hyperfocal distance calculator for different lenses, apertures, and sensor formats.",
+		description:
+			"Quick camera calculator for hyperfocal distance and equivalent focal lengths across sensor formats.",
 	}}
 >
 	<section class="space-y-6">
@@ -16,10 +18,11 @@ import PageLayout from "@/layouts/Base.astro";
 			</p>
 			<h1 class="title text-2xl">Camera</h1>
 			<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-				Use the hyperfocal distance calculator to quickly estimate where to focus for broad
-				depth of field with different focal lengths, apertures, and sensor formats.
+				Use the camera tools to estimate hyperfocal distance for broad depth of field and
+				convert equivalent focal lengths across different sensor formats.
 			</p>
 		</div>
 		<HyperfocalCalculator />
+		<EquivalentFocalLengthCalculator />
 	</section>
 </PageLayout>

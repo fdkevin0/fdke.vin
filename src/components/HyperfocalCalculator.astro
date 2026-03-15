@@ -1,6 +1,9 @@
 <hyperfocal-calculator class="block">
 	<div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
-		<form class="space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+		<form
+			class="space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+			data-hyperfocal-form
+		>
 			<div class="grid gap-4 sm:grid-cols-2">
 				<label class="space-y-2">
 					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
@@ -80,9 +83,7 @@
 				</p>
 			</div>
 			<div class="rounded-md bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-300">
-				<p data-formula>
-					H = f² / (N × c) + f
-				</p>
+				<p>H = f² / (N × c) + f</p>
 				<p class="mt-2">
 					`f` is focal length in mm, `N` is the f-number, and `c` is the circle of confusion
 					in mm.
@@ -95,13 +96,17 @@
 <script>
 	class HyperfocalCalculatorElement extends HTMLElement {
 		connectedCallback() {
-			const form = this.querySelector<HTMLFormElement>("form");
-			const focalLengthInput = this.querySelector<HTMLInputElement>('input[name="focal-length"]');
-			const apertureInput = this.querySelector<HTMLInputElement>('input[name="aperture"]');
-			const cocInput = this.querySelector<HTMLInputElement>('input[name="coc"]');
-			const sensorPresetInput = this.querySelector<HTMLSelectElement>('select[name="sensor-preset"]');
-			const output = this.querySelector<HTMLElement>("[data-output]");
-			const summary = this.querySelector<HTMLElement>("[data-summary]");
+			const form = this.querySelector("[data-hyperfocal-form]") as HTMLFormElement | null;
+			const focalLengthInput = this.querySelector(
+				'input[name="focal-length"]',
+			) as HTMLInputElement | null;
+			const apertureInput = this.querySelector('input[name="aperture"]') as HTMLInputElement | null;
+			const cocInput = this.querySelector('input[name="coc"]') as HTMLInputElement | null;
+			const sensorPresetInput = this.querySelector(
+				'select[name="sensor-preset"]',
+			) as HTMLSelectElement | null;
+			const output = this.querySelector("[data-output]") as HTMLElement | null;
+			const summary = this.querySelector("[data-summary]") as HTMLElement | null;
 
 			if (
 				!form ||

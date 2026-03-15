@@ -2,7 +2,7 @@
 import PageLayout from "@/layouts/Base.astro";
 
 const meta = {
-	description: "I'm a starter theme for Astro.build",
+	description: "About fdkevin: MSc Computer Science student at the University of Glasgow.",
 	title: "About",
 };
 ---
@@ -11,26 +11,33 @@ const meta = {
 	<h1 class="title mb-12">About</h1>
 	<div class="prose prose-sm prose-cactus max-w-none">
 		<p>
-			Hi, I’m a starter Astro. I’m particularly great for getting you started with your own blogging
-			website.
+			I’m fdkevin, an MSc Computer Science student at the University of Glasgow. I like building
+			small useful tools, working with LLM agents, and spending time on photography.
 		</p>
-		<p>Here are my some of my awesome built in features:</p>
+		<p>Some projects and tools I maintain:</p>
 		<ul class="list-inside list-disc" role="list">
-			<li>I'm ultra fast as I'm a static site</li>
-			<li>I'm fully responsive</li>
-			<li>I come with a light and dark mode</li>
-			<li>I'm easy to customise and add additional content</li>
-			<li>I have Tailwind CSS styling</li>
-			<li>Shiki code syntax highlighting</li>
-			<li>Satori for auto generating OG images for blog posts</li>
+			<li>
+				<a
+					class="cactus-link inline-block"
+					href="/exchange/">CNY BOC exchange rate monitor</a
+				>
+			</li>
+			<li>
+				<a
+					class="cactus-link inline-block"
+					href="/camera/">Camera hyperfocal distance and equivalent focal length calculator</a
+				>
+			</li>
+			<li>LLM Agent Mob (Telegram Bot)</li>
 		</ul>
 		<p>
-			Clone or fork my <a
-				class="cactus-link inline-block"
-				href="https://github.com/chrismwilliams/astro-cactus"
-				rel="noreferrer"
-				target="_blank">repo</a
-			> if you like me!
+			You can find me online as <code>fdkevin</code>, <code>FDKevin</code>, <code>fdkevin0</code>,
+			and <code>fdkevinzero</code>.
 		</p>
+		<p>One formula for spelling my name:</p>
+		<p>
+			<code>fd + kevin = fdkevin</code>
+		</p>
+		<p>Short version: <code>fd</code> + <code>kevin</code>.</p>
 	</div>
 </PageLayout>
