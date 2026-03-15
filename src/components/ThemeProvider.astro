@@ -1,44 +1,72 @@
 {/* Inlined to avoid FOUC. This is a parser blocking script. */}
 <script is:inline>
-	const lightModePref = window.matchMedia("(prefers-color-scheme: light)");
+	const darkModePref = window.matchMedia("(prefers-color-scheme: dark)");
+	const THEME_KEY = "theme";
+	const VALID_THEMES = new Set(["system", "light", "dark"]);
 
-	function getUserPref() {
-		const storedTheme = typeof localStorage !== "undefined" && localStorage.getItem("theme");
-		return storedTheme || (lightModePref.matches ? "light" : "dark");
+	function isValidTheme(theme) {
+		return typeof theme === "string" && VALID_THEMES.has(theme);
 	}
 
-	function setTheme(newTheme) {
-		if (newTheme !== "light" && newTheme !== "dark") {
+	function getStoredTheme() {
+		if (typeof localStorage === "undefined") return null;
+		const storedTheme = localStorage.getItem(THEME_KEY);
+		return isValidTheme(storedTheme) ? storedTheme : null;
+	}
+
+	function getPreferredTheme() {
+		return getStoredTheme() || "system";
+	}
+
+	function resolveTheme(theme) {
+		if (theme === "system") {
+			return darkModePref.matches ? "dark" : "light";
+		}
+
+		return theme;
+	}
+
+	function applyTheme(preferredTheme) {
+		if (!isValidTheme(preferredTheme)) {
 			return console.warn(
-				`Invalid theme value '${newTheme}' received. Expected 'light' or 'dark'.`,
+				`Invalid theme value '${preferredTheme}' received. Expected 'system', 'light', or 'dark'.`,
 			);
 		}
 
 		const root = document.documentElement;
+		const resolvedTheme = resolveTheme(preferredTheme);
 
-		// root already set to newTheme, exit early
-		if (newTheme === root.getAttribute("data-theme")) {
-			return;
-		}
+		root.setAttribute("data-theme", resolvedTheme);
+		root.setAttribute("data-theme-preference", preferredTheme);
+	}
 
-		root.setAttribute("data-theme", newTheme);
+	function setThemePreference(newTheme) {
+		applyTheme(newTheme);
 
 		if (typeof localStorage !== "undefined") {
-			localStorage.setItem("theme", newTheme);
+			if (newTheme === "system") {
+				localStorage.removeItem(THEME_KEY);
+			} else {
+				localStorage.setItem(THEME_KEY, newTheme);
+			}
 		}
 	}
 
 	// initial setup
-	setTheme(getUserPref());
+	applyTheme(getPreferredTheme());
 
 	// View Transitions hook to restore theme
-	document.addEventListener("astro:after-swap", () => setTheme(getUserPref()));
+	document.addEventListener("astro:after-swap", () => applyTheme(getPreferredTheme()));
 
 	// listen for theme-change custom event, fired in src/components/ThemeToggle.astro
 	document.addEventListener("theme-change", (e) => {
-		setTheme(e.detail.theme);
+		setThemePreference(e.detail.theme);
 	});
 
-	// listen for prefers-color-scheme change.
-	lightModePref.addEventListener("change", (e) => setTheme(e.matches ? "light" : "dark"));
+	// If the user is following the system theme, update on OS changes.
+	darkModePref.addEventListener("change", () => {
+		if (getPreferredTheme() === "system") {
+			applyTheme("system");
+		}
+	});
 </script>
