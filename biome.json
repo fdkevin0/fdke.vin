@@ -65,6 +65,11 @@
 	},
 	"overrides": [
 		{
+			"includes": ["worker-configuration.d.ts"],
+			"formatter": { "enabled": false },
+			"linter": { "enabled": false }
+		},
+		{
 			"includes": ["**/*.astro"],
 			"linter": {
 				"rules": {

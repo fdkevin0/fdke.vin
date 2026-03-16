@@ -65,6 +65,13 @@ const descYearKeys = Object.keys(groupedByYear).sort((a, b) => +b - +a);
 	<div class="grid sm:grid-cols-[3fr_1fr] sm:gap-x-8 sm:gap-y-16">
 		<div>
 			{
+				page.data.length === 0 && (
+					<p class="text-sm text-zinc-600 dark:text-zinc-300">
+						No posts have been published yet.
+					</p>
+				)
+			}
+			{
 				pinnedPosts.length > 0 && (
 					<section class="mb-16">
 						<h2 class="title mb-6 text-xl">Pinned Posts</h2>

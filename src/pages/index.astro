@@ -28,7 +28,7 @@ const latestNotes = allNotes
 <PageLayout meta={{ title: "Home" }}>
 	<section>
 		<h1 class="title mb-12">Hey!</h1>
-		<p class="mb-4">Hi, I’m FDKevin, a software engineer from China.</p>
+		<p class="mb-4">Hi, I’m FDKevin, a software engineer building practical tools and writing online.</p>
 		<p class="mb-4">
 			Simply, you can call me FDKevin
 			<small>/ˌfʌk dɔ:g 'kevin/</small>
@@ -52,15 +52,19 @@ const latestNotes = allNotes
 	}
 	<section class="mt-16">
 		<h2 class="title text-accent mb-6 text-xl"><a href="/posts/">Posts</a></h2>
-		<ul class="space-y-4" role="list">
-			{
-				latestPosts.map((p) => (
-					<li class="grid gap-1 sm:grid-cols-[auto_1fr]">
-						<PostPreview post={p} />
-					</li>
-				))
-			}
-		</ul>
+		{
+			latestPosts.length > 0 ? (
+				<ul class="space-y-4" role="list">
+					{latestPosts.map((p) => (
+						<li class="grid gap-1 sm:grid-cols-[auto_1fr]">
+							<PostPreview post={p} />
+						</li>
+					))}
+				</ul>
+			) : (
+				<p class="text-sm text-zinc-600 dark:text-zinc-300">No posts published yet.</p>
+			)
+		}
 	</section>
 	{
 		latestNotes.length > 0 && (
