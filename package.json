@@ -15,7 +15,7 @@
 		"check": "astro check && biome check",
 		"lint": "biome check --write",
 		"format": "prettier -w . --cache",
-		"icons:build": "bash scripts/build-icons.sh"
+		"icons:build": "node scripts/build-icons.mjs"
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "^12.6.12",

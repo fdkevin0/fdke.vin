@@ -23,3 +23,11 @@ pnpm-debug.log*
 *.pem
 .cache
 .astro
+
+# generated icons
+public/favicon-32x32.png
+public/icons/apple-touch-icon.png
+public/icons/icon-96.png
+public/icons/icon-120.png
+public/icons/icon-192.png
+public/icons/icon-512.png
