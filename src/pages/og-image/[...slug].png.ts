@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { Resvg } from "@resvg/resvg-js";
 import type { APIContext, InferGetStaticPropsType } from "astro";
 import satori, { type SatoriOptions } from "satori";
@@ -28,6 +30,18 @@ const ogOptions: SatoriOptions = {
 	width: 1200,
 };
 
+const iconPathCandidates = [
+	path.resolve("./public/icons/icon-120.png"),
+	path.resolve("./public/icons/icon-source.png"),
+];
+const iconPath = iconPathCandidates.find((candidate) => fs.existsSync(candidate));
+
+if (!iconPath) {
+	throw new Error("Missing OG icon. Run `npm run icons:build` to generate it.");
+}
+
+const iconDataUri = `data:image/png;base64,${fs.readFileSync(iconPath).toString("base64")}`;
+
 const markup = (title: string, pubDate: string) =>
 	html`<div tw="flex flex-col w-full h-full bg-[#1d1f21] text-[#c9cacc]">
 		<div tw="flex flex-col flex-1 w-full p-10 justify-center">
@@ -36,11 +50,7 @@ const markup = (title: string, pubDate: string) =>
 		</div>
 		<div tw="flex items-center justify-between w-full p-10 border-t border-[#2bbc89] text-xl">
 			<div tw="flex items-center">
-				<div
-					tw="flex h-[60px] w-[60px] items-center justify-center rounded-md bg-[#2bbc89] text-[28px] font-bold text-[#1d1f21]"
-				>
-					FD
-				</div>
+				<img height="60" src="${iconDataUri}" width="60" />
 				<p tw="ml-3 font-semibold">${siteConfig.title}</p>
 			</div>
 			<p>by ${siteConfig.author}</p>

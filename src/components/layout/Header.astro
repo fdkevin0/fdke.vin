@@ -7,17 +7,14 @@ import { siteConfig } from "../../site.config";
 
 <header class="group relative mb-28 flex items-center sm:ps-18" id="main-header">
 	<div class="flex sm:flex-col">
-		<a
-			aria-current={Astro.url.pathname === "/" ? "page" : false}
-			class="inline-flex items-center sm:relative sm:inline-block sm:grayscale sm:hover:filter-none"
-			href="/"
-		>
-			<span
-				aria-hidden="true"
-				class="bg-accent text-global-bg me-3 inline-flex h-10 w-10 items-center justify-center rounded-sm text-sm font-bold sm:absolute sm:-start-18 sm:me-0 sm:h-12 sm:w-12"
+			<a
+				aria-current={Astro.url.pathname === "/" ? "page" : false}
+				class="inline-flex items-center sm:relative sm:inline-block sm:grayscale sm:hover:filter-none"
+				href="/"
 			>
-				FD
-			</span>
+				<span class="me-3 inline-flex h-10 w-10 items-center justify-center sm:absolute sm:-start-18 sm:me-0 sm:h-12 sm:w-12">
+					<img alt="" class="h-full w-full object-contain" height="48" src="/icons/icon-96.png" width="48" />
+				</span>
 			<span class="text-xl font-bold sm:text-2xl">{siteConfig.title}</span>
 		</a>
 		<nav
