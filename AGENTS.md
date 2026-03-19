@@ -8,11 +8,12 @@
 
 ## Build, Test, and Development Commands
 
-- `npm install` (or `pnpm install`) installs dependencies; postinstall rebuilds `sharp` for your platform.
-- `npm run dev` (alias `start`) launches the Astro dev server with HMR.
-- `npm run build` produces `dist/`; run `npm run postbuild` afterward to generate the Pagefind search index.
-- `npm run preview` serves the built site for QA.
-- `npm run check` runs `astro check` plus `biome check` (no writes); `npm run lint` fixes with Biome; `npm run format` runs Prettier across the repo.
+- `pnpm install` installs dependencies; postinstall rebuilds `sharp` for your platform.
+- `pnpm run dev` (alias `start`) launches the Astro dev server with HMR.
+- `pnpm run build` produces `dist/`; run `pnpm run postbuild` afterward to generate the Pagefind search index.
+- `pnpm run preview` serves the built site for QA.
+- `pnpm run check` runs `astro check` plus `biome check` (no writes); `pnpm run lint` fixes with Biome; `pnpm run format` runs Prettier across the repo.
+- After completing a task, run `pnpm astro check` to validate TypeScript and Astro component types.
 
 ## Coding Style & Naming Conventions
 
@@ -22,7 +23,7 @@
 
 ## Testing & Quality
 
-- There is no automated test suite yet; run `npm run check`, `npm run build && npm run postbuild`, and `npm run preview` before opening a PR.
+- There is no automated test suite yet; run `pnpm run check`, `pnpm run build && pnpm run postbuild`, and `pnpm run preview` before opening a PR.
 - Manually verify new content renders with the expected frontmatter and that Pagefind still indexes posts/notes after changes.
 - When adding new utility logic, include inline docs or a temporary reproduction page under `src/pages/dev/` (remove before merging) to demonstrate behavior.
 
@@ -35,4 +36,4 @@
 
 - Use concise, imperative commit subjects (e.g., `Add note tag cards`); group related changes together.
 - PRs should include a brief summary, linked issue (if any), local test commands run, and screenshots or gifs for visual changes/OG-image updates.
-- Ensure `npm run check` passes and note the Pagefind rebuild in validation steps when content or search logic changes.
+- Ensure `pnpm run check` passes and note the Pagefind rebuild in validation steps when content or search logic changes.
