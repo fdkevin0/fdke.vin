@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Resvg } from "@resvg/resvg-js";
+import { initWasm, Resvg } from "@resvg/resvg-wasm";
+import wasmUrl from "@resvg/resvg-wasm/index_bg.wasm?url";
 import type { APIContext, InferGetStaticPropsType } from "astro";
 import satori, { type SatoriOptions } from "satori";
 import { html } from "satori-html";
@@ -10,8 +11,9 @@ import { getAllPosts } from "@/data/post";
 import { siteConfig } from "@/site.config";
 import { getFormattedDate } from "@/utils/date";
 
+let wasmInitialized = false;
+
 const ogOptions: SatoriOptions = {
-	// debug: true,
 	fonts: [
 		{
 			data: Buffer.from(RobotoMono),
@@ -60,6 +62,13 @@ const markup = (title: string, pubDate: string) =>
 type Props = InferGetStaticPropsType<typeof getStaticPaths>;
 
 export async function GET(context: APIContext) {
+	if (!wasmInitialized) {
+		const wasmResponse = await fetch(wasmUrl);
+		const wasmBuffer = await wasmResponse.arrayBuffer();
+		await initWasm(wasmBuffer);
+		wasmInitialized = true;
+	}
+
 	const { pubDate, title } = context.props as Props;
 
 	const postDate = getFormattedDate(pubDate, {
@@ -67,9 +76,10 @@ export async function GET(context: APIContext) {
 		weekday: "long",
 	});
 	const svg = await satori(markup(title, postDate), ogOptions);
-	const pngBuffer = new Resvg(svg).render().asPng();
-	const png = new Uint8Array(pngBuffer);
-	return new Response(png, {
+	const resvg = new Resvg(svg);
+	const pngData = resvg.render();
+	const pngBytes = pngData.asPng();
+	return new Response(pngBytes as unknown as BodyInit, {
 		headers: {
 			"Cache-Control": "public, max-age=31536000, immutable",
 			"Content-Type": "image/png",

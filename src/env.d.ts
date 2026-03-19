@@ -3,3 +3,8 @@ declare module "@pagefind/default-ui" {
 		constructor(arg: unknown);
 	}
 }
+
+declare module "*.wasm" {
+	const wasmModule: WebAssembly.Module;
+	export default wasmModule;
+}

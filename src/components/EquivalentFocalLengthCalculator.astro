@@ -14,11 +14,13 @@
 			</div>
 			<div class="grid gap-4 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]">
 				<label class="space-y-2">
-					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+					<span
+						class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
+					>
 						Focal length
 					</span>
 					<input
-						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
 						inputmode="decimal"
 						min="1"
 						name="equivalent-focal-length"
@@ -28,11 +30,13 @@
 					/>
 				</label>
 				<label class="space-y-2">
-					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+					<span
+						class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
+					>
 						Source sensor
 					</span>
 					<select
-						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
 						name="source-crop-factor"
 					>
 						<option value="1.5">APS-C / Super 35 (1.5x)</option>
@@ -46,11 +50,13 @@
 			</div>
 			<div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)]">
 				<label class="space-y-2">
-					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+					<span
+						class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
+					>
 						Target sensor
 					</span>
 					<select
-						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
 						name="target-crop-factor"
 					>
 						<option value="1">Full frame (1.0x)</option>
@@ -62,11 +68,13 @@
 					</select>
 				</label>
 				<label class="space-y-2">
-					<span class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+					<span
+						class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
+					>
 						Custom crop
 					</span>
 					<input
-						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
 						inputmode="decimal"
 						min="0.1"
 						name="custom-crop-factor"
@@ -85,15 +93,17 @@
 				</p>
 				<p class="title mt-2 text-3xl" data-output>52.5 mm</p>
 				<p class="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" data-summary>
-					A 35 mm lens on APS-C / Super 35 gives the same angle of view as a 52.5 mm lens on
-					full frame.
+					A 35 mm lens on APS-C / Super 35 gives the same angle of view as a 52.5 mm lens on full
+					frame.
 				</p>
 			</div>
-			<div class="rounded-md bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-300">
+			<div
+				class="rounded-md bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-300"
+			>
 				<p>Equivalent focal length = focal length × (target crop factor / source crop factor)</p>
 				<p class="mt-2">
-					Crop factor compares a sensor's angle of view to full frame. This conversion only
-					changes framing equivalence, not the physical focal length of the lens.
+					Crop factor compares a sensor's angle of view to full frame. This conversion only changes
+					framing equivalence, not the physical focal length of the lens.
 				</p>
 			</div>
 		</div>

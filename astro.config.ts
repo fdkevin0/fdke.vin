@@ -93,11 +93,10 @@ export default defineConfig({
 
 	vite: {
 		optimizeDeps: {
-			exclude: ["@resvg/resvg-js"],
+			exclude: ["@resvg/resvg-wasm"],
 		},
 		ssr: {
 			external: [
-				"@resvg/resvg-js",
 				"node:child_process",
 				"node:crypto",
 				"node:fs",
@@ -120,6 +119,7 @@ export default defineConfig({
 
 	adapter: cloudflare({
 		imageService: "cloudflare",
+		prerenderEnvironment: "node",
 	}),
 });
 

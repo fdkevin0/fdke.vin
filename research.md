@@ -8,15 +8,15 @@ This is **Astro Cactus**, an opinionated starter theme for Astro.build, customiz
 
 ## Technology Stack
 
-| Category | Technology | Version |
-|----------|------------|---------|
-| Framework | Astro | 5.16.3 |
-| CSS Framework | TailwindCSS | 4.1.17 |
-| Language | TypeScript | 5.9.3 |
-| Deployment | Cloudflare Workers | - |
-| Package Manager | pnpm | - |
-| Linting/Formatting | Biome | 2.3.8 |
-| Search | Pagefind | 1.4.0 |
+| Category           | Technology         | Version |
+| ------------------ | ------------------ | ------- |
+| Framework          | Astro              | 5.16.3  |
+| CSS Framework      | TailwindCSS        | 4.1.17  |
+| Language           | TypeScript         | 5.9.3   |
+| Deployment         | Cloudflare Workers | -       |
+| Package Manager    | pnpm               | -       |
+| Linting/Formatting | Biome              | 2.3.8   |
+| Search             | Pagefind           | 1.4.0   |
 
 ---
 
@@ -56,6 +56,7 @@ This is **Astro Cactus**, an opinionated starter theme for Astro.build, customiz
 The project uses Astro's Content Collections (v5) with three main content types:
 
 #### Posts (`src/content/post/`)
+
 - Full blog posts with rich frontmatter support
 - Schema includes: title, description, publishDate, updatedDate, tags, coverImage, ogImage, draft, pinned
 - Supports pagination (10 posts per page)
@@ -63,40 +64,44 @@ The project uses Astro's Content Collections (v5) with three main content types:
 - Draft filtering in production
 
 #### Notes (`src/content/note/`)
+
 - Short-form content (similar to microblogging)
 - Schema: title, description (optional), publishDate (ISO 8601 with offset)
 - Separate RSS feed
 - Paginated listing
 
 #### Tags (`src/content/tag/`)
+
 - Custom tag pages with optional metadata
 - Schema: title (optional, max 60 chars), description (optional)
 - Tag-specific pages show filtered posts
 
 ### 2. Routing Structure
 
-| Route | Description | Implementation |
-|-------|-------------|----------------|
-| `/` | Home page | `src/pages/index.astro` |
-| `/about/` | About page | `src/pages/about.astro` |
-| `/posts/` | Blog listing (paginated) | `src/pages/posts/[...page].astro` |
-| `/posts/{slug}/` | Individual post | `src/pages/posts/[...slug].astro` |
-| `/notes/` | Notes listing | `src/pages/notes/[...page].astro` |
-| `/notes/{slug}/` | Individual note | `src/pages/notes/[...slug].astro` |
-| `/tags/` | All tags page | `src/pages/tags/index.astro` |
-| `/tags/{tag}/` | Tag filter (paginated) | `src/pages/tags/[tag]/[...page].astro` |
-| `/exchange/` | Exchange rates | `src/pages/exchange.astro` |
-| `/rss.xml` | Blog RSS feed | `src/pages/rss.xml.ts` |
-| `/notes/rss.xml` | Notes RSS feed | `src/pages/notes/rss.xml.ts` |
-| `/og-image/{slug}.png` | Dynamic OG images | `src/pages/og-image/[...slug].png.ts` |
+| Route                  | Description              | Implementation                         |
+| ---------------------- | ------------------------ | -------------------------------------- |
+| `/`                    | Home page                | `src/pages/index.astro`                |
+| `/about/`              | About page               | `src/pages/about.astro`                |
+| `/posts/`              | Blog listing (paginated) | `src/pages/posts/[...page].astro`      |
+| `/posts/{slug}/`       | Individual post          | `src/pages/posts/[...slug].astro`      |
+| `/notes/`              | Notes listing            | `src/pages/notes/[...page].astro`      |
+| `/notes/{slug}/`       | Individual note          | `src/pages/notes/[...slug].astro`      |
+| `/tags/`               | All tags page            | `src/pages/tags/index.astro`           |
+| `/tags/{tag}/`         | Tag filter (paginated)   | `src/pages/tags/[tag]/[...page].astro` |
+| `/exchange/`           | Exchange rates           | `src/pages/exchange.astro`             |
+| `/rss.xml`             | Blog RSS feed            | `src/pages/rss.xml.ts`                 |
+| `/notes/rss.xml`       | Notes RSS feed           | `src/pages/notes/rss.xml.ts`           |
+| `/og-image/{slug}.png` | Dynamic OG images        | `src/pages/og-image/[...slug].png.ts`  |
 
 ### 3. Component Architecture
 
 #### Layout Components
+
 - **Base.astro**: Root layout with SEO meta, theme provider, header, footer
 - **BlogPost.astro**: Post-specific layout with TOC, webmentions, reading time
 
 #### UI Components
+
 - **ThemeProvider.astro**: Dark/light mode management with localStorage persistence
 - **ThemeToggle.astro**: Theme switcher button with custom element
 - **Search.astro**: Pagefind integration with modal dialog
@@ -104,33 +109,39 @@ The project uses Astro's Content Collections (v5) with three main content types:
 - **Footer.astro**: Copyright and secondary navigation
 
 #### Blog Components
+
 - **PostPreview.astro**: Post listing item with date, title, draft status
 - **Masthead.astro**: Post header with cover image, title, date, tags, reading time
 - **TOC.astro**: Table of contents with sticky positioning
 - **TOCHeading.astro**: Recursive TOC item component
 
 #### Webmentions Components
+
 - **index.astro**: Webmentions container
 - **Comments.astro**: Comment/reply display
 - **Likes.astro**: Like/mention display with avatar grid
 
 #### Exchange Rates Component
+
 - **ExchangeRates.astro**: Custom web component fetching live FX rates from `/api/exchange/*`
 - Features: currency selector, refresh button, rate history table, change indicators
 
 ### 4. Custom Remark Plugins
 
 #### remarkReadingTime
+
 - Calculates reading time using `reading-time` package
 - Injects into frontmatter for display in Masthead
 
 #### remarkAdmonitions
+
 - Transforms container directives to styled admonition boxes
 - Types: `tip`, `note`, `important`, `caution`, `warning`
 - Uses GitHub-style syntax: `:::note` ... `:::`
 - Each type has distinct color scheme and icon
 
 #### remarkGithubCard
+
 - Transforms `:github[repo]` directive to GitHub repository/user cards
 - Fetches live data from GitHub API client-side
 - Displays stars, forks, license, language, description
@@ -139,6 +150,7 @@ The project uses Astro's Content Collections (v5) with three main content types:
 ### 5. Styling System
 
 #### TailwindCSS v4 Configuration
+
 - Custom CSS-based configuration in `src/styles/global.css`
 - Uses `@import "tailwindcss"` and `@config` directive
 - Custom color variables with OKLCH color space:
@@ -150,12 +162,14 @@ The project uses Astro's Content Collections (v5) with three main content types:
   - `--color-quote`: Quotes
 
 #### Theme System
+
 - CSS custom properties with `data-theme` attribute
 - Dark mode colors override in `[data-theme="dark"]`
 - Smooth transitions between themes
 - System preference detection via `prefers-color-scheme`
 
 #### Typography
+
 - Uses `@tailwindcss/typography` plugin
 - Custom `prose-cactus` variant
 - Monospace font stack for body text
@@ -189,15 +203,17 @@ The project uses Astro's Content Collections (v5) with three main content types:
 ### 9. Deployment Configuration
 
 #### Cloudflare Workers (wrangler.jsonc)
+
 ```json
 {
-  "main": "dist/_worker.js/index.js",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": { "binding": "ASSETS", "directory": "./dist" }
+	"main": "dist/_worker.js/index.js",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": { "binding": "ASSETS", "directory": "./dist" }
 }
 ```
 
 #### SSR External Dependencies
+
 - `@resvg/resvg-js` - Image generation
 - `node:child_process`, `node:crypto`, `node:fs`, etc. - Node.js APIs
 
@@ -206,6 +222,7 @@ The project uses Astro's Content Collections (v5) with three main content types:
 ## Data Flow Architecture
 
 ### Post Rendering Flow
+
 1. `getStaticPaths` fetches all posts via `getAllPosts()`
 2. `render(post)` converts MDX to HTML + metadata
 3. `remarkReadingTime` calculates reading time
@@ -214,6 +231,7 @@ The project uses Astro's Content Collections (v5) with three main content types:
 6. Base layout wraps with: ThemeProvider → Header → Main → Footer
 
 ### Search Indexing Flow
+
 1. Build generates static HTML
 2. `postbuild` runs `pagefind --site dist`
 3. Pagefind indexes content from `data-pagefind-body` elements
@@ -221,6 +239,7 @@ The project uses Astro's Content Collections (v5) with three main content types:
 5. Search component loads index client-side via `@pagefind/default-ui`
 
 ### Webmentions Flow
+
 1. Build triggers `getWebmentionsForUrl()`
 2. Checks `.data/webmentions.json` cache
 3. If stale/missing, fetches from webmention.io API
@@ -233,26 +252,27 @@ The project uses Astro's Content Collections (v5) with three main content types:
 
 ## Key Files and Their Purposes
 
-| File | Purpose |
-|------|---------|
-| `src/site.config.ts` | Central configuration for site metadata, menu links, Expressive Code options |
-| `src/content.config.ts` | Zod schemas for content collections (post, note, tag) |
-| `src/types.ts` | TypeScript interfaces for SiteConfig, Webmentions, Pagination, etc. |
-| `src/data/post.ts` | Content fetching utilities with filtering and grouping |
-| `src/utils/date.ts` | Date formatting and sorting utilities |
-| `src/utils/webmentions.ts` | Webmention API integration with caching |
-| `src/utils/generateToc.ts` | Table of contents generation from headings |
-| `src/utils/remark.ts` | Helper for creating mdast nodes |
-| `src/utils/domElement.ts` | DOM manipulation utilities for client-side scripts |
-| `astro.config.ts` | Main Astro configuration with integrations, markdown, Vite |
-| `tailwind.config.ts` | Typography plugin configuration |
-| `biome.json` | Linting and formatting rules |
+| File                       | Purpose                                                                      |
+| -------------------------- | ---------------------------------------------------------------------------- |
+| `src/site.config.ts`       | Central configuration for site metadata, menu links, Expressive Code options |
+| `src/content.config.ts`    | Zod schemas for content collections (post, note, tag)                        |
+| `src/types.ts`             | TypeScript interfaces for SiteConfig, Webmentions, Pagination, etc.          |
+| `src/data/post.ts`         | Content fetching utilities with filtering and grouping                       |
+| `src/utils/date.ts`        | Date formatting and sorting utilities                                        |
+| `src/utils/webmentions.ts` | Webmention API integration with caching                                      |
+| `src/utils/generateToc.ts` | Table of contents generation from headings                                   |
+| `src/utils/remark.ts`      | Helper for creating mdast nodes                                              |
+| `src/utils/domElement.ts`  | DOM manipulation utilities for client-side scripts                           |
+| `astro.config.ts`          | Main Astro configuration with integrations, markdown, Vite                   |
+| `tailwind.config.ts`       | Typography plugin configuration                                              |
+| `biome.json`               | Linting and formatting rules                                                 |
 
 ---
 
 ## Content Schema Details
 
 ### Post Frontmatter Schema
+
 ```typescript
 {
   title: string (max 60 chars)
@@ -268,6 +288,7 @@ The project uses Astro's Content Collections (v5) with three main content types:
 ```
 
 ### Note Frontmatter Schema
+
 ```typescript
 {
   title: string (max 60 chars)
@@ -277,6 +298,7 @@ The project uses Astro's Content Collections (v5) with three main content types:
 ```
 
 ### Tag Frontmatter Schema
+
 ```typescript
 {
   title?: string (max 60 chars)
@@ -288,11 +310,11 @@ The project uses Astro's Content Collections (v5) with three main content types:
 
 ## Environment Variables
 
-| Variable | Context | Access | Purpose |
-|----------|---------|--------|---------|
-| `WEBMENTION_API_KEY` | server | secret | webmention.io API key |
-| `WEBMENTION_URL` | client | public | webmention.io endpoint URL |
-| `WEBMENTION_PINGBACK` | client | public | pingback URL |
+| Variable              | Context | Access | Purpose                    |
+| --------------------- | ------- | ------ | -------------------------- |
+| `WEBMENTION_API_KEY`  | server  | secret | webmention.io API key      |
+| `WEBMENTION_URL`      | client  | public | webmention.io endpoint URL |
+| `WEBMENTION_PINGBACK` | client  | public | pingback URL               |
 
 ---
 
@@ -339,21 +361,22 @@ The project uses Astro's Content Collections (v5) with three main content types:
 
 ## Development Workflow
 
-| Command | Purpose |
-|---------|---------|
-| `pnpm dev` | Start development server |
-| `pnpm build` | Production build |
-| `pnpm postbuild` | Generate search index |
-| `pnpm preview` | Preview production build |
-| `pnpm check` | Type checking + linting |
-| `pnpm lint` | Auto-fix linting issues |
-| `pnpm format` | Format with Prettier |
+| Command          | Purpose                  |
+| ---------------- | ------------------------ |
+| `pnpm dev`       | Start development server |
+| `pnpm build`     | Production build         |
+| `pnpm postbuild` | Generate search index    |
+| `pnpm preview`   | Preview production build |
+| `pnpm check`     | Type checking + linting  |
+| `pnpm lint`      | Auto-fix linting issues  |
+| `pnpm format`    | Format with Prettier     |
 
 ---
 
 ## Summary
 
 This is a well-architected, modern static site built with Astro v5. It demonstrates best practices for:
+
 - Content collection management
 - Type-safe development
 - Component modularity
