@@ -23,12 +23,12 @@ Personal website built with Astro.
 ## Commands
 
 ```bash
-npm install
-npm run dev
-npm run check
-npm run build
-npm run postbuild
-npm run preview
+pnpm install
+pnpm run dev
+pnpm run check
+pnpm run build
+pnpm run postbuild
+pnpm run preview
 ```
 
 ## Content
