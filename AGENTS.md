@@ -34,6 +34,7 @@
 
 ## Commit & Pull Request Guidelines
 
+- Always use Conventional Commits format (e.g., `fix:`, `feat:`, `chore:`, `docs:`).
 - Use concise, imperative commit subjects (e.g., `Add note tag cards`); group related changes together.
 - PRs should include a brief summary, linked issue (if any), local test commands run, and screenshots or gifs for visual changes/OG-image updates.
 - Ensure `pnpm run check` passes and note the Pagefind rebuild in validation steps when content or search logic changes.
