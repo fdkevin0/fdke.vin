@@ -1,5 +1,5 @@
+import { CLOUDFLARE_POLICY_AUD, CLOUDFLARE_TEAM_DOMAIN } from "astro:env/server";
 import { defineMiddleware } from "astro:middleware";
-import { env } from "cloudflare:workers";
 import { parseAudienceList, verifyCloudflareAccessToken } from "@/lib/cloudflare-access";
 
 const PROTECTED_ROUTE_PATTERNS = [
@@ -20,8 +20,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		return next();
 	}
 
-	const teamDomain = env.CLOUDFLARE_TEAM_DOMAIN;
-	const policyAud = parseAudienceList(env.CLOUDFLARE_POLICY_AUD);
+	const teamDomain = CLOUDFLARE_TEAM_DOMAIN;
+	const policyAud = CLOUDFLARE_POLICY_AUD ? parseAudienceList(CLOUDFLARE_POLICY_AUD) : [];
 
 	if (!teamDomain || policyAud.length === 0) {
 		console.error("Missing Cloudflare Access configuration");
