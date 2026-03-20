@@ -116,7 +116,9 @@ const props = await (async () => {
 	return {
 		teamDomain,
 		claims,
+		claimsJson: claims ? JSON.stringify(claims, null, 2) : null,
 		identity,
+		identityJson: identity ? JSON.stringify(identity, null, 2) : null,
 		error,
 	};
 })();
@@ -239,9 +241,7 @@ const props = await (async () => {
 						<summary class="cursor-pointer font-semibold hover:text-zinc-600 dark:hover:text-zinc-300">
 							Raw JWT Claims
 						</summary>
-						<pre class="mt-4 overflow-x-auto rounded bg-zinc-50 p-3 text-xs font-mono text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
-							{JSON.stringify(props.claims, null, 2)}
-						</pre>
+						<pre class="mt-4 overflow-x-auto rounded bg-zinc-50 p-3 text-xs font-mono text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">{props.claimsJson}</pre>
 					</details>
 				)}
 
@@ -250,9 +250,7 @@ const props = await (async () => {
 						<summary class="cursor-pointer font-semibold hover:text-zinc-600 dark:hover:text-zinc-300">
 							Full Identity Payload
 						</summary>
-						<pre class="mt-4 overflow-x-auto rounded bg-zinc-50 p-3 text-xs font-mono text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
-							{JSON.stringify(props.identity, null, 2)}
-						</pre>
+						<pre class="mt-4 overflow-x-auto rounded bg-zinc-50 p-3 text-xs font-mono text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">{props.identityJson}</pre>
 					</details>
 				)}
 
