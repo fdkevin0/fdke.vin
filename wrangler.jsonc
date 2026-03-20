@@ -5,7 +5,7 @@
 	"account_id": "98010e731e09a77b673ba51074dfbe1c",
 	"assets": {
 		"binding": "ASSETS",
-		"directory": "./dist"
+		"directory": "./dist/client"
 	},
 	"observability": {
 		"enabled": true
