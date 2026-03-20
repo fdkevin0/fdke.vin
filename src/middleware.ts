@@ -1,7 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
-const publicPaths = ["/tools/mail/login"];
 const protectedApiPaths = ["/api/emails"];
+const protectedPagePaths = ["/tools/mail", "/tools/access"];
 
 export const onRequest = async (
 	context: {
@@ -16,24 +16,33 @@ export const onRequest = async (
 	const { url, request } = context;
 	const pathname = new URL(url).pathname;
 
-	// Allow public paths
-	if (publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
-		return next();
-	}
-
 	// Check if it's a protected API path
 	const isProtectedApi = protectedApiPaths.some(
 		(path) => pathname === path || pathname.startsWith(`${path}/`),
 	);
 
-	// Only protect /tools/mail routes and mail API routes
-	if (!pathname.startsWith("/tools/mail") && !isProtectedApi) {
+	// Check if it's a protected page path
+	const isProtectedPage = protectedPagePaths.some(
+		(path) => pathname === path || pathname.startsWith(`${path}/`),
+	);
+
+	// Only protect configured routes
+	if (!isProtectedPage && !isProtectedApi) {
 		return next();
 	}
 
 	// Skip auth during prerendering (build time)
 	if (!context.runtime?.env) {
 		return next();
+	}
+
+	// Validate environment configuration
+	const teamDomain = context.runtime.env.CLOUDFLARE_TEAM_DOMAIN;
+	const policyAud = context.runtime.env.CLOUDFLARE_POLICY_AUD;
+
+	if (!teamDomain || !policyAud) {
+		console.error("Missing Cloudflare Access configuration");
+		return new Response("Server configuration error", { status: 500 });
 	}
 
 	// Get JWT from header (preferred) or cookie
@@ -51,17 +60,14 @@ export const onRequest = async (
 		}
 
 		// For page routes, redirect to Cloudflare Access login
-		const teamDomain = context.runtime.env.CLOUDFLARE_TEAM_DOMAIN;
-		const callbackUrl = new URL("/tools/mail", url).toString();
-		const loginUrl = `${teamDomain}/cdn-cgi/access/login?redirect_url=${encodeURIComponent(callbackUrl)}`;
+		const requestDomain = new URL(url).hostname;
+		const callbackUrl = pathname;
+		const loginUrl = `${teamDomain}/cdn-cgi/access/login/${requestDomain}?redirect_url=${encodeURIComponent(callbackUrl)}`;
 		return Response.redirect(loginUrl);
 	}
 
 	try {
 		// Validate JWT
-		const teamDomain = context.runtime.env.CLOUDFLARE_TEAM_DOMAIN;
-		const policyAud = context.runtime.env.CLOUDFLARE_POLICY_AUD;
-
 		const JWKS = createRemoteJWKSet(new URL(`${teamDomain}/cdn-cgi/access/certs`));
 
 		const { payload } = await jwtVerify(token, JWKS, {
