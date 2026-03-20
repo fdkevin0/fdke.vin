@@ -10,5 +10,12 @@
 			"pattern": "fdke.vin",
 			"custom_domain": true
 		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "EMAIL_BUCKET",
+			"bucket_name": "email-storage",
+			"preview_bucket_name": "email-storage"
+		}
 	]
 }
