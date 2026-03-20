@@ -30,13 +30,17 @@ export async function GET(): Promise<Response> {
 				const metadata = object.customMetadata as unknown as EmailMetadata | undefined;
 
 				const keyParts = object.key.split("/")[1]?.split(".");
+				const dateStr = metadata?.date || "";
+				const parsedDate = new Date(dateStr);
+				const isValidDate = !isNaN(parsedDate.getTime());
+
 				return {
 					key: keyParts?.[0] || object.key,
 					size: object.size,
 					from: metadata?.from || "",
 					to: metadata?.to || "",
 					subject: metadata?.subject || "",
-					date: new Date(metadata?.date || "").toISOString(),
+					date: isValidDate ? parsedDate.toISOString() : "Unknown",
 					metadata: metadata || {
 						name: object.key,
 						contentType: "application/octet-stream",

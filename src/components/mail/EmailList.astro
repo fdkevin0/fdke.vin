@@ -48,6 +48,11 @@
 			emails.forEach((email) => {
 				const tr = document.createElement("tr");
 				tr.className = "hover:bg-gray-50 dark:hover:bg-gray-800";
+				
+				const dateDisplay = email.date === "Unknown" || isNaN(new Date(email.date).getTime())
+					? "Unknown"
+					: new Date(email.date).toLocaleString();
+				
 				tr.innerHTML = `
 					<td class="px-6 py-4 whitespace-nowrap">
 						<a href="/mail/email/${encodeURIComponent(email.key)}" class="text-blue-600 dark:text-blue-400 hover:underline">
@@ -55,7 +60,7 @@
 						</a>
 					</td>
 					<td class="px-6 py-4 whitespace-nowrap">${formatFileSize(email.size)}</td>
-					<td class="px-6 py-4 whitespace-nowrap">${new Date(email.date).toLocaleString()}</td>
+					<td class="px-6 py-4 whitespace-nowrap">${dateDisplay}</td>
 					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.type || "unknown"}</td>
 					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.from || "unknown"}</td>
 					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.to || "unknown"}</td>
