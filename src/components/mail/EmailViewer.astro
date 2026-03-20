@@ -1,0 +1,146 @@
+---
+export interface EmailViewerProps {
+	emailKey: string;
+}
+---
+
+<script>
+	interface ParsedEmail {
+		headers: Record<string, string>;
+		subject: string;
+		from: string;
+		to: string;
+		date: string;
+		plainText: string;
+		htmlContent: string;
+	}
+
+	async function fetchEmailContent(emailKey: string) {
+		try {
+			const response = await fetch(`/api/emails/${encodeURIComponent(emailKey)}`);
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch email: ${response.statusText}`);
+			}
+
+			const content = await response.text();
+			const parsedEmail = parseEmail(content);
+
+			const emailViewer = document.getElementById("email-viewer");
+			if (!emailViewer) return;
+
+			emailViewer.innerHTML = `
+				<div class="email-header bg-gray-100 dark:bg-gray-800 p-4 border-b">
+					<h2 class="text-xl font-semibold">${parsedEmail.subject}</h2>
+					<div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+						<div><span class="font-medium">From:</span> ${parsedEmail.from}</div>
+						<div><span class="font-medium">To:</span> ${parsedEmail.to}</div>
+						<div><span class="font-medium">Date:</span> ${parsedEmail.date}</div>
+					</div>
+				</div>
+				<div class="email-content p-4">
+					${
+						parsedEmail.htmlContent
+							? parsedEmail.htmlContent
+							: `<pre class="whitespace-pre-wrap">${parsedEmail.plainText}</pre>`
+					}
+				</div>
+			`;
+		} catch (err) {
+			console.error("Error fetching email content:", err);
+			const emailViewer = document.getElementById("email-viewer");
+			if (emailViewer) {
+				emailViewer.innerHTML = `<div class="p-4 text-center text-red-500">Error: ${err instanceof Error ? err.message : "Failed to fetch email content"}</div>`;
+			}
+		}
+	}
+
+	function parseEmail(emailData: string): ParsedEmail {
+		const lines = emailData.split("\n");
+		const headers: Record<string, string> = {};
+		let inHeaders = true;
+		let boundary = "";
+		let currentPart = "";
+		let inPart = false;
+		let plainText = "";
+		let htmlContent = "";
+
+		const boundaryMatch = emailData.match(/boundary="([^"]+)"/);
+		if (boundaryMatch?.[1]) {
+			boundary = boundaryMatch[1];
+		}
+
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			if (!line) continue;
+
+			if (inHeaders) {
+				if (line.trim() === "") {
+					inHeaders = false;
+					continue;
+				}
+
+				if (line.match(/^\S+:/)) {
+					const [key, ...valueParts] = line.split(":");
+					if (key) {
+						const value = valueParts.join(":").trim();
+						headers[key.toLowerCase()] = value;
+					}
+				} else if (line.match(/^\s+/) && Object.keys(headers).length > 0) {
+					const lastHeader = Object.keys(headers).pop()!;
+					headers[lastHeader] += " " + line.trim();
+				}
+			} else {
+				if (boundary && line.includes(boundary)) {
+					if (inPart) {
+						if (currentPart.includes("Content-Type: text/plain")) {
+							plainText = extractContent(currentPart);
+						} else if (currentPart.includes("Content-Type: text/html")) {
+							htmlContent = extractContent(currentPart);
+						}
+						currentPart = "";
+					}
+					inPart = !line.includes("--" + boundary + "--");
+				} else if (inPart) {
+					currentPart += line + "\n";
+				}
+			}
+		}
+
+		return {
+			headers,
+			subject: headers["subject"] || "",
+			from: headers["from"] || "",
+			to: headers["to"] || "",
+			date: headers["date"] || "",
+			plainText,
+			htmlContent,
+		};
+	}
+
+	function extractContent(partData: string): string {
+		const encodingMatch = partData.match(/Content-Transfer-Encoding:\s*([^\s]+)/i);
+		const encoding = encodingMatch?.[1] ? encodingMatch[1].toLowerCase() : "none";
+
+		const contentLines = partData.split("\n\n").slice(1).join("\n\n");
+
+		if (encoding === "base64") {
+			try {
+				return atob(contentLines.trim());
+			} catch (e: unknown) {
+				return `[Failed to decode base64 content: ${e instanceof Error ? e.message : String(e)}]`;
+			}
+		}
+
+		return contentLines.trim();
+	}
+
+	const emailKey = "${Astro.props.emailKey}";
+	if (emailKey) {
+		fetchEmailContent(emailKey);
+	}
+</script>
+
+<div id="email-viewer" class="email-viewer border rounded-md overflow-hidden">
+	<div class="p-4 text-center">Loading email...</div>
+</div>

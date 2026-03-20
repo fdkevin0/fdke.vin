@@ -1,0 +1,128 @@
+---
+---
+
+<script>
+	interface EmailMetadata {
+		name: string;
+		size: number;
+		date: string;
+		type: string;
+		contentType: string;
+		from: string;
+		to: string;
+		subject: string;
+	}
+
+	interface Email {
+		key: string;
+		size: number;
+		date: string;
+		metadata: EmailMetadata;
+	}
+
+	interface EmailsResponse {
+		emails: Email[];
+	}
+
+	async function fetchEmails() {
+		try {
+			const response = await fetch("/api/emails");
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch emails: ${response.statusText}`);
+			}
+
+			const data: EmailsResponse = await response.json();
+			const emails = data.emails || [];
+
+			const tbody = document.querySelector("tbody");
+			if (!tbody) return;
+
+			tbody.innerHTML = "";
+
+			if (emails.length === 0) {
+				tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center">No emails found in R2 storage.</td></tr>`;
+				return;
+			}
+
+			emails.forEach((email) => {
+				const tr = document.createElement("tr");
+				tr.className = "hover:bg-gray-50 dark:hover:bg-gray-800";
+				tr.innerHTML = `
+					<td class="px-6 py-4 whitespace-nowrap">
+						<a href="/mail/email/${encodeURIComponent(email.key)}" class="text-blue-600 dark:text-blue-400 hover:underline">
+							${email.metadata?.name || email.key}
+						</a>
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap">${formatFileSize(email.size)}</td>
+					<td class="px-6 py-4 whitespace-nowrap">${new Date(email.date).toLocaleString()}</td>
+					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.type || "unknown"}</td>
+					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.from || "unknown"}</td>
+					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.to || "unknown"}</td>
+					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.subject || "unknown"}</td>
+				`;
+				tbody.appendChild(tr);
+			});
+
+			const loadingEl = document.getElementById("loading");
+			if (loadingEl) loadingEl.style.display = "none";
+		} catch (err) {
+			console.error("Error fetching emails:", err);
+			const errorEl = document.getElementById("error");
+			if (errorEl) {
+				errorEl.textContent = `Error: ${err instanceof Error ? err.message : "Failed to fetch emails"}`;
+				errorEl.style.display = "block";
+			}
+			const loadingEl = document.getElementById("loading");
+			if (loadingEl) loadingEl.style.display = "none";
+		}
+	}
+
+	function formatFileSize(bytes: number): string {
+		if (bytes === 0) return "0 Bytes";
+
+		const k = 1024;
+		const sizes = ["Bytes", "KB", "MB", "GB"];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+	}
+
+	fetchEmails();
+</script>
+
+<div class="w-full">
+	<h2 class="text-xl font-bold mb-4">Emails</h2>
+	<div id="loading" class="p-4 text-center">Loading emails...</div>
+	<div id="error" class="p-4 text-center text-red-500" style="display: none"></div>
+	<div class="border rounded-lg overflow-hidden">
+		<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+			<thead class="bg-gray-50 dark:bg-gray-800">
+				<tr>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+						Name
+					</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+						Size
+					</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+						Uploaded
+					</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+						Type
+					</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+						From
+					</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+						To
+					</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+						Subject
+					</th>
+				</tr>
+			</thead>
+			<tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+		</table>
+	</div>
+</div>

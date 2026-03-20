@@ -1,0 +1,30 @@
+---
+import Layout from "@/layouts/Base.astro";
+import EmailViewer from "@/components/mail/EmailViewer.astro";
+
+export function getStaticPaths() {
+	return [];
+}
+
+const { key } = Astro.params;
+---
+
+<Layout
+	meta={{
+		title: "View Email",
+		description: "View email content",
+	}}
+>
+	<div class="min-h-screen p-8">
+		<header class="mb-8">
+			<a href="/tools/mail" class="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">
+				← Back to Email List
+			</a>
+			<h1 class="text-3xl font-bold">Email Details</h1>
+		</header>
+
+		<main>
+			<EmailViewer emailKey={key!} />
+		</main>
+	</div>
+</Layout>

@@ -1,5 +1,5 @@
 declare module "@pagefind/default-ui" {
-	declare class PagefindUI {
+	class PagefindUI {
 		constructor(arg: unknown);
 	}
 }
@@ -7,4 +7,35 @@ declare module "@pagefind/default-ui" {
 declare module "*.wasm" {
 	const wasmModule: WebAssembly.Module;
 	export default wasmModule;
+}
+
+interface R2Bucket {
+	list(options?: { prefix?: string }): Promise<{
+		objects: Array<{
+			key: string;
+			size: number;
+			customMetadata?: Record<string, unknown>;
+		}>;
+	}>;
+	get(key: string): Promise<{ text(): Promise<string> } | null>;
+}
+
+interface CloudflareAccessPayload {
+	email: string;
+	name?: string;
+	uid?: string;
+	common_name?: string;
+}
+
+declare namespace App {
+	interface Locals {
+		runtime: {
+			env: {
+				EMAIL_BUCKET?: R2Bucket;
+				CLOUDFLARE_TEAM_DOMAIN: string;
+				CLOUDFLARE_POLICY_AUD: string;
+			};
+		};
+		user: CloudflareAccessPayload | null;
+	}
 }

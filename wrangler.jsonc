@@ -17,5 +17,9 @@
 			"bucket_name": "email-storage",
 			"preview_bucket_name": "email-storage"
 		}
-	]
+	],
+	"vars": {
+		"CLOUDFLARE_TEAM_DOMAIN": "https://fdkevin.cloudflareaccess.com",
+		"CLOUDFLARE_POLICY_AUD": "7d8a99d0b638544b0ff6ae86332addf618e9e3e19e82ea470985b8dc6e629f69"
+	}
 }

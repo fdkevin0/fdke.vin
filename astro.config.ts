@@ -104,6 +104,16 @@ export default defineConfig({
 			WEBMENTION_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
 			WEBMENTION_URL: envField.string({ context: "client", access: "public", optional: true }),
 			WEBMENTION_PINGBACK: envField.string({ context: "client", access: "public", optional: true }),
+			CLOUDFLARE_TEAM_DOMAIN: envField.string({
+				context: "server",
+				access: "secret",
+				optional: true,
+			}),
+			CLOUDFLARE_POLICY_AUD: envField.string({
+				context: "server",
+				access: "secret",
+				optional: true,
+			}),
 		},
 	},
 

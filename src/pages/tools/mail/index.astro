@@ -1,0 +1,33 @@
+---
+import Layout from "@/layouts/Base.astro";
+import EmailList from "@/components/mail/EmailList.astro";
+
+const user = Astro.locals.user;
+---
+
+<Layout
+	meta={{
+		title: "Email Viewer",
+		description: "View emails from Cloudflare R2 storage",
+	}}
+>
+	<div class="min-h-screen p-8">
+		<header class="mb-8">
+			<div class="flex justify-between items-center">
+				<div>
+					<h1 class="text-3xl font-bold">Email Viewer</h1>
+					<p class="text-gray-500 dark:text-gray-400">View emails from Cloudflare R2 storage</p>
+				</div>
+				{user && (
+					<div class="text-sm text-gray-600 dark:text-gray-400">
+						Logged in as: <span class="font-medium">{user.email}</span>
+					</div>
+				)}
+			</div>
+		</header>
+
+		<main>
+			<EmailList />
+		</main>
+	</div>
+</Layout>
