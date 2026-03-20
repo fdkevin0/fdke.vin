@@ -23,7 +23,6 @@ pnpm-debug.log*
 *.pem
 .cache
 .astro/
-.wrangler
 
 # generated icons
 public/favicon-32x32.png
@@ -32,3 +31,9 @@ public/icons/icon-96.png
 public/icons/icon-120.png
 public/icons/icon-192.png
 public/icons/icon-512.png
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example

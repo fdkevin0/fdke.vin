@@ -1,5 +1,7 @@
 export const prerender = false;
 
+import { env } from "cloudflare:workers";
+
 interface EmailMetadata {
 	name: string;
 	date: string;
@@ -10,10 +12,8 @@ interface EmailMetadata {
 	subject: string;
 }
 
-export async function GET({ locals }: { locals: App.Locals }): Promise<Response> {
+export async function GET(): Promise<Response> {
 	try {
-		const env = locals.runtime.env;
-
 		if (!env.EMAIL_BUCKET) {
 			return new Response(JSON.stringify({ error: "R2 bucket not configured" }), {
 				status: 500,

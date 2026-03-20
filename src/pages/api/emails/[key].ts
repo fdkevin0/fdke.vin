@@ -1,15 +1,9 @@
 export const prerender = false;
 
-export async function GET({
-	params,
-	locals,
-}: {
-	params: { key: string };
-	locals: App.Locals;
-}): Promise<Response> {
-	try {
-		const env = locals.runtime.env;
+import { env } from "cloudflare:workers";
 
+export async function GET({ params }: { params: { key: string } }): Promise<Response> {
+	try {
 		if (!env.EMAIL_BUCKET) {
 			return new Response(JSON.stringify({ error: "R2 bucket not configured" }), {
 				status: 500,
