@@ -3,6 +3,7 @@ import { defineMiddleware } from "astro:middleware";
 import { parseAudienceList, verifyCloudflareAccessToken } from "@/lib/cloudflare-access";
 
 const PROTECTED_ROUTE_PATTERNS = [
+	/^\/auth\/?$/,
 	/^\/api\/emails(?:\/.*)?$/,
 	/^\/tools\/access\/?$/,
 	/^\/tools\/mail(?:\/.*)?$/,
@@ -10,6 +11,13 @@ const PROTECTED_ROUTE_PATTERNS = [
 
 function routeNeedsAuth(pathname: string): boolean {
 	return PROTECTED_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
+}
+
+function createAuthRedirect(url: URL): Response {
+	const redirectTarget = `${url.pathname}${url.search}`;
+	const authUrl = new URL("/auth", url);
+	authUrl.searchParams.set("redirect", redirectTarget);
+	return Response.redirect(authUrl);
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -40,8 +48,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 			});
 		}
 
-		const loginUrl = `${teamDomain}/cdn-cgi/access/login/${url.hostname}?redirect_url=${encodeURIComponent(url.pathname)}`;
-		return Response.redirect(loginUrl);
+		return createAuthRedirect(url);
 	}
 
 	try {
@@ -53,6 +60,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		return next();
 	} catch (error) {
 		console.error("Cloudflare Access JWT validation failed:", error);
+
+		if (!url.pathname.startsWith("/api/")) {
+			return createAuthRedirect(url);
+		}
+
 		return new Response("Unauthorized", { status: 403 });
 	}
 });
