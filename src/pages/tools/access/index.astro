@@ -4,6 +4,7 @@ import { env } from "cloudflare:workers";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 export const prerender = false;
+export const needAuth = true;
 
 interface AccessIdentity {
 	email: string;

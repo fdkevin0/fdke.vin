@@ -1,4 +1,5 @@
 export const prerender = false;
+export const needAuth = true;
 
 import { env } from "cloudflare:workers";
 

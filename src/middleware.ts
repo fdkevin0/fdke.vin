@@ -1,44 +1,73 @@
+import type { MiddlewareHandler } from "astro";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
-const protectedApiPaths = ["/api/emails"];
-const protectedPagePaths = ["/tools/mail", "/tools/access"];
+const EXTENSIONS = ["astro", "ts"] as const;
 
-export const onRequest = async (
-	context: {
-		url: string;
-		request: Request;
-		cookies: { get: (name: string) => { value?: string } | undefined };
-		locals: App.Locals;
-		runtime?: { env: { CLOUDFLARE_TEAM_DOMAIN: string; CLOUDFLARE_POLICY_AUD: string } };
-	},
-	next: () => Promise<Response>,
-) => {
-	const { url, request } = context;
-	const pathname = new URL(url).pathname;
+/**
+ * Generate candidate module paths for a URL pathname.
+ * Handles static routes, index files, and Astro dynamic segments ([key], [...slug]).
+ */
+function* candidatePaths(pathname: string): Generator<string> {
+	const clean = pathname.replace(/^\//, "").replace(/\/$/, "") || "index";
+	const segments = clean.split("/");
 
-	// Check if it's a protected API path
-	const isProtectedApi = protectedApiPaths.some(
-		(path) => pathname === path || pathname.startsWith(`${path}/`),
-	);
-
-	// Check if it's a protected page path
-	const isProtectedPage = protectedPagePaths.some(
-		(path) => pathname === path || pathname.startsWith(`${path}/`),
-	);
-
-	// Only protect configured routes
-	if (!isProtectedPage && !isProtectedApi) {
-		return next();
+	// Static direct matches: /tools/mail → pages/tools/mail.astro, pages/tools/mail/index.astro
+	for (const ext of EXTENSIONS) {
+		yield `../pages/${clean}.${ext}`;
+		yield `../pages/${clean}/index.${ext}`;
 	}
+
+	// Walk up directories trying dynamic segments from the deepest level
+	// /tools/mail/email/abc123 → tries [key] at email/, [email] at mail/, etc.
+	for (let i = segments.length - 1; i >= 1; i--) {
+		const prefix = segments.slice(0, i).join("/");
+		for (const ext of EXTENSIONS) {
+			yield `../pages/${prefix}/[...slug].${ext}`;
+			yield `../pages/${prefix}/[...slug]/index.${ext}`;
+			yield `../pages/${prefix}/[${segments[i]}].${ext}`;
+			yield `../pages/${prefix}/[${segments[i]}]/index.${ext}`;
+		}
+	}
+}
+
+/**
+ * Check if a route module exports `needAuth = true`.
+ * Resolves dynamic route segments so e.g. /tools/mail/email/abc123
+ * matches src/pages/tools/mail/email/[key].astro.
+ */
+async function routeNeedsAuth(pathname: string): Promise<boolean> {
+	for (const modPath of candidatePaths(pathname)) {
+		try {
+			const mod = await import(/* @vite-ignore */ modPath);
+			if (mod.needAuth === true) return true;
+		} catch {
+			// Module not found at this path, try next candidate
+		}
+	}
+	return false;
+}
+
+export const onRequest: MiddlewareHandler = async (context, next) => {
+	const { request } = context;
+	const pathname = new URL(request.url).pathname;
+
+	// Cloudflare adapter adds runtime at runtime; absent during prerendering
+	const runtime = (context as unknown as Record<string, unknown>).runtime as
+		| { env: { CLOUDFLARE_TEAM_DOMAIN: string; CLOUDFLARE_POLICY_AUD: string } }
+		| undefined;
 
 	// Skip auth during prerendering (build time)
-	if (!context.runtime?.env) {
+	if (!runtime?.env) {
 		return next();
 	}
 
-	// Validate environment configuration
-	const teamDomain = context.runtime.env.CLOUDFLARE_TEAM_DOMAIN;
-	const policyAud = context.runtime.env.CLOUDFLARE_POLICY_AUD;
+	const needsAuth = await routeNeedsAuth(pathname);
+	if (!needsAuth) {
+		return next();
+	}
+
+	const teamDomain = runtime.env.CLOUDFLARE_TEAM_DOMAIN;
+	const policyAud = runtime.env.CLOUDFLARE_POLICY_AUD;
 
 	if (!teamDomain || !policyAud) {
 		console.error("Missing Cloudflare Access configuration");
@@ -52,7 +81,7 @@ export const onRequest = async (
 
 	if (!token) {
 		// For API routes, return 401 instead of redirect
-		if (isProtectedApi) {
+		if (pathname.startsWith("/api/")) {
 			return new Response(JSON.stringify({ error: "Unauthorized" }), {
 				status: 401,
 				headers: { "Content-Type": "application/json" },
@@ -60,7 +89,7 @@ export const onRequest = async (
 		}
 
 		// For page routes, redirect to Cloudflare Access login
-		const requestDomain = new URL(url).hostname;
+		const requestDomain = new URL(request.url).hostname;
 		const callbackUrl = pathname;
 		const loginUrl = `${teamDomain}/cdn-cgi/access/login/${requestDomain}?redirect_url=${encodeURIComponent(callbackUrl)}`;
 		return Response.redirect(loginUrl);

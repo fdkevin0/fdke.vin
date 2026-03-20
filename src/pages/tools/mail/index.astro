@@ -2,6 +2,9 @@
 import Layout from "@/layouts/Base.astro";
 import EmailList from "@/components/mail/EmailList.astro";
 
+export const prerender = false;
+export const needAuth = true;
+
 const user = Astro.locals.user;
 ---
 
