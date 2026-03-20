@@ -18,16 +18,25 @@ const { key } = Astro.params;
 		description: "View email content",
 	}}
 >
-	<div class="min-h-screen p-8">
-		<header class="mb-8">
-			<a href="/tools/mail/" class="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">
-				← Back to Email List
-			</a>
-			<h1 class="text-3xl font-bold">Email Details</h1>
-		</header>
+	<section class="space-y-6">
+		<div class="space-y-3">
+			<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
+				<a href="/tools/" class="hover:underline">Tools</a> /
+				<a href="/tools/mail/" class="hover:underline">Email</a> / Message
+			</p>
+			<div class="space-y-3">
+				<a href="/tools/mail/" class="inline-flex text-sm text-zinc-600 hover:underline dark:text-zinc-300">
+					← Back to email list
+				</a>
+				<h1 class="title text-2xl">Email Details</h1>
+				<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+					Inspect the stored message headers and body from Cloudflare R2.
+				</p>
+			</div>
+		</div>
 
-		<main>
+		<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
 			<EmailViewer emailKey={key!} />
-		</main>
-	</div>
+		</div>
+	</section>
 </Layout>

@@ -41,30 +41,30 @@
 			tbody.innerHTML = "";
 
 			if (emails.length === 0) {
-				tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center">No emails found in R2 storage.</td></tr>`;
+				tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-zinc-600 dark:text-zinc-300 md:px-6">No emails found in R2 storage.</td></tr>`;
 				return;
 			}
 
 			emails.forEach((email) => {
 				const tr = document.createElement("tr");
-				tr.className = "hover:bg-gray-50 dark:hover:bg-gray-800";
+				tr.className = "border-b border-zinc-200 last:border-0 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/60";
 				
 				const dateDisplay = email.date === "Unknown" || isNaN(new Date(email.date).getTime())
 					? "Unknown"
 					: new Date(email.date).toLocaleString();
 				
 				tr.innerHTML = `
-					<td class="px-6 py-4 whitespace-nowrap">
-						<a href="/tools/mail/email/${encodeURIComponent(email.key)}" class="text-blue-600 dark:text-blue-400 hover:underline">
+					<td class="px-4 py-4 align-top text-sm md:px-6">
+						<a href="/tools/mail/email/${encodeURIComponent(email.key)}" class="font-medium text-zinc-900 hover:underline dark:text-zinc-100">
 							${email.metadata?.name || email.key}
 						</a>
 					</td>
-					<td class="px-6 py-4 whitespace-nowrap">${formatFileSize(email.size)}</td>
-					<td class="px-6 py-4 whitespace-nowrap">${dateDisplay}</td>
-					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.type || "unknown"}</td>
-					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.from || "unknown"}</td>
-					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.to || "unknown"}</td>
-					<td class="px-6 py-4 whitespace-nowrap">${email.metadata?.subject || "unknown"}</td>
+					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${formatFileSize(email.size)}</td>
+					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${dateDisplay}</td>
+					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${email.metadata?.type || "unknown"}</td>
+					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${email.metadata?.from || "unknown"}</td>
+					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${email.metadata?.to || "unknown"}</td>
+					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${email.metadata?.subject || "unknown"}</td>
 				`;
 				tbody.appendChild(tr);
 			});
@@ -96,38 +96,41 @@
 	fetchEmails();
 </script>
 
-<div class="w-full">
-	<h2 class="text-xl font-bold mb-4">Emails</h2>
-	<div id="loading" class="p-4 text-center">Loading emails...</div>
-	<div id="error" class="p-4 text-center text-red-500" style="display: none"></div>
-	<div class="border rounded-lg overflow-hidden">
-		<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-			<thead class="bg-gray-50 dark:bg-gray-800">
+<div class="w-full space-y-4">
+	<div class="space-y-1">
+		<h2 class="text-lg font-semibold">Emails</h2>
+		<p class="text-sm text-zinc-600 dark:text-zinc-300">Recent messages available in the email bucket.</p>
+	</div>
+	<div id="loading" class="rounded border border-zinc-200 p-4 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">Loading emails...</div>
+	<div id="error" class="rounded border border-red-300 bg-red-50 p-4 text-center text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300" style="display: none"></div>
+	<div class="overflow-x-auto rounded border border-zinc-200 dark:border-zinc-800">
+		<table class="min-w-full border-collapse">
+			<thead class="bg-zinc-50 dark:bg-zinc-900/70">
 				<tr>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
 						Name
 					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
 						Size
 					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
 						Uploaded
 					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
 						Type
 					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
 						From
 					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
 						To
 					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
 						Subject
 					</th>
 				</tr>
 			</thead>
-			<tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+			<tbody class="bg-white dark:bg-transparent"></tbody>
 		</table>
 	</div>
 </div>

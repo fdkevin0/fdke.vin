@@ -2,6 +2,8 @@
 export interface EmailViewerProps {
 	emailKey: string;
 }
+
+const { emailKey } = Astro.props;
 ---
 
 <script>
@@ -30,19 +32,19 @@ export interface EmailViewerProps {
 			if (!emailViewer) return;
 
 			emailViewer.innerHTML = `
-				<div class="email-header bg-gray-100 dark:bg-gray-800 p-4 border-b">
-					<h2 class="text-xl font-semibold">${parsedEmail.subject}</h2>
-					<div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-						<div><span class="font-medium">From:</span> ${parsedEmail.from}</div>
-						<div><span class="font-medium">To:</span> ${parsedEmail.to}</div>
-						<div><span class="font-medium">Date:</span> ${parsedEmail.date}</div>
+				<div class="border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
+					<h2 class="text-xl font-semibold text-zinc-900 dark:text-zinc-100">${parsedEmail.subject || "Untitled email"}</h2>
+					<div class="mt-3 grid gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+						<div><span class="font-medium text-zinc-900 dark:text-zinc-100">From:</span> ${parsedEmail.from || "Unknown"}</div>
+						<div><span class="font-medium text-zinc-900 dark:text-zinc-100">To:</span> ${parsedEmail.to || "Unknown"}</div>
+						<div><span class="font-medium text-zinc-900 dark:text-zinc-100">Date:</span> ${parsedEmail.date || "Unknown"}</div>
 					</div>
 				</div>
-				<div class="email-content p-4">
+				<div class="p-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
 					${
 						parsedEmail.htmlContent
 							? parsedEmail.htmlContent
-							: `<pre class="whitespace-pre-wrap">${parsedEmail.plainText}</pre>`
+							: `<pre class="whitespace-pre-wrap rounded bg-zinc-50 p-4 text-sm text-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-200">${parsedEmail.plainText}</pre>`
 					}
 				</div>
 			`;
@@ -50,7 +52,7 @@ export interface EmailViewerProps {
 			console.error("Error fetching email content:", err);
 			const emailViewer = document.getElementById("email-viewer");
 			if (emailViewer) {
-				emailViewer.innerHTML = `<div class="p-4 text-center text-red-500">Error: ${err instanceof Error ? err.message : "Failed to fetch email content"}</div>`;
+				emailViewer.innerHTML = `<div class="rounded border border-red-300 bg-red-50 p-4 text-center text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">Error: ${err instanceof Error ? err.message : "Failed to fetch email content"}</div>`;
 			}
 		}
 	}
@@ -87,7 +89,8 @@ export interface EmailViewerProps {
 						headers[key.toLowerCase()] = value;
 					}
 				} else if (line.match(/^\s+/) && Object.keys(headers).length > 0) {
-					const lastHeader = Object.keys(headers).pop()!;
+					const lastHeader = Object.keys(headers).pop();
+					if (!lastHeader) continue;
 					headers[lastHeader] += " " + line.trim();
 				}
 			} else {
@@ -127,7 +130,7 @@ export interface EmailViewerProps {
 		if (encoding === "base64") {
 			try {
 				return atob(contentLines.trim());
-			} catch (e: unknown) {
+			} catch (e) {
 				return `[Failed to decode base64 content: ${e instanceof Error ? e.message : String(e)}]`;
 			}
 		}
@@ -135,12 +138,18 @@ export interface EmailViewerProps {
 		return contentLines.trim();
 	}
 
-	const emailKey = "${Astro.props.emailKey}";
+	const emailViewer = document.getElementById("email-viewer");
+	const emailKey = emailViewer?.dataset.emailKey;
+
 	if (emailKey) {
 		fetchEmailContent(emailKey);
 	}
 </script>
 
-<div id="email-viewer" class="email-viewer border rounded-md overflow-hidden">
-	<div class="p-4 text-center">Loading email...</div>
+<div
+	id="email-viewer"
+	data-email-key={emailKey}
+	class="overflow-hidden rounded border border-zinc-200 dark:border-zinc-800"
+>
+	<div class="p-4 text-center text-sm text-zinc-600 dark:text-zinc-300">Loading email...</div>
 </div>

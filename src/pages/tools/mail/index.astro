@@ -14,23 +14,29 @@ const user = Astro.locals.user;
 		description: "View emails from Cloudflare R2 storage",
 	}}
 >
-	<div class="min-h-screen p-8">
-		<header class="mb-8">
-			<div class="flex justify-between items-center">
-				<div>
-					<h1 class="text-3xl font-bold">Email Viewer</h1>
-					<p class="text-gray-500 dark:text-gray-400">View emails from Cloudflare R2 storage</p>
+	<section class="space-y-6">
+		<div class="space-y-3">
+			<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
+				<a href="/tools/" class="hover:underline">Tools</a> / Email
+			</p>
+			<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+				<div class="space-y-3">
+					<h1 class="title text-2xl">Email Viewer</h1>
+					<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+						Browse routed emails stored in Cloudflare R2 and open the raw message content for
+						inspection.
+					</p>
 				</div>
 				{user && (
-					<div class="text-sm text-gray-600 dark:text-gray-400">
-						Logged in as: <span class="font-medium">{user.email}</span>
+					<div class="rounded border border-zinc-200 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+						Logged in as <span class="font-medium text-zinc-900 dark:text-zinc-100">{user.email}</span>
 					</div>
 				)}
 			</div>
-		</header>
+		</div>
 
-		<main>
+		<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
 			<EmailList />
-		</main>
-	</div>
+		</div>
+	</section>
 </Layout>
