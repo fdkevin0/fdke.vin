@@ -4,5 +4,11 @@
 	"account_id": "98010e731e09a77b673ba51074dfbe1c",
 	"observability": {
 		"enabled": true
-	}
+	},
+	"routes": [
+		{
+			"pattern": "fdke.vin",
+			"custom_domain": true
+		}
+	]
 }
