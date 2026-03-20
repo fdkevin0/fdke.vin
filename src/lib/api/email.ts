@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getCloudflareEnv } from "@/lib/cloudflare-runtime";
 
 export interface EmailMetadata {
 	name: string;
@@ -21,7 +21,7 @@ export interface EmailSummary {
 }
 
 export async function listEmails(): Promise<EmailSummary[]> {
-	const bucket = getEmailBucket();
+	const bucket = await getEmailBucket();
 	const listed = await bucket.list({ prefix: "emails/" });
 
 	return listed.objects.map((object) => {
@@ -52,7 +52,7 @@ export async function listEmails(): Promise<EmailSummary[]> {
 }
 
 export async function getEmailContent(key: string): Promise<string | null> {
-	const bucket = getEmailBucket();
+	const bucket = await getEmailBucket();
 	const object = await bucket.get(`emails/${key}.eml`);
 	if (!object) {
 		return null;
@@ -61,10 +61,11 @@ export async function getEmailContent(key: string): Promise<string | null> {
 	return object.text();
 }
 
-function getEmailBucket(): R2Bucket {
-	if (!env.EMAIL_BUCKET) {
+async function getEmailBucket(): Promise<R2Bucket> {
+	const runtimeEnv = await getCloudflareEnv<{ EMAIL_BUCKET?: R2Bucket }>();
+	if (!runtimeEnv.EMAIL_BUCKET) {
 		throw new Error("R2 bucket not configured");
 	}
 
-	return env.EMAIL_BUCKET;
+	return runtimeEnv.EMAIL_BUCKET;
 }

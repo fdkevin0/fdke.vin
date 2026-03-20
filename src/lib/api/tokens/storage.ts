@@ -1,8 +1,8 @@
-import { env } from "cloudflare:workers";
 import { generateApiToken, sha256 } from "@/lib/api/tokens/crypto";
 import type { ApiScope } from "@/lib/api/tokens/scopes";
 import { hasRequiredScope, isApiScope } from "@/lib/api/tokens/scopes";
 import type { CloudflareAccessUser } from "@/lib/cloudflare-access";
+import { getCloudflareEnv } from "@/lib/cloudflare-runtime";
 
 interface ApiTokensEnv {
 	DATABASE?: D1Database;
@@ -50,7 +50,7 @@ export interface VerifiedApiToken {
 }
 
 export async function listApiTokensForUser(user: CloudflareAccessUser): Promise<StoredApiToken[]> {
-	const db = getApiTokensDb();
+	const db = await getApiTokensDb();
 	const result = await db
 		.prepare(
 			`SELECT id, owner_uid, owner_email, name, token_prefix, scopes, expires_at, last_used_at, revoked_at, created_at, updated_at, rotated_from_token_id, token_hash
@@ -71,7 +71,7 @@ export async function createApiToken(options: {
 	expiresAt: string | null;
 }): Promise<CreatedApiToken> {
 	const { user, name, scopes, expiresAt } = options;
-	const db = getApiTokensDb();
+	const db = await getApiTokensDb();
 	const generated = await generateApiToken();
 
 	await db
@@ -129,7 +129,7 @@ export async function updateApiToken(options: {
 	expiresAt: string | null;
 }): Promise<StoredApiToken | null> {
 	const { user, tokenId, name, scopes, expiresAt } = options;
-	const db = getApiTokensDb();
+	const db = await getApiTokensDb();
 	const now = new Date().toISOString();
 
 	const existing = await getOwnedTokenRow(user, tokenId);
@@ -166,7 +166,7 @@ export async function revokeApiToken(
 	user: CloudflareAccessUser,
 	tokenId: string,
 ): Promise<boolean> {
-	const db = getApiTokensDb();
+	const db = await getApiTokensDb();
 	const existing = await getOwnedTokenRow(user, tokenId);
 	if (!existing) {
 		return false;
@@ -201,7 +201,7 @@ export async function rotateApiToken(options: {
 		return null;
 	}
 
-	const db = getApiTokensDb();
+	const db = await getApiTokensDb();
 	const now = new Date().toISOString();
 	const generated = await generateApiToken();
 	const scopes = parseStoredScopes(existing.scopes);
@@ -271,7 +271,7 @@ export async function verifyApiToken(
 	secret: string,
 	requiredScope: string,
 ): Promise<VerifiedApiToken | null> {
-	const db = getApiTokensDb();
+	const db = await getApiTokensDb();
 	const hash = await sha256(secret);
 	const result = await db
 		.prepare(
@@ -317,8 +317,8 @@ export async function verifyApiToken(
 	};
 }
 
-function getApiTokensDb(): D1Database {
-	const runtimeEnv = env as typeof env & ApiTokensEnv;
+async function getApiTokensDb(): Promise<D1Database> {
+	const runtimeEnv = await getCloudflareEnv<ApiTokensEnv>();
 	if (!runtimeEnv.DATABASE) {
 		throw new Error("DATABASE is not configured");
 	}
@@ -330,7 +330,7 @@ async function getOwnedTokenRow(
 	user: CloudflareAccessUser,
 	tokenId: string,
 ): Promise<TokenRow | null> {
-	const db = getApiTokensDb();
+	const db = await getApiTokensDb();
 	const result = await db
 		.prepare(
 			`SELECT id, owner_uid, owner_email, name, token_prefix, scopes, expires_at, last_used_at, revoked_at, created_at, updated_at, rotated_from_token_id, token_hash
@@ -350,7 +350,7 @@ async function insertAuditEvent(options: {
 	action: string;
 	metadata: unknown;
 }) {
-	const db = getApiTokensDb();
+	const db = await getApiTokensDb();
 	await db
 		.prepare(
 			`INSERT INTO api_token_audit_events (id, token_id, actor_uid, actor_email, action, created_at, metadata)

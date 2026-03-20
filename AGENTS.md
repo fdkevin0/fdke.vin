@@ -13,11 +13,11 @@ For all limits and quotas, retrieve from the product's `/platform/limits/` page.
 
 ### Commands
 
-| Command | Purpose |
-|---------|---------|
-| `npx wrangler dev` | Local development |
-| `npx wrangler deploy` | Deploy to Cloudflare |
-| `npx wrangler types` | Generate TypeScript types |
+| Command               | Purpose                   |
+| --------------------- | ------------------------- |
+| `npx wrangler dev`    | Local development         |
+| `npx wrangler deploy` | Deploy to Cloudflare      |
+| `npx wrangler types`  | Generate TypeScript types |
 
 Run `wrangler types` after changing bindings in wrangler.jsonc.
 
@@ -49,6 +49,7 @@ Retrieve API references and limits from:
 - `pnpm run preview` serves the built site for QA.
 - `pnpm run check` runs `astro check` plus `biome check` (no writes); `pnpm run lint` fixes with Biome; `pnpm run format` runs Prettier across the repo.
 - After completing a task, run `pnpm astro check` to validate TypeScript and Astro component types.
+- After completing a task, always run `pnpm run build` to catch build-time and prerender issues before handing work off.
 - Run `wrangler types` after modifying `wrangler.jsonc` or `.dev.vars` to regenerate Cloudflare bindings types.
 
 ## Cloudflare Workers Integration
@@ -76,4 +77,5 @@ Retrieve API references and limits from:
 - Use concise, imperative commit subjects (e.g., `Add note tag cards`); group related changes together.
 - PRs should include a brief summary, linked issue (if any), local test commands run, and screenshots or gifs for visual changes/OG-image updates.
 - Ensure `pnpm run check` passes and note the Pagefind rebuild in validation steps when content or search logic changes.
+- Before creating a commit, always run `pnpm run build` and `pnpm astro check`, and fix any failures first.
 - **Do not commit changes without explicit permission from the user.**

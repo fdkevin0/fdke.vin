@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getCloudflareEnv } from "@/lib/cloudflare-runtime";
 
 export interface TorrentInfo {
 	title?: string;
@@ -18,14 +18,14 @@ export interface Torrent {
 }
 
 export async function getExhentaiTorrentInfo(gid: string, token: string): Promise<TorrentInfo> {
-	const cookie = getExhentaiCookie();
+	const cookie = await getExhentaiCookie();
 	const parser = new TorrentParser(cookie);
 	await parser.init(`https://exhentai.org/gallerytorrents.php?gid=${gid}&t=${token}`);
 	return parser.getInfo();
 }
 
-function getExhentaiCookie(): string {
-	const runtimeEnv = env as typeof env & { EXHENTAI_COOKIE?: string };
+async function getExhentaiCookie(): Promise<string> {
+	const runtimeEnv = await getCloudflareEnv<{ EXHENTAI_COOKIE?: string }>();
 	const cookie = runtimeEnv.EXHENTAI_COOKIE?.trim();
 
 	if (!cookie) {
