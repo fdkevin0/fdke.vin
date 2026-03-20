@@ -22,9 +22,9 @@ interface R2Bucket {
 
 interface CloudflareAccessPayload {
 	email: string;
-	name?: string;
-	uid?: string;
-	common_name?: string;
+	name: string | undefined;
+	uid: string | undefined;
+	common_name: string | undefined;
 }
 
 declare namespace App {

@@ -3,7 +3,16 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 const publicPaths = ["/tools/mail/login"];
 const protectedApiPaths = ["/api/emails"];
 
-export const onRequest = async (context: any, next: any) => {
+export const onRequest = async (
+	context: {
+		url: string;
+		request: Request;
+		cookies: { get: (name: string) => { value?: string } | undefined };
+		locals: App.Locals;
+		runtime?: { env: { CLOUDFLARE_TEAM_DOMAIN: string; CLOUDFLARE_POLICY_AUD: string } };
+	},
+	next: () => Promise<Response>,
+) => {
 	const { url, request } = context;
 	const pathname = new URL(url).pathname;
 
@@ -65,6 +74,7 @@ export const onRequest = async (context: any, next: any) => {
 			email: payload.email as string,
 			name: (payload.name || payload.common_name) as string | undefined,
 			uid: payload.uid as string | undefined,
+			common_name: payload.common_name as string | undefined,
 		};
 
 		return next();

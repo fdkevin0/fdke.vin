@@ -32,7 +32,7 @@ export async function GET(): Promise<Response> {
 				const keyParts = object.key.split("/")[1]?.split(".");
 				const dateStr = metadata?.date || "";
 				const parsedDate = new Date(dateStr);
-				const isValidDate = !isNaN(parsedDate.getTime());
+				const isValidDate = !Number.isNaN(parsedDate.getTime());
 
 				return {
 					key: keyParts?.[0] || object.key,

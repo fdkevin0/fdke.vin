@@ -1,6 +1,8 @@
 ---
-import Layout from "@/layouts/Base.astro";
 import EmailViewer from "@/components/mail/EmailViewer.astro";
+import Layout from "@/layouts/Base.astro";
+
+export const prerender = false;
 
 export function getStaticPaths() {
 	return [];
@@ -17,7 +19,7 @@ const { key } = Astro.params;
 >
 	<div class="min-h-screen p-8">
 		<header class="mb-8">
-			<a href="/tools/mail" class="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">
+			<a href="/tools/mail/" class="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">
 				← Back to Email List
 			</a>
 			<h1 class="text-3xl font-bold">Email Details</h1>
