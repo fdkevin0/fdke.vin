@@ -29,13 +29,7 @@ interface CloudflareAccessPayload {
 
 declare namespace App {
 	interface Locals {
-		runtime: {
-			env: {
-				EMAIL_BUCKET?: R2Bucket;
-				CLOUDFLARE_TEAM_DOMAIN: string;
-				CLOUDFLARE_POLICY_AUD: string;
-			};
-		};
 		user: CloudflareAccessPayload | null;
+		cfContext: ExecutionContext;
 	}
 }
