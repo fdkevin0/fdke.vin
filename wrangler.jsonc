@@ -20,6 +20,6 @@
 	],
 	"vars": {
 		"CLOUDFLARE_TEAM_DOMAIN": "https://fdkevin.cloudflareaccess.com",
-		"CLOUDFLARE_POLICY_AUD": "7d8a99d0b638544b0ff6ae86332addf618e9e3e19e82ea470985b8dc6e629f69"
+		"CLOUDFLARE_POLICY_AUD": "7d8a99d0b638544b0ff6ae86332addf618e9e3e19e82ea470985b8dc6e629f69,b07ea8fc3d88e34abdcf2fbd9bb86037f5f67c64479b68e392646a6f01f3753b" // comma-separated for multiple audiences
 	}
 }

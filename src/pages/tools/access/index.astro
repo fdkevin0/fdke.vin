@@ -1,7 +1,7 @@
 ---
-import PageLayout from "@/layouts/Base.astro";
 import { env } from "cloudflare:workers";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import PageLayout from "@/layouts/Base.astro";
 
 export const prerender = false;
 export const needAuth = true;
@@ -51,7 +51,17 @@ const props = await (async () => {
 	const teamDomain = env.CLOUDFLARE_TEAM_DOMAIN;
 	const policyAud = env.CLOUDFLARE_POLICY_AUD;
 
-	if (!teamDomain || !policyAud) {
+	const parseAudienceList = (value: string | string[]): string[] =>
+		typeof value === "string"
+			? value
+					.split(",")
+					.map((v) => v.trim())
+					.filter(Boolean)
+			: value;
+
+	const policyAudList = parseAudienceList(policyAud);
+
+	if (!teamDomain || policyAudList.length === 0) {
 		return {
 			teamDomain: "",
 			claims: null,
@@ -77,7 +87,7 @@ const props = await (async () => {
 			const JWKS = createRemoteJWKSet(new URL(`${teamDomain}/cdn-cgi/access/certs`));
 			const { payload } = await jwtVerify(token, JWKS, {
 				issuer: teamDomain,
-				audience: policyAud,
+				audience: policyAudList,
 			});
 			claims = payload as unknown as JWTClaims;
 
@@ -97,8 +107,7 @@ const props = await (async () => {
 						identity = identityData.data;
 					}
 				}
-			} catch {
-			}
+			} catch {}
 		} catch (err) {
 			error = err instanceof Error ? err.message : "Token validation failed";
 		}

@@ -53,7 +53,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
 
 	// Cloudflare adapter adds runtime at runtime; absent during prerendering
 	const runtime = (context as unknown as Record<string, unknown>).runtime as
-		| { env: { CLOUDFLARE_TEAM_DOMAIN: string; CLOUDFLARE_POLICY_AUD: string } }
+		| { env: { CLOUDFLARE_TEAM_DOMAIN: string; CLOUDFLARE_POLICY_AUD: string | string[] } }
 		| undefined;
 
 	// Skip auth during prerendering (build time)
@@ -69,7 +69,17 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
 	const teamDomain = runtime.env.CLOUDFLARE_TEAM_DOMAIN;
 	const policyAud = runtime.env.CLOUDFLARE_POLICY_AUD;
 
-	if (!teamDomain || !policyAud) {
+	const parseAudienceList = (value: string | string[]): string[] =>
+		typeof value === "string"
+			? value
+					.split(",")
+					.map((v) => v.trim())
+					.filter(Boolean)
+			: value;
+
+	const policyAudList = parseAudienceList(policyAud);
+
+	if (!teamDomain || policyAudList.length === 0) {
 		console.error("Missing Cloudflare Access configuration");
 		return new Response("Server configuration error", { status: 500 });
 	}
@@ -101,7 +111,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
 
 		const { payload } = await jwtVerify(token, JWKS, {
 			issuer: teamDomain,
-			audience: policyAud,
+			audience: policyAudList,
 		});
 
 		// Store user info in locals for use in templates
