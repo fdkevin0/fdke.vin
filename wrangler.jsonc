@@ -1,13 +1,7 @@
 {
 	"name": "fdke-vin",
-	"main": "@astrojs/cloudflare/entrypoints/server",
-	"compatibility_date": "2026-03-17",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"account_id": "98010e731e09a77b673ba51074dfbe1c",
-	"assets": {
-		"binding": "ASSETS",
-		"directory": "./dist"
-	},
 	"observability": {
 		"enabled": true
 	}

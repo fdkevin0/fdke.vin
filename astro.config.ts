@@ -108,7 +108,7 @@ export default defineConfig({
 	},
 
 	adapter: cloudflare({
-		imageService: "cloudflare-binding",
+		imageService: { build: "compile", runtime: "cloudflare-binding" },
 		prerenderEnvironment: "node",
 	}),
 });
