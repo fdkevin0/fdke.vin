@@ -33,77 +33,104 @@ const user = Astro.locals.user;
 			</div>
 		</div>
 
-		<div class="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.9fr)]">
-			<div class="space-y-4">
-				<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
-					<div class="flex items-start justify-between gap-4">
-						<div class="space-y-1">
-							<h2 class="text-lg font-semibold">Issued Tokens</h2>
-							<p class="text-sm text-zinc-600 dark:text-zinc-300">
-								Create, rotate, revoke, and update scopes or expiration.
+		<div class="space-y-4">
+			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
+				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+					<div class="space-y-1">
+						<h2 class="text-lg font-semibold">Create Token</h2>
+						<p class="text-sm text-zinc-600 dark:text-zinc-300">
+							Default scope is `api.ping`. Add more scopes only when needed.
+						</p>
+					</div>
+					<p class="max-w-sm text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+						Create or rotate a token, then click that token row to auto-fill the curl command.
+					</p>
+				</div>
+				<form id="create-token-form" class="mt-4 space-y-4">
+					<label class="block space-y-2 text-sm">
+						<span class="text-zinc-700 dark:text-zinc-200">Token name</span>
+						<input name="name" required placeholder="Monitoring token" class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900" />
+					</label>
+					<fieldset class="space-y-2">
+						<legend class="text-sm text-zinc-700 dark:text-zinc-200">Scopes</legend>
+						<div class="space-y-2">
+							{API_SCOPES.map((scope) => (
+								<label class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+									<input type="checkbox" name="scopes" value={scope} checked={scope === "api.ping"} />
+									<span class="font-mono text-xs">{scope}</span>
+								</label>
+							))}
+						</div>
+					</fieldset>
+					<label class="block space-y-2 text-sm">
+						<span class="text-zinc-700 dark:text-zinc-200">Expire at</span>
+						<input name="expiresAt" type="datetime-local" class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900" />
+					</label>
+					<button type="submit" class="w-full rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300">
+						Create token
+					</button>
+				</form>
+
+				<div id="token-secret-panel" class="mt-4 hidden rounded border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
+					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<h3 class="text-base font-semibold text-emerald-950 dark:text-emerald-100">New Token Secret</h3>
+							<p class="mt-1 text-sm text-emerald-900 dark:text-emerald-200">
+								Copy this now. It will not be shown again after this response.
 							</p>
 						</div>
 						<button
-							id="refresh-tokens"
+							id="copy-token-secret"
 							type="button"
-							class="rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+							class="rounded border border-emerald-500/40 px-3 py-2 text-xs tracking-[0.18em] text-emerald-950 uppercase transition hover:bg-white/70 dark:border-emerald-700 dark:text-emerald-100 dark:hover:bg-zinc-950/40"
 						>
-							Refresh
+							Copy token
 						</button>
 					</div>
-					<div id="tokens-feedback" class="hidden rounded border px-3 py-2 text-sm"></div>
-					<div id="tokens-empty" class="rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
-						No API tokens yet.
-					</div>
-					<div id="tokens-list" class="space-y-4"></div>
+					<pre id="token-secret-value" class="mt-3 overflow-x-auto rounded bg-white/80 p-3 text-xs text-emerald-950 dark:bg-zinc-950/60 dark:text-emerald-100"></pre>
 				</div>
 
-				<div id="token-secret-panel" class="hidden rounded border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
-					<h2 class="text-lg font-semibold text-emerald-950 dark:text-emerald-100">New Token Secret</h2>
-					<p class="mt-2 text-sm text-emerald-900 dark:text-emerald-200">
-						Copy this now. It will not be shown again after this response.
-					</p>
-					<pre id="token-secret-value" class="mt-3 overflow-x-auto rounded bg-white/80 p-3 text-xs text-emerald-950 dark:bg-zinc-950/60 dark:text-emerald-100"></pre>
+				<div class="mt-4 rounded border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">Using bearer auth</h3>
+							<p id="curl-selection-label" class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+								Create or rotate a token to fill this command.
+							</p>
+						</div>
+						<button
+							id="copy-curl-command"
+							type="button"
+							class="rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+						>
+							Copy curl
+						</button>
+					</div>
+					<pre id="curl-command-value" class="mt-3 overflow-x-auto rounded bg-zinc-50 p-3 text-xs text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"></pre>
 				</div>
 			</div>
 
-			<div class="space-y-4">
-				<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
-					<h2 class="text-lg font-semibold">Create Token</h2>
-					<p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-						Default scope is `api.ping`. Add more scopes only when needed.
-					</p>
-					<form id="create-token-form" class="mt-4 space-y-4">
-						<label class="block space-y-2 text-sm">
-							<span class="text-zinc-700 dark:text-zinc-200">Token name</span>
-							<input name="name" required placeholder="Monitoring token" class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900" />
-						</label>
-						<fieldset class="space-y-2">
-							<legend class="text-sm text-zinc-700 dark:text-zinc-200">Scopes</legend>
-							<div class="space-y-2">
-								{API_SCOPES.map((scope) => (
-									<label class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
-										<input type="checkbox" name="scopes" value={scope} checked={scope === "api.ping"} />
-										<span class="font-mono text-xs">{scope}</span>
-									</label>
-								))}
-							</div>
-						</fieldset>
-						<label class="block space-y-2 text-sm">
-							<span class="text-zinc-700 dark:text-zinc-200">Expire at</span>
-							<input name="expiresAt" type="datetime-local" class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900" />
-						</label>
-						<button type="submit" class="w-full rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300">
-							Create token
-						</button>
-					</form>
+			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
+				<div class="flex items-start justify-between gap-4">
+					<div class="space-y-1">
+						<h2 class="text-lg font-semibold">Issued Tokens</h2>
+						<p class="text-sm text-zinc-600 dark:text-zinc-300">
+							Create, rotate, revoke, and update scopes or expiration.
+						</p>
+					</div>
+					<button
+						id="refresh-tokens"
+						type="button"
+						class="rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+					>
+						Refresh
+					</button>
 				</div>
-
-				<div class="rounded border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300 md:p-5">
-					<h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Using bearer auth</h2>
-					<pre class="mt-3 overflow-x-auto rounded bg-zinc-50 p-3 text-xs text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">curl -H "Authorization: Bearer &lt;token&gt;" \
-  "https://fdke.vin/api/ping"</pre>
+				<div id="tokens-feedback" class="hidden rounded border px-3 py-2 text-sm"></div>
+				<div id="tokens-empty" class="rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+					No API tokens yet.
 				</div>
+				<div id="tokens-list" class="space-y-3"></div>
 			</div>
 		</div>
 	</section>
@@ -115,8 +142,17 @@ const user = Astro.locals.user;
 		const tokensFeedback = document.getElementById("tokens-feedback");
 		const tokenSecretPanel = document.getElementById("token-secret-panel");
 		const tokenSecretValue = document.getElementById("token-secret-value");
+		const copyTokenSecretButton = document.getElementById("copy-token-secret");
 		const createForm = document.getElementById("create-token-form");
 		const refreshButton = document.getElementById("refresh-tokens");
+		const curlCommandValue = document.getElementById("curl-command-value");
+		const curlSelectionLabel = document.getElementById("curl-selection-label");
+		const copyCurlButton = document.getElementById("copy-curl-command");
+
+		let currentTokens = [];
+		let revealedTokenId = null;
+		let revealedTokenSecret = "";
+		let selectedTokenId = null;
 
 		function formatDate(value) {
 			if (!value) return "Never";
@@ -141,6 +177,42 @@ const user = Astro.locals.user;
 			tokenSecretPanel.classList.remove("hidden");
 		}
 
+		function getCurlCommand(secret) {
+			const token = secret || "<token>";
+			return `curl -H "Authorization: Bearer ${token}" "https://fdke.vin/api/ping"`;
+		}
+
+		function renderCurlCommand() {
+			if (curlCommandValue) {
+				curlCommandValue.textContent = getCurlCommand(selectedTokenId === revealedTokenId ? revealedTokenSecret : "");
+			}
+
+			if (!curlSelectionLabel) return;
+			if (!selectedTokenId || selectedTokenId !== revealedTokenId || !revealedTokenSecret) {
+				curlSelectionLabel.textContent = "Create or rotate a token to fill this command.";
+				return;
+			}
+
+			const token = currentTokens.find((entry) => entry.id === selectedTokenId);
+			curlSelectionLabel.textContent = token
+				? `Curl command is using ${token.name} (${token.prefix}).`
+				: "Curl command is using the latest revealed token.";
+		}
+
+		async function copyText(value, button, idleLabel, doneLabel) {
+			try {
+				await navigator.clipboard.writeText(value);
+				if (button) {
+					button.textContent = doneLabel;
+					window.setTimeout(() => {
+						button.textContent = idleLabel;
+					}, 1200);
+				}
+			} catch {
+				showFeedback("Copy failed. Your browser blocked clipboard access.", "error");
+			}
+		}
+
 		function getPayloadFromForm(form) {
 			const data = new FormData(form);
 			const expiresAt = data.get("expiresAt");
@@ -152,44 +224,67 @@ const user = Astro.locals.user;
 		}
 
 		function buildTokenCard(token) {
+			const isSelected = token.id === selectedTokenId;
+			const isRevealed = token.id === revealedTokenId && Boolean(revealedTokenSecret);
+			const cardBorder = isSelected
+				? "border-emerald-400 dark:border-emerald-700"
+				: "border-zinc-200 dark:border-zinc-800";
+			const statusBadge = token.revokedAt
+				? '<span class="rounded bg-red-100 px-2 py-1 text-[11px] text-red-700 dark:bg-red-900/40 dark:text-red-300">Revoked</span>'
+				: '<span class="rounded bg-emerald-100 px-2 py-1 text-[11px] text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Active</span>';
+			const revealBadge = isRevealed
+				? '<span class="rounded bg-amber-100 px-2 py-1 text-[11px] text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">Ready for curl</span>'
+				: "";
+			const selectedBadge = isSelected
+				? '<span class="rounded bg-emerald-100 px-2 py-1 text-[11px] text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">Selected</span>'
+				: "";
+			const revealHint = isRevealed
+				? '<p class="mb-4 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200">Click this row to use the latest revealed token in the curl command.</p>'
+				: "";
 			const scopeOptions = scopesList
 				.map(
-					(scope) => `<label class="flex items-center gap-2 text-xs"><input type="checkbox" name="scopes" value="${scope}" ${token.scopes.includes(scope) ? "checked" : ""}> <span class="font-mono">${scope}</span></label>`,
+					(scope) => `<label class="flex items-center gap-2 text-xs"><input type="checkbox" name="scopes" value="${scope}" ${token.scopes.includes(scope) ? "checked" : ""} /> <span class="font-mono">${scope}</span></label>`,
 				)
 				.join("");
 
-			return `<article class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+			return `<details class="rounded border ${cardBorder}" data-token-row="${token.id}">
+				<summary class="flex cursor-pointer list-none flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
 					<div class="space-y-2">
-						<h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">${token.name}</h3>
-						<div class="flex flex-wrap gap-2 text-xs text-zinc-600 dark:text-zinc-300">
-							<span class="rounded bg-zinc-100 px-2 py-1 dark:bg-zinc-900">Prefix ${token.prefix}</span>
-							${token.revokedAt ? `<span class="rounded bg-red-100 px-2 py-1 text-red-700 dark:bg-red-900/40 dark:text-red-300">Revoked</span>` : `<span class="rounded bg-emerald-100 px-2 py-1 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Active</span>`}
+						<div class="flex flex-wrap items-center gap-2">
+							<h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">${token.name}</h3>
+							<span class="rounded bg-zinc-100 px-2 py-1 text-[11px] text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">Prefix ${token.prefix}</span>
+							${statusBadge}
+							${revealBadge}
+							${selectedBadge}
 						</div>
-						<div class="grid gap-1 text-xs text-zinc-600 dark:text-zinc-300">
+						<div class="grid gap-1 text-xs text-zinc-600 dark:text-zinc-300 sm:grid-cols-3 sm:gap-3">
 							<div>Created: ${formatDate(token.createdAt)}</div>
 							<div>Last used: ${formatDate(token.lastUsedAt)}</div>
 							<div>Expires: ${formatDate(token.expiresAt)}</div>
 						</div>
 					</div>
-					<div class="flex gap-2">
+					<div class="shrink-0 text-xs tracking-[0.18em] text-zinc-500 uppercase dark:text-zinc-400">Edit</div>
+				</summary>
+				<div class="border-t border-zinc-200 p-4 dark:border-zinc-800">
+					${revealHint}
+					<div class="mb-4 flex flex-wrap gap-2">
 						<button type="button" data-action="rotate" data-id="${token.id}" class="rounded border border-zinc-300 px-3 py-2 text-xs uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">Rotate</button>
 						<button type="button" data-action="delete" data-id="${token.id}" class="rounded border border-red-300 px-3 py-2 text-xs uppercase text-red-700 transition hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20">Delete</button>
 					</div>
+					<form class="space-y-3" data-token-id="${token.id}">
+						<label class="block space-y-2 text-sm">
+							<span>Name</span>
+							<input name="name" value="${escapeHtml(token.name)}" class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
+						</label>
+						<label class="block space-y-2 text-sm">
+							<span>Expire at</span>
+							<input name="expiresAt" type="datetime-local" value="${toDatetimeLocal(token.expiresAt)}" class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
+						</label>
+						<div class="grid gap-2 sm:grid-cols-2">${scopeOptions}</div>
+						<button type="submit" class="rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs uppercase text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300">Save changes</button>
+					</form>
 				</div>
-				<form class="mt-4 space-y-3" data-token-id="${token.id}">
-					<label class="block space-y-2 text-sm">
-						<span>Name</span>
-						<input name="name" value="${escapeHtml(token.name)}" class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
-					</label>
-					<label class="block space-y-2 text-sm">
-						<span>Expire at</span>
-						<input name="expiresAt" type="datetime-local" value="${toDatetimeLocal(token.expiresAt)}" class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
-					</label>
-					<div class="grid gap-2 sm:grid-cols-2">${scopeOptions}</div>
-					<button type="submit" class="rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs uppercase text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300">Save changes</button>
-				</form>
-			</article>`;
+			</details>`;
 		}
 
 		function toDatetimeLocal(value) {
@@ -205,6 +300,21 @@ const user = Astro.locals.user;
 			return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 		}
 
+		function renderTokens(tokens) {
+			currentTokens = tokens;
+			if (!tokensList || !tokensEmpty) return;
+			tokensList.innerHTML = tokens.map(buildTokenCard).join("");
+			tokensEmpty.style.display = tokens.length === 0 ? "block" : "none";
+		}
+
+		function rememberRevealedToken(token, secret) {
+			revealedTokenId = token?.id ?? null;
+			revealedTokenSecret = secret;
+			selectedTokenId = token?.id ?? null;
+			showSecret(secret);
+			renderCurlCommand();
+		}
+
 		async function loadTokens() {
 			clearFeedback();
 			const response = await fetch("/api/tokens", { headers: { Accept: "application/json" } });
@@ -214,9 +324,8 @@ const user = Astro.locals.user;
 			}
 
 			const tokens = data.tokens || [];
-			if (!tokensList || !tokensEmpty) return;
-			tokensList.innerHTML = tokens.map(buildTokenCard).join("");
-			tokensEmpty.style.display = tokens.length === 0 ? "block" : "none";
+			renderTokens(tokens);
+			renderCurlCommand();
 		}
 
 		createForm?.addEventListener("submit", async (event) => {
@@ -242,7 +351,7 @@ const user = Astro.locals.user;
 					input.checked = input.value === "api.ping";
 				}
 			}
-			showSecret(data.secret);
+			rememberRevealedToken(data.token, data.secret);
 			showFeedback("Token created.", "success");
 			await loadTokens();
 		});
@@ -254,6 +363,16 @@ const user = Astro.locals.user;
 			} catch (error) {
 				showFeedback(error instanceof Error ? error.message : "Failed to refresh tokens", "error");
 			}
+		});
+
+		copyTokenSecretButton?.addEventListener("click", async () => {
+			if (!revealedTokenSecret) return;
+			await copyText(revealedTokenSecret, copyTokenSecretButton, "Copy token", "Copied");
+		});
+
+		copyCurlButton?.addEventListener("click", async () => {
+			const command = getCurlCommand(selectedTokenId === revealedTokenId ? revealedTokenSecret : "");
+			await copyText(command, copyCurlButton, "Copy curl", "Copied");
 		});
 
 		tokensList?.addEventListener("submit", async (event) => {
@@ -280,6 +399,19 @@ const user = Astro.locals.user;
 
 		tokensList?.addEventListener("click", async (event) => {
 			const target = event.target;
+			if (!(target instanceof Element)) return;
+
+			const summary = target.closest("summary");
+			if (summary instanceof HTMLElement && tokensList.contains(summary)) {
+				const details = summary.closest("details[data-token-row]");
+				const tokenId = details?.getAttribute("data-token-row");
+				if (tokenId && tokenId === revealedTokenId && revealedTokenSecret) {
+					selectedTokenId = tokenId;
+					renderCurlCommand();
+				}
+				return;
+			}
+
 			if (!(target instanceof HTMLButtonElement)) return;
 			const tokenId = target.dataset.id;
 			const action = target.dataset.action;
@@ -293,6 +425,17 @@ const user = Astro.locals.user;
 					return;
 				}
 
+				if (selectedTokenId === tokenId) {
+					selectedTokenId = null;
+				}
+				if (revealedTokenId === tokenId) {
+					revealedTokenId = null;
+					revealedTokenSecret = "";
+					if (tokenSecretPanel) {
+						tokenSecretPanel.classList.add("hidden");
+					}
+				}
+				renderCurlCommand();
 				showFeedback("Token deleted.", "success");
 				await loadTokens();
 				return;
@@ -306,12 +449,13 @@ const user = Astro.locals.user;
 					return;
 				}
 
-				showSecret(data.secret);
+				rememberRevealedToken(data.token, data.secret);
 				showFeedback("Token rotated. Old token is revoked.", "success");
 				await loadTokens();
 			}
 		});
 
+		renderCurlCommand();
 		loadTokens().catch((error) => {
 			showFeedback(error instanceof Error ? error.message : "Failed to load tokens", "error");
 		});
