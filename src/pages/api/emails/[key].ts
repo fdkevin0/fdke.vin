@@ -1,37 +1,27 @@
 export const prerender = false;
 
-import { env } from "cloudflare:workers";
+import type { APIRoute } from "astro";
+import { getEmailContent } from "@/lib/api/email";
+import { getErrorMessage, jsonError, logApiError, text } from "@/lib/api/http";
 
-export async function GET({ params }: { params: { key: string } }): Promise<Response> {
+export const GET: APIRoute = async ({ params }) => {
+	const key = params.key?.trim();
+	if (!key) {
+		return jsonError(400, "Email key is required");
+	}
+
 	try {
-		if (!env.EMAIL_BUCKET) {
-			return new Response(JSON.stringify({ error: "R2 bucket not configured" }), {
-				status: 500,
-				headers: { "Content-Type": "application/json" },
-			});
+		const content = await getEmailContent(key);
+		if (!content) {
+			return jsonError(404, "Email not found");
 		}
 
-		const key = `emails/${params.key}.eml`;
-		const object = await env.EMAIL_BUCKET.get(key);
-
-		if (!object) {
-			return new Response(JSON.stringify({ error: "Email not found" }), {
-				status: 404,
-				headers: { "Content-Type": "application/json" },
-			});
-		}
-
-		const content = await object.text();
-
-		return new Response(content, {
+		return text(content, {
 			status: 200,
 			headers: { "Content-Type": "message/rfc822" },
 		});
 	} catch (error) {
-		console.error("Error fetching email:", error);
-		return new Response(JSON.stringify({ error: "Failed to fetch email" }), {
-			status: 500,
-			headers: { "Content-Type": "application/json" },
-		});
+		logApiError("emails.get", error, { key });
+		return jsonError(500, getErrorMessage(error, "Failed to fetch email"));
 	}
-}
+};

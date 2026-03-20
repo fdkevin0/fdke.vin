@@ -1,5 +1,6 @@
 {
 	"name": "fdkevin",
+	"compatibility_date": "2026-03-17",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"account_id": "98010e731e09a77b673ba51074dfbe1c",
 	"observability": {
@@ -16,6 +17,13 @@
 			"binding": "EMAIL_BUCKET",
 			"bucket_name": "email-storage",
 			"preview_bucket_name": "email-storage"
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DATABASE",
+			"database_name": "DATABASE",
+			"database_id": "c623d6ec-3353-4ef3-8218-5d677125dcd9"
 		}
 	],
 	"vars": {
