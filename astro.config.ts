@@ -95,16 +95,6 @@ export default defineConfig({
 		optimizeDeps: {
 			exclude: ["@resvg/resvg-wasm"],
 		},
-		ssr: {
-			external: [
-				"node:child_process",
-				"node:crypto",
-				"node:fs",
-				"node:fs/promises",
-				"node:path",
-				"node:url",
-			],
-		},
 		// biome-ignore lint/suspicious/noExplicitAny: Astro and Tailwind resolve incompatible Vite plugin types here.
 		plugins: [tailwind(), rawFonts([".ttf", ".woff"])] as any,
 	},
@@ -118,7 +108,7 @@ export default defineConfig({
 	},
 
 	adapter: cloudflare({
-		imageService: "cloudflare",
+		imageService: "cloudflare-binding",
 		prerenderEnvironment: "node",
 	}),
 });

@@ -22,7 +22,8 @@ pnpm-debug.log*
 # misc
 *.pem
 .cache
-.astro
+.astro/
+.wrangler
 
 # generated icons
 public/favicon-32x32.png

@@ -5,7 +5,7 @@
 	"scripts": {
 		"postinstall": "npm rebuild sharp --force",
 		"predev": "npm run icons:build",
-		"dev": "astro dev",
+		"dev": "wrangler types && astro dev",
 		"start": "astro dev",
 		"prebuild": "npm run icons:build",
 		"build": "astro build",
@@ -66,12 +66,7 @@
 		"wrangler": "^4.75.0"
 	},
 	"pnpm": {
-		"onlyBuiltDependencies": [
-			"@biomejs/biome",
-			"@tailwindcss/oxide",
-			"esbuild",
-			"sharp"
-		],
+		"onlyBuiltDependencies": ["@biomejs/biome", "@tailwindcss/oxide", "esbuild", "sharp"],
 		"overrides": {
 			"sharp": "^0.34.5"
 		}
