@@ -1,49 +1,79 @@
 import type { MiddlewareHandler } from "astro";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
-const EXTENSIONS = ["astro", "ts"] as const;
+type RouteModule = {
+	needAuth?: boolean;
+};
 
-/**
- * Generate candidate module paths for a URL pathname.
- * Handles static routes, index files, and Astro dynamic segments ([key], [...slug]).
- */
-function* candidatePaths(pathname: string): Generator<string> {
-	const clean = pathname.replace(/^\//, "").replace(/\/$/, "") || "index";
-	const segments = clean.split("/");
+type RouteDefinition = {
+	pattern: RegExp;
+	specificity: number;
+	load: () => Promise<RouteModule>;
+};
 
-	// Static direct matches: /tools/mail → pages/tools/mail.astro, pages/tools/mail/index.astro
-	for (const ext of EXTENSIONS) {
-		yield `../pages/${clean}.${ext}`;
-		yield `../pages/${clean}/index.${ext}`;
-	}
+const routeModules = import.meta.glob<RouteModule>("./pages/**/*.{astro,ts}");
 
-	// Walk up directories trying dynamic segments from the deepest level
-	// /tools/mail/email/abc123 → tries [key] at email/, [email] at mail/, etc.
-	for (let i = segments.length - 1; i >= 1; i--) {
-		const prefix = segments.slice(0, i).join("/");
-		for (const ext of EXTENSIONS) {
-			yield `../pages/${prefix}/[...slug].${ext}`;
-			yield `../pages/${prefix}/[...slug]/index.${ext}`;
-			yield `../pages/${prefix}/[${segments[i]}].${ext}`;
-			yield `../pages/${prefix}/[${segments[i]}]/index.${ext}`;
-		}
-	}
+function escapeRegex(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+function buildRouteDefinition(filePath: string, load: () => Promise<RouteModule>): RouteDefinition {
+	let routePath = filePath.replace(/^\.\/pages/, "").replace(/\.(astro|ts)$/, "");
+
+	if (routePath.endsWith("/index")) {
+		routePath = routePath.slice(0, -"/index".length) || "/";
+	}
+
+	const normalizedRoutePath = routePath === "" ? "/" : routePath;
+	const segments = normalizedRoutePath.split("/").filter(Boolean);
+	let specificity = segments.length;
+
+	const patternParts = segments.map((segment) => {
+		if (/^\[\.\.\.[^/]+\]$/.test(segment)) {
+			specificity += 1;
+			return "(?:/.+)?";
+		}
+
+		if (/^\[[^./][^/]*\]$/.test(segment)) {
+			specificity += 2;
+			return "/[^/]+";
+		}
+
+		specificity += 3;
+		return `/${escapeRegex(segment)}`;
+	});
+
+	const pattern = patternParts.length === 0 ? /^\/$/ : new RegExp(`^${patternParts.join("")}/?$`);
+
+	return {
+		pattern,
+		specificity,
+		load,
+	};
+}
+
+const routeDefinitions = Object.entries(routeModules)
+	.map(([filePath, load]) => buildRouteDefinition(filePath, load))
+	.sort((a, b) => b.specificity - a.specificity);
 
 /**
  * Check if a route module exports `needAuth = true`.
- * Resolves dynamic route segments so e.g. /tools/mail/email/abc123
- * matches src/pages/tools/mail/email/[key].astro.
+ * Matches static, dynamic, and rest routes using the actual page file map.
  */
 async function routeNeedsAuth(pathname: string): Promise<boolean> {
-	for (const modPath of candidatePaths(pathname)) {
-		try {
-			const mod = await import(/* @vite-ignore */ modPath);
-			if (mod.needAuth === true) return true;
-		} catch {
-			// Module not found at this path, try next candidate
+	for (const route of routeDefinitions) {
+		if (!route.pattern.test(pathname)) {
+			continue;
 		}
+
+		const mod = await route.load();
+		if (mod.needAuth === true) {
+			return true;
+		}
+
+		return false;
 	}
+
 	return false;
 }
 
