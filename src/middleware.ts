@@ -1,6 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const publicPaths = ["/tools/mail/login"];
+const protectedApiPaths = ["/api/emails"];
 
 export const onRequest = async (context: any, next: any) => {
 	const { url, request } = context;
@@ -11,8 +12,13 @@ export const onRequest = async (context: any, next: any) => {
 		return next();
 	}
 
-	// Only protect /tools/mail routes
-	if (!pathname.startsWith("/tools/mail")) {
+	// Check if it's a protected API path
+	const isProtectedApi = protectedApiPaths.some(
+		(path) => pathname === path || pathname.startsWith(`${path}/`),
+	);
+
+	// Only protect /tools/mail routes and mail API routes
+	if (!pathname.startsWith("/tools/mail") && !isProtectedApi) {
 		return next();
 	}
 
@@ -27,7 +33,15 @@ export const onRequest = async (context: any, next: any) => {
 		context.cookies.get("CF_Authorization")?.value;
 
 	if (!token) {
-		// Redirect to Cloudflare Access login
+		// For API routes, return 401 instead of redirect
+		if (isProtectedApi) {
+			return new Response(JSON.stringify({ error: "Unauthorized" }), {
+				status: 401,
+				headers: { "Content-Type": "application/json" },
+			});
+		}
+
+		// For page routes, redirect to Cloudflare Access login
 		const teamDomain = context.runtime.env.CLOUDFLARE_TEAM_DOMAIN;
 		const callbackUrl = new URL("/tools/mail", url).toString();
 		const loginUrl = `${teamDomain}/cdn-cgi/access/login?redirect_url=${encodeURIComponent(callbackUrl)}`;
