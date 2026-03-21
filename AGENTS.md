@@ -75,6 +75,7 @@ Retrieve API references and limits from:
 
 - Always use Conventional Commits format (e.g., `fix:`, `feat:`, `chore:`, `docs:`).
 - Use concise, imperative commit subjects (e.g., `Add note tag cards`); group related changes together.
+- When creating commits, always include a detailed commit message body that explains the key changes and intent, not just the subject line.
 - PRs should include a brief summary, linked issue (if any), local test commands run, and screenshots or gifs for visual changes/OG-image updates.
 - Ensure `pnpm run check` passes and note the Pagefind rebuild in validation steps when content or search logic changes.
 - Before creating a commit, always run `pnpm run build` and `pnpm astro check`, and fix any failures first.

@@ -164,7 +164,12 @@ class DLsiteClient {
 			throw new Error("DLsite API returned empty data");
 		}
 
-		return data[0]!;
+		const [firstProduct] = data;
+		if (!firstProduct) {
+			throw new Error("DLsite API returned empty data");
+		}
+
+		return firstProduct;
 	}
 
 	async fetchProductPage() {
