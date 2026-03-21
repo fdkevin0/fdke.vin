@@ -118,6 +118,8 @@ export default defineConfig({
 	},
 
 	adapter: cloudflare({
+		inspectorPort: 0,
+		remoteBindings: !process.env.CI,
 		imageService: { build: "compile", runtime: "cloudflare-binding" },
 		prerenderEnvironment: "node",
 	}),
