@@ -3,7 +3,8 @@ export const prerender = false;
 import type { APIRoute } from "astro";
 import { getErrorMessage, jsonError, jsonNoStore, logApiError } from "@/lib/api/http";
 import { requireAccessUser } from "@/lib/api/tokens/request";
-import { readFeedSourceInput } from "@/lib/feed/request";
+import { resolveFeedSourceMetadata } from "@/lib/feed/extractor";
+import { readCreateFeedSourceInput } from "@/lib/feed/request";
 import { getFeedEnv } from "@/lib/feed/runtime";
 import { createFeedSource, listFeedSources } from "@/lib/feed/storage";
 
@@ -30,16 +31,37 @@ export const POST: APIRoute = async ({ request, locals }) => {
 	}
 
 	try {
-		const input = await readFeedSourceInput(request);
+		const input = await readCreateFeedSourceInput(request);
 		if (input instanceof Response) {
 			return input;
 		}
 
+		const metadata = await resolveFeedSourceMetadata(input.feedUrl);
 		const env = await getFeedEnv();
-		const feed = await createFeedSource(env, input, user);
+		const feed = await createFeedSource(
+			env,
+			{
+				title: metadata.title,
+				feedUrl: input.feedUrl,
+				siteUrl: metadata.siteUrl,
+				isActive: input.isActive,
+				fetchMarkdown: input.fetchMarkdown,
+			},
+			user,
+		);
 		return jsonNoStore({ feed }, { status: 201 });
 	} catch (error) {
+		const message = getErrorMessage(error, "Failed to create feed source");
+		if (
+			message.includes("Feed did not provide a title") ||
+			message.includes("Feed request failed")
+		) {
+			return jsonError(400, message);
+		}
+		if (message.includes("UNIQUE constraint failed") || message.includes("rss_feeds.feed_url")) {
+			return jsonError(409, "Feed source already exists");
+		}
 		logApiError("feed.sources.create", error, { user: user.email });
-		return jsonError(500, getErrorMessage(error, "Failed to create feed source"));
+		return jsonError(500, message);
 	}
 };

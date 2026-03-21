@@ -91,6 +91,12 @@ export interface FeedSourceInput {
 	fetchMarkdown: boolean;
 }
 
+export interface FeedSourceCreateInput {
+	feedUrl: string;
+	isActive: boolean;
+	fetchMarkdown: boolean;
+}
+
 export interface AiSummaryResult {
 	language: string | null;
 	summary: string;

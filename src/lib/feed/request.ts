@@ -1,5 +1,5 @@
 import { jsonError } from "@/lib/api/http";
-import type { FeedSourceInput } from "@/lib/feed/types";
+import type { FeedSourceCreateInput, FeedSourceInput } from "@/lib/feed/types";
 
 interface RawFeedSourceInput {
 	title?: unknown;
@@ -7,6 +7,25 @@ interface RawFeedSourceInput {
 	siteUrl?: unknown;
 	isActive?: unknown;
 	fetchMarkdown?: unknown;
+}
+
+export async function readCreateFeedSourceInput(
+	request: Request,
+): Promise<FeedSourceCreateInput | Response> {
+	const body = (await request.json()) as RawFeedSourceInput;
+	const feedUrl = normalizeUrl(body.feedUrl);
+	const isActive = body.isActive === undefined ? true : Boolean(body.isActive);
+	const fetchMarkdown = body.fetchMarkdown === undefined ? true : Boolean(body.fetchMarkdown);
+
+	if (!feedUrl) {
+		return jsonError(400, "A valid feedUrl is required");
+	}
+
+	return {
+		feedUrl,
+		isActive,
+		fetchMarkdown,
+	};
 }
 
 export async function readFeedSourceInput(request: Request): Promise<FeedSourceInput | Response> {

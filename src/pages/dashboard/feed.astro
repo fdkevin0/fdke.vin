@@ -45,10 +45,17 @@ const user = Astro.locals.user;
 						<div class="space-y-1">
 							<h2 class="text-lg font-semibold">Shared Feed Sources</h2>
 							<p class="text-sm text-zinc-600 dark:text-zinc-300">
-								Add or tune source feeds for the shared recommendation pool.
+								Add a feed URL and the system will fetch the feed title and site URL for you.
 							</p>
 						</div>
-						<div class="flex gap-2">
+						<div class="flex flex-wrap gap-2">
+							<button
+								id="open-create-feed"
+								type="button"
+								class="rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+							>
+								Add
+							</button>
 							<button
 								id="sync-feed-run"
 								type="button"
@@ -68,56 +75,13 @@ const user = Astro.locals.user;
 
 					<div id="feed-feedback" class="mt-4 hidden rounded border px-3 py-2 text-sm"></div>
 
-					<form id="create-feed-form" class="mt-4 space-y-4">
-						<label class="block space-y-2 text-sm">
-							<span class="text-zinc-700 dark:text-zinc-200">Feed title</span>
-							<input
-								name="title"
-								required
-								placeholder="Example publication"
-								class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
-							/>
-						</label>
-						<label class="block space-y-2 text-sm">
-							<span class="text-zinc-700 dark:text-zinc-200">Feed URL</span>
-							<input
-								name="feedUrl"
-								required
-								type="url"
-								placeholder="https://example.com/feed.xml"
-								class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
-							/>
-						</label>
-						<label class="block space-y-2 text-sm">
-							<span class="text-zinc-700 dark:text-zinc-200">Site URL</span>
-							<input
-								name="siteUrl"
-								type="url"
-								placeholder="https://example.com/"
-								class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
-							/>
-						</label>
-						<div class="grid gap-3 sm:grid-cols-2">
-							<label
-								class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
-							>
-								<input name="isActive" type="checkbox" checked />
-								<span>Active in daily sync</span>
-							</label>
-							<label
-								class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
-							>
-								<input name="fetchMarkdown" type="checkbox" checked />
-								<span>Fetch article markdown/text</span>
-							</label>
-						</div>
-						<button
-							type="submit"
-							class="w-full rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-						>
-							Add feed source
-						</button>
-					</form>
+					<div
+						class="mt-4 rounded border border-dashed border-zinc-200 bg-zinc-50/60 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300"
+					>
+						Use <span class="font-medium text-zinc-900 dark:text-zinc-100">Add</span> to open a feed source
+						sheet. We only need the feed URL, then we fetch the publication title and primary site URL
+						automatically.
+					</div>
 
 					<div
 						id="feeds-empty"
@@ -170,20 +134,95 @@ const user = Astro.locals.user;
 						<li>Cron trigger wakes a Durable Object coordinator every day.</li>
 						<li>Coordinator enqueues one feed fetch job per active source.</li>
 						<li>
-							Workers fetch XML and article text, then store metadata in D1 and payloads in R2.
+							Workers fetch feed documents and article text, then store metadata in D1 and payloads
+							in R2.
 						</li>
 						<li>Workers AI summarizes content and translates each summary into English.</li>
 					</ul>
 				</section>
 			</div>
 		</div>
+
+		<dialog
+			id="create-feed-dialog"
+			aria-label="Add Feed Source"
+			class="bg-global-bg h-full max-h-full w-full max-w-full border border-zinc-300 shadow-sm backdrop:backdrop-blur-sm open:flex sm:mx-auto sm:mt-16 sm:mb-auto sm:h-max sm:max-h-[calc(100%-8rem)] sm:min-h-[18rem] sm:w-full sm:max-w-xl sm:rounded-md dark:border-zinc-700"
+		>
+			<div class="dialog-frame flex grow flex-col gap-5 p-6 pt-12 sm:pt-6">
+				<div class="flex items-start justify-between gap-4">
+					<div class="space-y-2">
+						<p class="text-[11px] tracking-[0.24em] text-zinc-500 uppercase dark:text-zinc-400">
+							Add Feed Source
+						</p>
+						<div class="space-y-1">
+							<h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+								Connect a shared feed
+							</h2>
+							<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+								Paste a feed URL. We fetch the feed metadata before saving, so the source is ready
+								for the next sync.
+							</p>
+						</div>
+					</div>
+					<button
+						data-close-create-feed
+						type="button"
+						class="cursor-pointer rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+					>
+						Close
+					</button>
+				</div>
+
+				<form id="create-feed-form" class="space-y-4">
+					<label class="block space-y-2 text-sm">
+						<span class="text-zinc-700 dark:text-zinc-200">Feed URL</span>
+						<input
+							id="create-feed-url"
+							name="feedUrl"
+							required
+							type="url"
+							placeholder="https://example.com/feed.xml"
+							class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+						/>
+					</label>
+					<div class="grid gap-3 sm:grid-cols-2">
+						<label
+							class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+						>
+							<input name="isActive" type="checkbox" checked />
+							<span>Active in daily sync</span>
+						</label>
+						<label
+							class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+						>
+							<input name="fetchMarkdown" type="checkbox" checked />
+							<span>Fetch article markdown/text</span>
+						</label>
+					</div>
+					<div
+						class="rounded border border-zinc-200 bg-zinc-50 px-3 py-3 text-xs leading-relaxed text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300"
+					>
+						Title and site URL are fetched automatically from the feed before the source is saved.
+					</div>
+					<button
+						type="submit"
+						class="w-full rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+					>
+						Add feed source
+					</button>
+				</form>
+			</div>
+		</dialog>
 	</section>
 
 	<script is:inline>
 		const feedback = document.getElementById("feed-feedback");
 		const feedsList = document.getElementById("feeds-list");
 		const feedsEmpty = document.getElementById("feeds-empty");
+		const createDialog = document.getElementById("create-feed-dialog");
 		const createForm = document.getElementById("create-feed-form");
+		const openCreateButton = document.getElementById("open-create-feed");
+		const createFeedUrlInput = document.getElementById("create-feed-url");
 		const refreshButton = document.getElementById("refresh-feed-data");
 		const syncButton = document.getElementById("sync-feed-run");
 		const itemsList = document.getElementById("feed-items-list");
@@ -209,12 +248,37 @@ const user = Astro.locals.user;
 		function getFeedPayload(form) {
 			const data = new FormData(form);
 			return {
+				feedUrl: String(data.get("feedUrl") || "").trim(),
+				isActive: data.get("isActive") === "on",
+				fetchMarkdown: data.get("fetchMarkdown") === "on",
+			};
+		}
+
+		function getEditableFeedPayload(form) {
+			const data = new FormData(form);
+			return {
 				title: String(data.get("title") || "").trim(),
 				feedUrl: String(data.get("feedUrl") || "").trim(),
 				siteUrl: String(data.get("siteUrl") || "").trim() || null,
 				isActive: data.get("isActive") === "on",
 				fetchMarkdown: data.get("fetchMarkdown") === "on",
 			};
+		}
+
+		function openCreateDialog() {
+			if (!(createDialog instanceof HTMLDialogElement)) return;
+			createDialog.showModal();
+			window.setTimeout(() => {
+				if (createFeedUrlInput instanceof HTMLInputElement) {
+					createFeedUrlInput.focus();
+				}
+			}, 0);
+		}
+
+		function closeCreateDialog() {
+			if (createDialog instanceof HTMLDialogElement) {
+				createDialog.close();
+			}
 		}
 
 		function formatDate(value) {
@@ -246,6 +310,7 @@ const user = Astro.locals.user;
 								</div>
 								<div class="space-y-1 text-xs text-zinc-600 dark:text-zinc-300">
 									<div><span class="font-medium">Feed:</span> <a href="${escapeHtml(feed.feedUrl)}" target="_blank" rel="noopener noreferrer" class="underline decoration-zinc-300 underline-offset-4">${escapeHtml(feed.feedUrl)}</a></div>
+									${feed.siteUrl ? `<div><span class="font-medium">Site:</span> <a href="${escapeHtml(feed.siteUrl)}" target="_blank" rel="noopener noreferrer" class="underline decoration-zinc-300 underline-offset-4">${escapeHtml(feed.siteUrl)}</a></div>` : ""}
 									<div><span class="font-medium">Last fetched:</span> ${escapeHtml(formatDate(feed.lastFetchedAt))}</div>
 									<div><span class="font-medium">Last error:</span> ${escapeHtml(feed.lastError || "None")}</div>
 								</div>
@@ -355,12 +420,21 @@ const user = Astro.locals.user;
 			event.preventDefault();
 			const form = event.currentTarget;
 			if (!(form instanceof HTMLFormElement)) return;
+			const submitButton = form.querySelector('button[type="submit"]');
+			if (submitButton instanceof HTMLButtonElement) {
+				submitButton.disabled = true;
+				submitButton.textContent = "Adding...";
+			}
 			const response = await fetch("/api/feed/sources", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(getFeedPayload(form)),
 			});
 			const data = await response.json();
+			if (submitButton instanceof HTMLButtonElement) {
+				submitButton.disabled = false;
+				submitButton.textContent = "Add feed source";
+			}
 			if (!response.ok) {
 				setFeedback(data.error || "Failed to create feed source", "error");
 				return;
@@ -369,9 +443,25 @@ const user = Astro.locals.user;
 			for (const checkbox of form.querySelectorAll('input[type="checkbox"]')) {
 				if (checkbox instanceof HTMLInputElement) checkbox.checked = true;
 			}
-			setFeedback("Feed source added.");
+			closeCreateDialog();
+			setFeedback(
+				`Feed source added${data.feed?.title ? `: ${data.feed.title}` : ""}. Metadata fetched from the feed URL.`,
+			);
 			await loadAll();
 		});
+
+		openCreateButton?.addEventListener("click", openCreateDialog);
+
+		createDialog?.addEventListener("click", (event) => {
+			if (!(createDialog instanceof HTMLDialogElement)) return;
+			if (event.target === createDialog) {
+				closeCreateDialog();
+			}
+		});
+
+		document
+			.querySelector("[data-close-create-feed]")
+			?.addEventListener("click", closeCreateDialog);
 
 		refreshButton?.addEventListener("click", async () => {
 			try {
@@ -407,7 +497,7 @@ const user = Astro.locals.user;
 			const response = await fetch(`/api/feed/sources/${feedId}`, {
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(getFeedPayload(form)),
+				body: JSON.stringify(getEditableFeedPayload(form)),
 			});
 			const data = await response.json();
 			if (!response.ok) {

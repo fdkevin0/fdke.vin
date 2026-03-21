@@ -1,4 +1,5 @@
 import { getErrorMessage } from "@/lib/api/http";
+import { extractFeedDocument, FEED_USER_AGENT } from "@/lib/feed/extractor";
 import type { FeedEnv } from "@/lib/feed/runtime";
 import { createR2Key, getDayUtc } from "@/lib/feed/runtime";
 import {
@@ -8,8 +9,6 @@ import {
 	upsertFeedEntry,
 } from "@/lib/feed/storage";
 import type { FeedAiMessage, FeedFetchMessage, ParsedFeedEntry } from "@/lib/feed/types";
-
-const USER_AGENT = "fdke.vin feed bot/1.0 (+https://fdke.vin)";
 
 export async function processFeedFetchMessage(
 	env: FeedEnv,
@@ -22,9 +21,9 @@ export async function processFeedFetchMessage(
 	try {
 		const response = await fetch(message.feedUrl, {
 			headers: {
-				"user-agent": USER_AGENT,
+				"user-agent": FEED_USER_AGENT,
 				accept:
-					"application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+					"application/rss+xml, application/atom+xml, application/feed+json, application/json, application/xml, text/xml;q=0.9, */*;q=0.8",
 			},
 		});
 
@@ -32,13 +31,16 @@ export async function processFeedFetchMessage(
 			throw new Error(`Feed request failed with ${response.status}`);
 		}
 
-		const xml = await response.text();
+		const rawFeed = await response.text();
 		const rawFeedKey = createR2Key(`rss/raw/${message.feedId}`, "latest.xml");
-		await env.RSS_BUCKET.put(rawFeedKey, xml, {
+		await env.RSS_BUCKET.put(rawFeedKey, rawFeed, {
 			httpMetadata: { contentType: response.headers.get("content-type") || "application/xml" },
 		});
 
-		const entries = parseFeedEntries(xml).slice(0, 30);
+		const entries = parseFeedEntries(rawFeed, {
+			contentType: response.headers.get("content-type"),
+			baseUrl: message.feedUrl,
+		}).slice(0, 30);
 		const aiMessages: FeedAiMessage[] = [];
 
 		for (const entry of entries) {
@@ -106,66 +108,33 @@ async function notifyCoordinator(
 	});
 }
 
-function parseFeedEntries(xml: string): ParsedFeedEntry[] {
-	const document = new DOMParser().parseFromString(xml, "application/xml");
-	if (document.querySelector("parsererror")) {
-		throw new Error("Unable to parse RSS or Atom XML");
+function parseFeedEntries(
+	input: string,
+	options: { contentType?: string | null; baseUrl?: string },
+): ParsedFeedEntry[] {
+	const feed = extractFeedDocument(input, options);
+	const entries = feed.entries ?? [];
+
+	if (entries.length === 0) {
+		throw new Error("Feed does not contain supported item nodes");
 	}
 
-	const rootName = document.documentElement.localName.toLowerCase();
-	if (rootName === "feed") {
-		return Array.from(document.getElementsByTagNameNS("*", "entry")).map(parseAtomEntry);
-	}
+	return entries.map((entry, index) => {
+		const title = entry.title?.trim() || "Untitled item";
+		const link = entry.link?.trim() || "";
+		const guid = entry.id?.trim() || link || `${title}-${index}`;
+		const content = normalizeMarkdown(stripMarkup(entry.description?.trim() || ""));
 
-	const items = Array.from(document.getElementsByTagNameNS("*", "item"));
-	if (items.length > 0) {
-		return items.map(parseRssItem);
-	}
-
-	throw new Error("Feed does not contain supported item nodes");
-}
-
-function parseRssItem(item: Element): ParsedFeedEntry {
-	const title = findText(item, ["title"]) || "Untitled item";
-	const link = findText(item, ["link"]) || findAttribute(item, "link", "href") || "";
-	const guid = findText(item, ["guid"]) || link || title;
-	const published = normalizeDate(findText(item, ["pubDate", "published", "updated", "date"]));
-	const author = findText(item, ["creator", "author"]);
-	const rawContent =
-		findText(item, ["encoded", "content", "description", "summary"]) ||
-		findCdata(item, ["encoded", "content", "description", "summary"]) ||
-		"";
-
-	return {
-		id: guid,
-		title,
-		url: link,
-		publishedAt: published,
-		author,
-		content: normalizeMarkdown(stripMarkup(rawContent)),
-		excerpt: truncate(stripMarkup(rawContent), 280),
-	};
-}
-
-function parseAtomEntry(entry: Element): ParsedFeedEntry {
-	const title = findText(entry, ["title"]) || "Untitled item";
-	const link =
-		findLinkHref(entry, "alternate") || findLinkHref(entry, null) || findText(entry, ["id"]) || "";
-	const guid = findText(entry, ["id"]) || link || title;
-	const published = normalizeDate(findText(entry, ["published", "updated"]));
-	const author = findNestedText(entry, "author", ["name"]) || findText(entry, ["author"]);
-	const rawContent =
-		findText(entry, ["content", "summary"]) || findCdata(entry, ["content", "summary"]) || "";
-
-	return {
-		id: guid,
-		title,
-		url: link,
-		publishedAt: published,
-		author,
-		content: normalizeMarkdown(stripMarkup(rawContent)),
-		excerpt: truncate(stripMarkup(rawContent), 280),
-	};
+		return {
+			id: guid,
+			title,
+			url: link,
+			publishedAt: normalizeDate(entry.published || null),
+			author: entry.author ?? null,
+			content,
+			excerpt: truncate(content, 280),
+		};
+	});
 }
 
 async function resolveEntryContent(
@@ -186,7 +155,7 @@ async function fetchRemoteMarkdown(url: string): Promise<string | null> {
 	try {
 		const response = await fetch(url, {
 			headers: {
-				"user-agent": USER_AGENT,
+				"user-agent": FEED_USER_AGENT,
 				accept: "text/markdown, text/plain, text/html, application/xhtml+xml;q=0.9, */*;q=0.8",
 			},
 		});
@@ -224,33 +193,53 @@ function stripMarkup(input: string): string {
 	}
 
 	if (!input.includes("<")) {
-		return decodeEntities(input);
+		return normalizePlainText(decodeEntities(input));
 	}
 
-	const document = new DOMParser().parseFromString(input, "text/html");
-	const blocks = Array.from(
-		document.body.querySelectorAll("p, li, h1, h2, h3, h4, h5, h6, blockquote, pre"),
-	);
-	if (blocks.length > 0) {
-		return decodeEntities(
-			blocks
-				.map((node) => node.textContent?.trim() || "")
-				.filter(Boolean)
-				.join("\n\n"),
-		);
-	}
+	const normalized = input
+		.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+		.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+		.replace(/<!--([\s\S]*?)-->/g, " ")
+		.replace(/<(br|hr)\b[^>]*\/?\s*>/gi, "\n")
+		.replace(/<li\b[^>]*>/gi, "\n- ")
+		.replace(/<\/(p|div|section|article|blockquote|pre|ul|ol|h1|h2|h3|h4|h5|h6)>/gi, "\n\n")
+		.replace(/<[^>]+>/g, " ");
 
-	return decodeEntities(document.body.textContent || "");
+	return normalizePlainText(decodeEntities(normalized));
 }
 
 function decodeEntities(value: string): string {
 	return value
+		.replaceAll("&#x27;", "'")
+		.replaceAll("&#x2F;", "/")
+		.replaceAll("&#x22;", '"')
+		.replaceAll("&#x3C;", "<")
+		.replaceAll("&#x3E;", ">")
+		.replaceAll("&#x26;", "&")
 		.replaceAll("&nbsp;", " ")
 		.replaceAll("&amp;", "&")
 		.replaceAll("&lt;", "<")
 		.replaceAll("&gt;", ">")
 		.replaceAll("&quot;", '"')
-		.replaceAll("&#39;", "'");
+		.replaceAll("&#39;", "'")
+		.replaceAll("&#x2013;", "–")
+		.replaceAll("&#x2014;", "—")
+		.replaceAll("&#x2018;", "'")
+		.replaceAll("&#x2019;", "'")
+		.replaceAll("&#x201C;", '"')
+		.replaceAll("&#x201D;", '"');
+}
+
+function normalizePlainText(value: string): string {
+	return value
+		.replace(/\r/g, "")
+		.replace(/[\t\f\v]+/g, " ")
+		.replace(/\u00a0/g, " ")
+		.replace(/ +\n/g, "\n")
+		.replace(/\n +/g, "\n")
+		.replace(/[ ]{2,}/g, " ")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
 }
 
 function normalizeMarkdown(value: string): string {
@@ -258,58 +247,6 @@ function normalizeMarkdown(value: string): string {
 		.replace(/\r/g, "")
 		.replace(/\n{3,}/g, "\n\n")
 		.trim();
-}
-
-function findText(parent: Element, localNames: string[]): string | null {
-	for (const localName of localNames) {
-		const nodes = Array.from(parent.getElementsByTagNameNS("*", localName));
-		const value = nodes[0]?.textContent?.trim();
-		if (value) {
-			return value;
-		}
-	}
-
-	return null;
-}
-
-function findNestedText(
-	parent: Element,
-	containerName: string,
-	childNames: string[],
-): string | null {
-	const container = Array.from(parent.getElementsByTagNameNS("*", containerName))[0];
-	if (!container) {
-		return null;
-	}
-	return findText(container, childNames);
-}
-
-function findCdata(parent: Element, localNames: string[]): string | null {
-	for (const localName of localNames) {
-		const node = Array.from(parent.getElementsByTagNameNS("*", localName))[0];
-		const value = node?.textContent?.trim();
-		if (value) {
-			return value;
-		}
-	}
-	return null;
-}
-
-function findAttribute(parent: Element, localName: string, attribute: string): string | null {
-	const node = Array.from(parent.getElementsByTagNameNS("*", localName))[0];
-	const value = node?.getAttribute(attribute)?.trim();
-	return value || null;
-}
-
-function findLinkHref(parent: Element, rel: string | null): string | null {
-	const links = Array.from(parent.getElementsByTagNameNS("*", "link"));
-	const match = links.find((link) => {
-		if (rel === null) {
-			return Boolean(link.getAttribute("href"));
-		}
-		return link.getAttribute("rel") === rel && Boolean(link.getAttribute("href"));
-	});
-	return match?.getAttribute("href")?.trim() || null;
 }
 
 function normalizeDate(value: string | null): string | null {
