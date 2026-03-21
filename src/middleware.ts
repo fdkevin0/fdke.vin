@@ -1,7 +1,4 @@
-import {
-	CLOUDFLARE_POLICY_AUD,
-	CLOUDFLARE_TEAM_DOMAIN,
-} from "astro:env/server";
+import { CLOUDFLARE_POLICY_AUD, CLOUDFLARE_TEAM_DOMAIN } from "astro:env/server";
 import { defineMiddleware } from "astro:middleware";
 import { getRequiredApiScope } from "@/lib/api/tokens/scopes";
 import { verifyApiToken } from "@/lib/api/tokens/storage";

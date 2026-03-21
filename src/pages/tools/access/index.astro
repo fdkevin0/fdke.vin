@@ -154,18 +154,18 @@ const props = await (async () => {
 			</p>
 		</div>
 
-	{
-		props.error ? (
-			<div
-				class={`rounded border p-4 ${props.isLocalBypass ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20" : "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20"}`}
-			>
-				<p
-					class={`text-sm ${props.isLocalBypass ? "text-blue-800 dark:text-blue-300" : "text-red-800 dark:text-red-300"}`}
+		{
+			props.error ? (
+				<div
+					class={`rounded border p-4 ${props.isLocalBypass ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20" : "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20"}`}
 				>
-					{props.error}
-				</p>
-			</div>
-		) : (
+					<p
+						class={`text-sm ${props.isLocalBypass ? "text-blue-800 dark:text-blue-300" : "text-red-800 dark:text-red-300"}`}
+					>
+						{props.error}
+					</p>
+				</div>
+			) : (
 				<div class="space-y-6">
 					<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
 						<h2 class="mb-4 text-lg font-semibold">Authentication Status</h2>
