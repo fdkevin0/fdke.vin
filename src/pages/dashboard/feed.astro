@@ -9,7 +9,8 @@ const user = Astro.locals.user;
 <Layout
 	meta={{
 		title: "Dashboard Feed",
-		description: "Manage the shared RSS feed pool, review daily recommendations, and monitor ingestion.",
+		description:
+			"Manage the shared RSS feed pool, review daily recommendations, and monitor ingestion.",
 	}}
 >
 	<section class="space-y-6">
@@ -21,22 +22,25 @@ const user = Astro.locals.user;
 				<div class="space-y-2">
 					<h1 class="title text-2xl">Dashboard Feed</h1>
 					<p class="max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-						Manage the single shared RSS feed pool. A daily Cloudflare cron fans out feed fetch jobs through
-						Queues, stores content in D1 and R2, then refreshes a random 10-item recommendation list from the
-						last 30 days.
+						Manage the single shared RSS feed pool. A daily Cloudflare cron fans out feed fetch jobs
+						through Queues, stores content in D1 and R2, then refreshes a random 10-item
+						recommendation list from the last 30 days.
 					</p>
 				</div>
-				{user && (
-					<div class="rounded border border-zinc-200 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
-						Signed in as <span class="font-medium text-zinc-900 dark:text-zinc-100">{user.email}</span>
-					</div>
-				)}
+				{
+					user && (
+						<div class="rounded border border-zinc-200 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+							Signed in as{" "}
+							<span class="font-medium text-zinc-900 dark:text-zinc-100">{user.email}</span>
+						</div>
+					)
+				}
 			</div>
 		</div>
 
 		<div class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
 			<div class="space-y-6">
-				<section class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
+				<section class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
 					<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 						<div class="space-y-1">
 							<h2 class="text-lg font-semibold">Shared Feed Sources</h2>
@@ -71,7 +75,7 @@ const user = Astro.locals.user;
 								name="title"
 								required
 								placeholder="Example publication"
-								class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+								class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
 							/>
 						</label>
 						<label class="block space-y-2 text-sm">
@@ -81,7 +85,7 @@ const user = Astro.locals.user;
 								required
 								type="url"
 								placeholder="https://example.com/feed.xml"
-								class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+								class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
 							/>
 						</label>
 						<label class="block space-y-2 text-sm">
@@ -90,15 +94,19 @@ const user = Astro.locals.user;
 								name="siteUrl"
 								type="url"
 								placeholder="https://example.com/"
-								class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+								class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
 							/>
 						</label>
 						<div class="grid gap-3 sm:grid-cols-2">
-							<label class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+							<label
+								class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+							>
 								<input name="isActive" type="checkbox" checked />
 								<span>Active in daily sync</span>
 							</label>
-							<label class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+							<label
+								class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+							>
 								<input name="fetchMarkdown" type="checkbox" checked />
 								<span>Fetch article markdown/text</span>
 							</label>
@@ -111,20 +119,26 @@ const user = Astro.locals.user;
 						</button>
 					</form>
 
-					<div id="feeds-empty" class="mt-4 rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+					<div
+						id="feeds-empty"
+						class="mt-4 rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+					>
 						No shared feeds yet.
 					</div>
 					<div id="feeds-list" class="mt-4 space-y-3"></div>
 				</section>
 
-				<section class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
+				<section class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
 					<div class="space-y-1">
 						<h2 class="text-lg font-semibold">Recent Ingested Items</h2>
 						<p class="text-sm text-zinc-600 dark:text-zinc-300">
 							Latest normalized items across the shared pool.
 						</p>
 					</div>
-					<div id="feed-items-empty" class="mt-4 rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+					<div
+						id="feed-items-empty"
+						class="mt-4 rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+					>
 						No items ingested yet.
 					</div>
 					<div id="feed-items-list" class="mt-4 space-y-3"></div>
@@ -132,25 +146,32 @@ const user = Astro.locals.user;
 			</div>
 
 			<div class="space-y-6">
-				<section class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
+				<section class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
 					<div class="space-y-1">
 						<h2 class="text-lg font-semibold">Daily Recommendation 10</h2>
 						<p class="text-sm text-zinc-600 dark:text-zinc-300">
 							Randomly sampled from the past 30 days after the daily ingest run completes.
 						</p>
 					</div>
-					<div id="recommendations-empty" class="mt-4 rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+					<div
+						id="recommendations-empty"
+						class="mt-4 rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+					>
 						Recommendations will appear after the first successful sync.
 					</div>
 					<div id="recommendations-list" class="mt-4 space-y-3"></div>
 				</section>
 
-				<section class="rounded border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300 md:p-5">
+				<section
+					class="rounded border border-zinc-200 p-4 text-sm text-zinc-600 md:p-5 dark:border-zinc-800 dark:text-zinc-300"
+				>
 					<h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Pipeline</h2>
 					<ul class="mt-3 space-y-2 leading-relaxed">
 						<li>Cron trigger wakes a Durable Object coordinator every day.</li>
 						<li>Coordinator enqueues one feed fetch job per active source.</li>
-						<li>Workers fetch XML and article text, then store metadata in D1 and payloads in R2.</li>
+						<li>
+							Workers fetch XML and article text, then store metadata in D1 and payloads in R2.
+						</li>
 						<li>Workers AI summarizes content and translates each summary into English.</li>
 					</ul>
 				</section>
@@ -357,7 +378,10 @@ const user = Astro.locals.user;
 				await loadAll();
 				setFeedback("Feed data refreshed.");
 			} catch (error) {
-				setFeedback(error instanceof Error ? error.message : "Failed to refresh feed data", "error");
+				setFeedback(
+					error instanceof Error ? error.message : "Failed to refresh feed data",
+					"error",
+				);
 			}
 		});
 
@@ -368,7 +392,9 @@ const user = Astro.locals.user;
 				setFeedback(data.error || "Failed to start feed sync", "error");
 				return;
 			}
-			setFeedback(`Feed sync queued${data.run?.pending ? ` for ${data.run.pending} active feeds` : ""}.`);
+			setFeedback(
+				`Feed sync queued${data.run?.pending ? ` for ${data.run.pending} active feeds` : ""}.`,
+			);
 		});
 
 		feedsList?.addEventListener("submit", async (event) => {
@@ -410,7 +436,10 @@ const user = Astro.locals.user;
 		});
 
 		loadAll().catch((error) => {
-			setFeedback(error instanceof Error ? error.message : "Failed to load Dashboard Feed", "error");
+			setFeedback(
+				error instanceof Error ? error.message : "Failed to load Dashboard Feed",
+				"error",
+			);
 		});
 	</script>
 </Layout>

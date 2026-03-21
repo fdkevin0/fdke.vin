@@ -19,27 +19,34 @@ const canCopy = typeof copyValue === "string" && copyValue.length > 0;
 const resolvedLang: CodeLanguage = lang ?? "text";
 ---
 
-<div data-code-copy-root class="overflow-hidden rounded border border-zinc-200 dark:border-zinc-800">
-	{(title || canCopy) && (
-		<div class="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70">
-			{title ? (
-				<p class="truncate text-[11px] tracking-[0.18em] text-zinc-500 uppercase dark:text-zinc-400">{title}</p>
-			) : (
-				<span />
-			)}
-			{canCopy && (
-				<button
-					type="button"
-					data-copy-button
-					data-copy-value={copyValue}
-					data-copy-label={copyLabel}
-					class="shrink-0 rounded border border-zinc-300 px-2 py-1 text-[11px] tracking-[0.18em] text-zinc-700 uppercase transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-				>
-					{copyLabel}
-				</button>
-			)}
-		</div>
-	)}
+<div
+	data-code-copy-root
+	class="overflow-hidden rounded border border-zinc-200 dark:border-zinc-800"
+>
+	{
+		(title || canCopy) && (
+			<div class="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70">
+				{title ? (
+					<p class="truncate text-[11px] tracking-[0.18em] text-zinc-500 uppercase dark:text-zinc-400">
+						{title}
+					</p>
+				) : (
+					<span />
+				)}
+				{canCopy && (
+					<button
+						type="button"
+						data-copy-button
+						data-copy-value={copyValue}
+						data-copy-label={copyLabel}
+						class="shrink-0 rounded border border-zinc-300 px-2 py-1 text-[11px] tracking-[0.18em] text-zinc-700 uppercase transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+					>
+						{copyLabel}
+					</button>
+				)}
+			</div>
+		)
+	}
 	<div class="text-sm">
 		<Code code={code} lang={resolvedLang} wrap={wrap} />
 	</div>

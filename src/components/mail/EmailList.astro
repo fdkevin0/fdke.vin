@@ -1,4 +1,5 @@
 ---
+
 ---
 
 <script>
@@ -47,12 +48,14 @@
 
 			emails.forEach((email) => {
 				const tr = document.createElement("tr");
-				tr.className = "border-b border-zinc-200 last:border-0 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/60";
-				
-				const dateDisplay = email.date === "Unknown" || isNaN(new Date(email.date).getTime())
-					? "Unknown"
-					: new Date(email.date).toLocaleString();
-				
+				tr.className =
+					"border-b border-zinc-200 last:border-0 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/60";
+
+				const dateDisplay =
+					email.date === "Unknown" || isNaN(new Date(email.date).getTime())
+						? "Unknown"
+						: new Date(email.date).toLocaleString();
+
 				tr.innerHTML = `
 					<td class="px-4 py-4 align-top text-sm md:px-6">
 						<a href="/tools/mail/email/${encodeURIComponent(email.key)}" class="font-medium text-zinc-900 hover:underline dark:text-zinc-100">
@@ -99,33 +102,59 @@
 <div class="w-full space-y-4">
 	<div class="space-y-1">
 		<h2 class="text-lg font-semibold">Emails</h2>
-		<p class="text-sm text-zinc-600 dark:text-zinc-300">Recent messages available in the email bucket.</p>
+		<p class="text-sm text-zinc-600 dark:text-zinc-300">
+			Recent messages available in the email bucket.
+		</p>
 	</div>
-	<div id="loading" class="rounded border border-zinc-200 p-4 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">Loading emails...</div>
-	<div id="error" class="rounded border border-red-300 bg-red-50 p-4 text-center text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300" style="display: none"></div>
+	<div
+		id="loading"
+		class="rounded border border-zinc-200 p-4 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+	>
+		Loading emails...
+	</div>
+	<div
+		id="error"
+		class="rounded border border-red-300 bg-red-50 p-4 text-center text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"
+		style="display: none"
+	>
+	</div>
 	<div class="overflow-x-auto rounded border border-zinc-200 dark:border-zinc-800">
 		<table class="min-w-full border-collapse">
 			<thead class="bg-zinc-50 dark:bg-zinc-900/70">
 				<tr>
-					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
+					<th
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+					>
 						Name
 					</th>
-					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
+					<th
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+					>
 						Size
 					</th>
-					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
+					<th
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+					>
 						Uploaded
 					</th>
-					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
+					<th
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+					>
 						Type
 					</th>
-					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
+					<th
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+					>
 						From
 					</th>
-					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
+					<th
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+					>
 						To
 					</th>
-					<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400 md:px-6">
+					<th
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+					>
 						Subject
 					</th>
 				</tr>

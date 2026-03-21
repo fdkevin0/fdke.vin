@@ -20,7 +20,10 @@ const { key } = Astro.params;
 				<a href="/tools/mail/" class="hover:underline">Email</a> / Message
 			</p>
 			<div class="space-y-3">
-				<a href="/tools/mail/" class="inline-flex text-sm text-zinc-600 hover:underline dark:text-zinc-300">
+				<a
+					href="/tools/mail/"
+					class="inline-flex text-sm text-zinc-600 hover:underline dark:text-zinc-300"
+				>
 					← Back to email list
 				</a>
 				<h1 class="title text-2xl">Email Details</h1>
@@ -30,7 +33,7 @@ const { key } = Astro.params;
 			</div>
 		</div>
 
-		<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
+		<div class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
 			<EmailViewer emailKey={key!} />
 		</div>
 	</section>

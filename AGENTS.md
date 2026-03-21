@@ -65,6 +65,7 @@ Retrieve API references and limits from:
 - There is no automated test suite yet; run `pnpm run check`, `pnpm run build && pnpm run postbuild`, and `pnpm run preview` before opening a PR.
 - Manually verify new content renders with the expected frontmatter and that Pagefind still indexes posts/notes after changes.
 - When adding new utility logic, include inline docs or a temporary reproduction page under `src/pages/dev/` (remove before merging) to demonstrate behavior.
+- Before creating a commit, run `pnpm run lint` and `pnpm exec prettier . --write` so the pre-commit hook's check-only formatting validation passes.
 
 ## Content & Assets
 
@@ -77,6 +78,7 @@ Retrieve API references and limits from:
 - Use concise, imperative commit subjects (e.g., `Add note tag cards`); group related changes together.
 - When creating commits, always include a detailed commit message body that explains the key changes and intent, not just the subject line.
 - PRs should include a brief summary, linked issue (if any), local test commands run, and screenshots or gifs for visual changes/OG-image updates.
+- Before creating a commit, run `pnpm run lint` and `pnpm exec prettier . --write`, then re-stage any modified files.
 - Ensure `pnpm run check` passes and note the Pagefind rebuild in validation steps when content or search logic changes.
 - Before creating a commit, always run `pnpm run build` and `pnpm astro check`, and fix any failures first.
 - **Do not commit changes without explicit permission from the user.**

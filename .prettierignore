@@ -6,3 +6,7 @@ node_modules
 
 pnpm-lock.yaml
 dist
+package.json
+src/styles/**/*.css
+worker-configuration.d.ts
+wrangler.jsonc

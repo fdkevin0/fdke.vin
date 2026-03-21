@@ -26,15 +26,18 @@ const user = Astro.locals.user;
 						inspection.
 					</p>
 				</div>
-				{user && (
-					<div class="rounded border border-zinc-200 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
-						Logged in as <span class="font-medium text-zinc-900 dark:text-zinc-100">{user.email}</span>
-					</div>
-				)}
+				{
+					user && (
+						<div class="rounded border border-zinc-200 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+							Logged in as{" "}
+							<span class="font-medium text-zinc-900 dark:text-zinc-100">{user.email}</span>
+						</div>
+					)
+				}
 			</div>
 		</div>
 
-		<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
+		<div class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
 			<EmailList />
 		</div>
 	</section>
