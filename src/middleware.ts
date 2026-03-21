@@ -11,7 +11,7 @@ const PROTECTED_ROUTE_PATTERNS = [
 	/^\/api\/dlsite(?:\/.*)?$/,
 	/^\/api\/exhentai(?:\/.*)?$/,
 	/^\/api\/emails(?:\/.*)?$/,
-	/^\/tools\/api(?:\/.*)?$/,
+	/^\/dashboard(?:\/.*)?$/,
 	/^\/tools\/access\/?$/,
 	/^\/tools\/mail(?:\/.*)?$/,
 ];

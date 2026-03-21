@@ -1,4 +1,6 @@
 ---
+import { Code } from "astro-expressive-code/components";
+
 export interface EmailViewerProps {
 	emailKey: string;
 }
@@ -28,31 +30,51 @@ const { emailKey } = Astro.props;
 			const content = await response.text();
 			const parsedEmail = parseEmail(content);
 
-			const emailViewer = document.getElementById("email-viewer");
-			if (!emailViewer) return;
+			const loadingState = document.getElementById("email-loading-state");
+			const header = document.getElementById("email-header");
+			const htmlBody = document.getElementById("email-html-body");
+			const plainTextBody = document.getElementById("email-plain-text-body");
+			const plainTextCode = document.querySelector("#email-plain-text-body code");
+			const subject = document.getElementById("email-subject");
+			const from = document.getElementById("email-from");
+			const to = document.getElementById("email-to");
+			const date = document.getElementById("email-date");
 
-			emailViewer.innerHTML = `
-				<div class="border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
-					<h2 class="text-xl font-semibold text-zinc-900 dark:text-zinc-100">${parsedEmail.subject || "Untitled email"}</h2>
-					<div class="mt-3 grid gap-2 text-sm text-zinc-600 dark:text-zinc-300">
-						<div><span class="font-medium text-zinc-900 dark:text-zinc-100">From:</span> ${parsedEmail.from || "Unknown"}</div>
-						<div><span class="font-medium text-zinc-900 dark:text-zinc-100">To:</span> ${parsedEmail.to || "Unknown"}</div>
-						<div><span class="font-medium text-zinc-900 dark:text-zinc-100">Date:</span> ${parsedEmail.date || "Unknown"}</div>
-					</div>
-				</div>
-				<div class="p-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
-					${
-						parsedEmail.htmlContent
-							? parsedEmail.htmlContent
-							: `<pre class="whitespace-pre-wrap rounded bg-zinc-50 p-4 text-sm text-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-200">${parsedEmail.plainText}</pre>`
-					}
-				</div>
-			`;
+			if (!loadingState || !header || !htmlBody || !plainTextBody || !subject || !from || !to || !date) {
+				return;
+			}
+
+			subject.textContent = parsedEmail.subject || "Untitled email";
+			from.textContent = parsedEmail.from || "Unknown";
+			to.textContent = parsedEmail.to || "Unknown";
+			date.textContent = parsedEmail.date || "Unknown";
+
+			header.classList.remove("hidden");
+			loadingState.classList.add("hidden");
+
+			if (parsedEmail.htmlContent) {
+				htmlBody.innerHTML = parsedEmail.htmlContent;
+				htmlBody.classList.remove("hidden");
+				plainTextBody.classList.add("hidden");
+			} else {
+				htmlBody.innerHTML = "";
+				if (plainTextCode) {
+					plainTextCode.textContent = parsedEmail.plainText || "(Empty email body)";
+				}
+				htmlBody.classList.add("hidden");
+				plainTextBody.classList.remove("hidden");
+			}
 		} catch (err) {
 			console.error("Error fetching email content:", err);
-			const emailViewer = document.getElementById("email-viewer");
-			if (emailViewer) {
-				emailViewer.innerHTML = `<div class="rounded border border-red-300 bg-red-50 p-4 text-center text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">Error: ${err instanceof Error ? err.message : "Failed to fetch email content"}</div>`;
+			const errorState = document.getElementById("email-error-state");
+			const errorMessage = document.getElementById("email-error-message");
+			const loadingState = document.getElementById("email-loading-state");
+			if (errorState && errorMessage) {
+				errorMessage.textContent = err instanceof Error ? err.message : "Failed to fetch email content";
+				errorState.classList.remove("hidden");
+			}
+			if (loadingState) {
+				loadingState.classList.add("hidden");
 			}
 		}
 	}
@@ -151,5 +173,26 @@ const { emailKey } = Astro.props;
 	data-email-key={emailKey}
 	class="overflow-hidden rounded border border-zinc-200 dark:border-zinc-800"
 >
-	<div class="p-4 text-center text-sm text-zinc-600 dark:text-zinc-300">Loading email...</div>
+	<div id="email-loading-state" class="p-4 text-center text-sm text-zinc-600 dark:text-zinc-300">
+		Loading email...
+	</div>
+	<div id="email-error-state" class="hidden p-4">
+		<div class="rounded border border-red-300 bg-red-50 p-4 text-center text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+			Error: <span id="email-error-message">Failed to fetch email content</span>
+		</div>
+	</div>
+	<div id="email-header" class="hidden border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
+		<h2 id="email-subject" class="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Untitled email</h2>
+		<div class="mt-3 grid gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+			<div><span class="font-medium text-zinc-900 dark:text-zinc-100">From:</span> <span id="email-from">Unknown</span></div>
+			<div><span class="font-medium text-zinc-900 dark:text-zinc-100">To:</span> <span id="email-to">Unknown</span></div>
+			<div><span class="font-medium text-zinc-900 dark:text-zinc-100">Date:</span> <span id="email-date">Unknown</span></div>
+		</div>
+	</div>
+	<div id="email-html-body" class="hidden p-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200"></div>
+	<div id="email-plain-text-body" class="hidden p-4">
+		<div class="overflow-hidden rounded border border-zinc-200 dark:border-zinc-800">
+			<Code code="Loading plain text email..." lang="plaintext" />
+		</div>
+	</div>
 </div>

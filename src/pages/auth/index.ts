@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 
 export const prerender = false;
 
-const fallbackPath = "/tools/mail/";
+const fallbackPath = "/dashboard/";
 
 function getSafeRedirectTarget(value: string | null): string {
 	if (!value || !value.startsWith("/")) {

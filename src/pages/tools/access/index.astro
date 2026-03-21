@@ -1,6 +1,7 @@
 ---
 import { env } from "cloudflare:workers";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { Code } from "astro-expressive-code/components";
 import PageLayout from "@/layouts/Base.astro";
 
 export const prerender = false;
@@ -240,16 +241,9 @@ const props = await (async () => {
 						<summary class="cursor-pointer font-semibold hover:text-zinc-600 dark:hover:text-zinc-300">
 							Raw JWT Claims
 						</summary>
-						<div class="mt-4 flex justify-end">
-							<button
-								id="copy-jwt-claims"
-								type="button"
-								class="rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-							>
-								Copy JSON
-							</button>
+						<div class="mt-4 overflow-hidden rounded border border-zinc-200 dark:border-zinc-800">
+							<Code code={props.claimsJson || "{}"} lang="json" />
 						</div>
-						<pre class="mt-4 overflow-x-auto rounded bg-zinc-50 p-3 text-xs font-mono text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">{props.claimsJson}</pre>
 					</details>
 				)}
 
@@ -258,16 +252,9 @@ const props = await (async () => {
 						<summary class="cursor-pointer font-semibold hover:text-zinc-600 dark:hover:text-zinc-300">
 							Full Identity Payload
 						</summary>
-						<div class="mt-4 flex justify-end">
-							<button
-								id="copy-identity-payload"
-								type="button"
-								class="rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-							>
-								Copy JSON
-							</button>
+						<div class="mt-4 overflow-hidden rounded border border-zinc-200 dark:border-zinc-800">
+							<Code code={props.identityJson || "{}"} lang="json" />
 						</div>
-						<pre class="mt-4 overflow-x-auto rounded bg-zinc-50 p-3 text-xs font-mono text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">{props.identityJson}</pre>
 					</details>
 				)}
 
@@ -290,34 +277,4 @@ const props = await (async () => {
 			</div>
 		)}
 	</section>
-
-	<script is:inline define:vars={{ claimsJson: props.claimsJson, identityJson: props.identityJson }}>
-		const copyJwtClaimsButton = document.getElementById("copy-jwt-claims");
-		const copyIdentityPayloadButton = document.getElementById("copy-identity-payload");
-
-		async function copyJson(value, button) {
-			if (!value || !(button instanceof HTMLButtonElement)) return;
-
-			try {
-				await navigator.clipboard.writeText(value);
-				button.textContent = "Copied";
-				window.setTimeout(() => {
-					button.textContent = "Copy JSON";
-				}, 1200);
-			} catch {
-				button.textContent = "Copy failed";
-				window.setTimeout(() => {
-					button.textContent = "Copy JSON";
-				}, 1200);
-			}
-		}
-
-		copyJwtClaimsButton?.addEventListener("click", async () => {
-			await copyJson(claimsJson, copyJwtClaimsButton);
-		});
-
-		copyIdentityPayloadButton?.addEventListener("click", async () => {
-			await copyJson(identityJson, copyIdentityPayloadButton);
-		});
-	</script>
 </PageLayout>
