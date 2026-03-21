@@ -1,8 +1,15 @@
-import { CLOUDFLARE_POLICY_AUD, CLOUDFLARE_TEAM_DOMAIN } from "astro:env/server";
+import {
+	CLOUDFLARE_POLICY_AUD,
+	CLOUDFLARE_TEAM_DOMAIN,
+} from "astro:env/server";
 import { defineMiddleware } from "astro:middleware";
 import { getRequiredApiScope } from "@/lib/api/tokens/scopes";
 import { verifyApiToken } from "@/lib/api/tokens/storage";
-import { parseAudienceList, verifyCloudflareAccessToken } from "@/lib/cloudflare-access";
+import {
+	getLocalMockUser,
+	parseAudienceList,
+	verifyCloudflareAccessToken,
+} from "@/lib/cloudflare-access";
 
 const PROTECTED_ROUTE_PATTERNS = [
 	/^\/auth\/?$/,
@@ -63,6 +70,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
 				headers: { "Content-Type": "application/json" },
 			});
 		}
+	}
+
+	const isLocalDev = import.meta.env.DEV;
+
+	if (isLocalDev) {
+		context.locals.user = getLocalMockUser();
+		console.log(
+			"[Cloudflare Access] Bypassed for local dev - using mock user:",
+			getLocalMockUser().email,
+		);
+		return next();
 	}
 
 	const teamDomain = CLOUDFLARE_TEAM_DOMAIN;

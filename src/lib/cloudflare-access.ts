@@ -16,6 +16,15 @@ export function parseAudienceList(value: string | string[]): string[] {
 		: value;
 }
 
+export function getLocalMockUser(): CloudflareAccessUser {
+	return {
+		email: "local-dev@example.com",
+		name: "Local Developer",
+		uid: "local-dev-uid",
+		common_name: "local-dev",
+	};
+}
+
 export async function verifyCloudflareAccessToken(options: {
 	token: string;
 	teamDomain: string;
