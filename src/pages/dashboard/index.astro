@@ -36,6 +36,23 @@ const user = Astro.locals.user;
 
 		<div class="space-y-4">
 			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
+				<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+					<div class="space-y-1">
+						<h2 class="text-lg font-semibold">Dashboard Feed</h2>
+						<p class="text-sm text-zinc-600 dark:text-zinc-300">
+							Manage the shared RSS feed pool, daily sync pipeline, and recommendations.
+						</p>
+					</div>
+					<a
+						href="/dashboard/feed"
+						class="rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+					>
+						Open Feed Dashboard
+					</a>
+				</div>
+			</div>
+
+			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
 				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 					<div class="space-y-1">
 						<h2 class="text-lg font-semibold">API Management</h2>

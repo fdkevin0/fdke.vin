@@ -1,10 +1,18 @@
 {
+	"main": "./src/worker.ts",
 	"name": "fdkevin",
 	"compatibility_date": "2026-03-17",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS"
+	},
 	"account_id": "98010e731e09a77b673ba51074dfbe1c",
 	"observability": {
 		"enabled": true
+	},
+	"triggers": {
+		"crons": ["0 3 * * *"]
 	},
 	"routes": [
 		{
@@ -17,6 +25,11 @@
 			"binding": "EMAIL_BUCKET",
 			"bucket_name": "email-storage",
 			"preview_bucket_name": "email-storage"
+		},
+		{
+			"binding": "RSS_BUCKET",
+			"bucket_name": "rss-feed-storage",
+			"preview_bucket_name": "rss-feed-storage"
 		}
 	],
 	"d1_databases": [
@@ -26,6 +39,49 @@
 			"database_id": "c623d6ec-3353-4ef3-8218-5d677125dcd9"
 		}
 	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "FEED_COORDINATOR",
+				"class_name": "FeedCoordinator"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["FeedCoordinator"]
+		}
+	],
+	"queues": {
+		"producers": [
+			{
+				"binding": "RSS_FETCH_QUEUE",
+				"queue": "rss-fetch-queue"
+			},
+			{
+				"binding": "RSS_AI_QUEUE",
+				"queue": "rss-ai-queue"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "rss-fetch-queue",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 5
+			},
+			{
+				"queue": "rss-ai-queue",
+				"max_batch_size": 5,
+				"max_batch_timeout": 5,
+				"max_retries": 5
+			}
+		]
+	},
+	"ai": {
+		"binding": "AI"
+	},
 	"vars": {
 		"CLOUDFLARE_TEAM_DOMAIN": "https://fdkevin.cloudflareaccess.com",
 		"CLOUDFLARE_POLICY_AUD": "7d8a99d0b638544b0ff6ae86332addf618e9e3e19e82ea470985b8dc6e629f69,b07ea8fc3d88e34abdcf2fbd9bb86037f5f67c64479b68e392646a6f01f3753b" // comma-separated for multiple audiences
