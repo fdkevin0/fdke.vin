@@ -1,7 +1,7 @@
 ---
-import { env } from "cloudflare:workers";
-import { Code } from "astro-expressive-code/components";
+import { CLOUDFLARE_POLICY_AUD, CLOUDFLARE_TEAM_DOMAIN } from "astro:env/server";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import CodePanel from "@/components/ui/CodePanel.astro";
 import PageLayout from "@/layouts/Base.astro";
 
 export const prerender = false;
@@ -48,8 +48,8 @@ interface JWTClaims {
 }
 
 const props = await (async () => {
-	const teamDomain = env.CLOUDFLARE_TEAM_DOMAIN;
-	const policyAud = env.CLOUDFLARE_POLICY_AUD;
+	const teamDomain = CLOUDFLARE_TEAM_DOMAIN;
+	const policyAud = CLOUDFLARE_POLICY_AUD;
 
 	const parseAudienceList = (value: string | string[]): string[] =>
 		typeof value === "string"
@@ -59,7 +59,7 @@ const props = await (async () => {
 					.filter(Boolean)
 			: value;
 
-	const policyAudList = parseAudienceList(policyAud);
+	const policyAudList = policyAud ? parseAudienceList(policyAud) : [];
 
 	if (!teamDomain || policyAudList.length === 0) {
 		return {
@@ -241,8 +241,14 @@ const props = await (async () => {
 						<summary class="cursor-pointer font-semibold hover:text-zinc-600 dark:hover:text-zinc-300">
 							Raw JWT Claims
 						</summary>
-						<div class="mt-4 overflow-hidden rounded border border-zinc-200 dark:border-zinc-800">
-							<Code code={props.claimsJson || "{}"} lang="json" />
+						<div class="mt-4">
+							<CodePanel
+								title="JWT JSON"
+								code={props.claimsJson || "{}"}
+								copyValue={props.claimsJson || "{}"}
+								copyLabel="Copy"
+								lang="json"
+							/>
 						</div>
 					</details>
 				)}
@@ -252,8 +258,14 @@ const props = await (async () => {
 						<summary class="cursor-pointer font-semibold hover:text-zinc-600 dark:hover:text-zinc-300">
 							Full Identity Payload
 						</summary>
-						<div class="mt-4 overflow-hidden rounded border border-zinc-200 dark:border-zinc-800">
-							<Code code={props.identityJson || "{}"} lang="json" />
+						<div class="mt-4">
+							<CodePanel
+								title="Identity JSON"
+								code={props.identityJson || "{}"}
+								copyValue={props.identityJson || "{}"}
+								copyLabel="Copy"
+								lang="json"
+							/>
 						</div>
 					</details>
 				)}

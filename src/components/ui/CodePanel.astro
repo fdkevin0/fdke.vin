@@ -1,0 +1,88 @@
+---
+import { Code } from "astro:components";
+import type { ComponentProps } from "astro/types";
+
+type CodeProps = ComponentProps<typeof Code>;
+type CodeLanguage = NonNullable<CodeProps["lang"]>;
+
+interface Props {
+	code: string;
+	lang?: CodeLanguage;
+	title?: string;
+	copyValue?: string;
+	copyLabel?: string;
+	wrap?: boolean;
+}
+
+const { code, lang, title, copyValue, copyLabel = "Copy", wrap = true } = Astro.props as Props;
+const canCopy = typeof copyValue === "string" && copyValue.length > 0;
+const resolvedLang: CodeLanguage = lang ?? "text";
+---
+
+<div data-code-copy-root class="overflow-hidden rounded border border-zinc-200 dark:border-zinc-800">
+	{(title || canCopy) && (
+		<div class="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70">
+			{title ? (
+				<p class="truncate text-[11px] tracking-[0.18em] text-zinc-500 uppercase dark:text-zinc-400">{title}</p>
+			) : (
+				<span />
+			)}
+			{canCopy && (
+				<button
+					type="button"
+					data-copy-button
+					data-copy-value={copyValue}
+					data-copy-label={copyLabel}
+					class="shrink-0 rounded border border-zinc-300 px-2 py-1 text-[11px] tracking-[0.18em] text-zinc-700 uppercase transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+				>
+					{copyLabel}
+				</button>
+			)}
+		</div>
+	)}
+	<div class="text-sm">
+		<Code code={code} lang={resolvedLang} wrap={wrap} />
+	</div>
+</div>
+
+<script>
+	for (const root of document.querySelectorAll("[data-code-copy-root]")) {
+		if (!(root instanceof HTMLElement) || root.dataset.copyBound === "true") continue;
+		root.dataset.copyBound = "true";
+
+		const button = root.querySelector("[data-copy-button]");
+		if (!(button instanceof HTMLButtonElement)) continue;
+
+		const idleLabel = button.dataset.copyLabel || button.textContent || "Copy";
+
+		button.addEventListener("click", async () => {
+			const value = button.dataset.copyValue || "";
+			if (!value) return;
+
+			try {
+				await navigator.clipboard.writeText(value);
+				button.textContent = "Copied";
+				window.setTimeout(() => {
+					button.textContent = idleLabel;
+				}, 1500);
+			} catch {
+				button.textContent = "Failed";
+				window.setTimeout(() => {
+					button.textContent = idleLabel;
+				}, 1500);
+			}
+		});
+	}
+</script>
+
+<style>
+	:global([data-code-copy-root] pre) {
+		margin: 0;
+		border-radius: 0;
+	}
+
+	:global([data-code-copy-root] .astro-code) {
+		overflow-x: auto;
+		padding: 1rem;
+	}
+</style>

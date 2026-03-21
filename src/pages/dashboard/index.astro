@@ -1,5 +1,5 @@
 ---
-import { Code } from "astro-expressive-code/components";
+import CodePanel from "@/components/ui/CodePanel.astro";
 import Layout from "@/layouts/Base.astro";
 import { API_SCOPES } from "@/lib/api/tokens/scopes";
 
@@ -38,7 +38,7 @@ const user = Astro.locals.user;
 			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800 md:p-5">
 				<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
 					<div class="space-y-1">
-						<h2 class="text-lg font-semibold">Dashboard Feed</h2>
+						<h2 class="text-lg font-semibold">Feed Management</h2>
 						<p class="text-sm text-zinc-600 dark:text-zinc-300">
 							Manage the shared RSS feed pool, daily sync pipeline, and recommendations.
 						</p>
@@ -47,7 +47,7 @@ const user = Astro.locals.user;
 						href="/dashboard/feed"
 						class="rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
 					>
-						Open Feed Dashboard
+						Open
 					</a>
 				</div>
 			</div>
@@ -98,8 +98,14 @@ const user = Astro.locals.user;
 							</p>
 						</div>
 					</div>
-					<div id="token-secret-block" class="mt-3 overflow-hidden rounded border border-emerald-300/70 dark:border-emerald-800">
-						<Code code="Token will appear here after creation or rotation." lang="plaintext" />
+					<div id="token-secret-block" class="mt-3">
+						<CodePanel
+							title="Token"
+							code="Token will appear here after creation or rotation."
+							copyValue=""
+							copyLabel="Copy"
+							lang="plaintext"
+						/>
 					</div>
 				</div>
 
@@ -112,8 +118,14 @@ const user = Astro.locals.user;
 							</p>
 						</div>
 					</div>
-					<div id="curl-command-block" class="mt-3 overflow-hidden rounded border border-zinc-200 dark:border-zinc-800">
-						<Code code={'curl -H "Authorization: Bearer <token>" "https://fdke.vin/api/ping"'} lang="bash" />
+					<div id="curl-command-block" class="mt-3">
+						<CodePanel
+							title="curl"
+							code={'curl -H "Authorization: Bearer <token>" "https://fdke.vin/api/ping"'}
+							copyValue={'curl -H "Authorization: Bearer <token>" "https://fdke.vin/api/ping"'}
+							copyLabel="Copy"
+							lang="bash"
+						/>
 					</div>
 				</div>
 			</div>
@@ -162,6 +174,11 @@ const user = Astro.locals.user;
 			const codeElement = document.querySelector(`#${blockId} code`);
 			if (codeElement) {
 				codeElement.textContent = value;
+			}
+
+			const copyButton = document.querySelector(`#${blockId} [data-copy-button]`);
+			if (copyButton instanceof HTMLButtonElement) {
+				copyButton.dataset.copyValue = value;
 			}
 		}
 

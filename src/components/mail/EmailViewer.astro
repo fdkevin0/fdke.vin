@@ -1,5 +1,5 @@
 ---
-import { Code } from "astro-expressive-code/components";
+import CodePanel from "@/components/ui/CodePanel.astro";
 
 export interface EmailViewerProps {
 	emailKey: string;
@@ -191,8 +191,6 @@ const { emailKey } = Astro.props;
 	</div>
 	<div id="email-html-body" class="hidden p-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200"></div>
 	<div id="email-plain-text-body" class="hidden p-4">
-		<div class="overflow-hidden rounded border border-zinc-200 dark:border-zinc-800">
-			<Code code="Loading plain text email..." lang="plaintext" />
-		</div>
+		<CodePanel title="Plain Text" code="Loading plain text email..." lang="plaintext" />
 	</div>
 </div>
