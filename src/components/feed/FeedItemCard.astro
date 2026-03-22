@@ -1,0 +1,151 @@
+---
+export interface Props {
+	url: string;
+	feedTitle?: string;
+	publishedAt: string | null;
+	sourceLanguage: string | null;
+	title: string;
+	titleEn: string | null;
+	description: string | null;
+	descriptionEn: string | null;
+	rank?: number;
+	showRank?: boolean;
+}
+
+const {
+	url,
+	feedTitle,
+	publishedAt,
+	sourceLanguage,
+	title,
+	titleEn,
+	description,
+	descriptionEn,
+	rank,
+	showRank = false,
+} = Astro.props;
+
+const hasOriginalLanguage = sourceLanguage && sourceLanguage.toLowerCase() !== "en";
+const defaultTitle = titleEn || title;
+const defaultDescription = descriptionEn || description || "";
+const originalTitle = hasOriginalLanguage ? title : defaultTitle;
+const originalDescription = hasOriginalLanguage ? description : defaultDescription;
+---
+
+<feed-item-card class="block">
+	<article
+		class="rounded border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600"
+	>
+		<div class="flex flex-col gap-3">
+			<div class="flex items-start justify-between gap-3">
+				<div class="min-w-0 flex-1 space-y-1">
+					{showRank && rank ? (
+						<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">
+							No. {rank} {feedTitle ? `• ${feedTitle}` : ""}
+						</p>
+					) : feedTitle ? (
+						<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">
+							{feedTitle}
+						</p>
+					) : null}
+					<h2
+						class="text-base font-semibold text-zinc-900 dark:text-zinc-100 {compact ? 'text-sm' : 'text-lg'}"
+					>
+						<a
+							href={url}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="hover:underline line-clamp-2"
+						>
+							<span data-title-en>{defaultTitle}</span>
+							<span data-title-original class="hidden">{originalTitle}</span>
+						</a>
+					</h2>
+				</div>
+				{hasOriginalLanguage && (
+					<button
+						type="button"
+						data-lang-toggle
+						class="shrink-0 rounded border border-zinc-300 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+						title="Toggle language"
+					>
+						<span data-lang-label>{sourceLanguage?.toUpperCase()}</span>
+					</button>
+				)}
+			</div>
+
+			<div class="space-y-2">
+				<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 line-clamp-3">
+					<span data-desc-en>{defaultDescription}</span>
+					<span data-desc-original class="hidden">{originalDescription}</span>
+				</p>
+			</div>
+
+			<div class="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+				<time datetime={publishedAt ?? undefined}>
+					{publishedAt
+						? new Date(publishedAt).toLocaleDateString(undefined, {
+								day: "numeric",
+								month: "short",
+								year: "numeric",
+							})
+						: "Date unavailable"}
+				</time>
+				{hasOriginalLanguage && <span>•</span>}
+				{hasOriginalLanguage && (
+					<span class="text-[11px] tracking-[0.18em] uppercase">{sourceLanguage}</span>
+				)}
+			</div>
+
+			<div class="pt-2">
+				<a
+					href={url}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="inline-flex items-center rounded border border-zinc-300 px-3 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+				>
+					Read
+				</a>
+			</div>
+		</div>
+	</article>
+</feed-item-card>
+
+<script>
+	class FeedItemCardElement extends HTMLElement {
+		#isEnglish = true;
+
+		connectedCallback() {
+			const toggleButton = this.querySelector("[data-lang-toggle]");
+			if (!toggleButton) return;
+
+			const titleEn = this.querySelector("[data-title-en]");
+			const titleOriginal = this.querySelector("[data-title-original]");
+			const descEn = this.querySelector("[data-desc-en]");
+			const descOriginal = this.querySelector("[data-desc-original]");
+			const langLabel = this.querySelector("[data-lang-label]");
+
+			if (!titleEn || !titleOriginal || !descEn || !descOriginal || !langLabel) return;
+
+			toggleButton.addEventListener("click", () => {
+				this.#isEnglish = !this.#isEnglish;
+
+				if (this.#isEnglish) {
+					titleEn.classList.remove("hidden");
+					titleOriginal.classList.add("hidden");
+					descEn.classList.remove("hidden");
+					descOriginal.classList.add("hidden");
+				} else {
+					titleEn.classList.add("hidden");
+					titleOriginal.classList.remove("hidden");
+					descEn.classList.add("hidden");
+					descOriginal.classList.remove("hidden");
+				}
+			});
+		}
+	}
+
+	if (!customElements.get("feed-item-card")) {
+		customElements.define("feed-item-card", FeedItemCardElement);
+	}
+</script>

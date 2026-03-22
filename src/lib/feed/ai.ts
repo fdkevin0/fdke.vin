@@ -6,8 +6,8 @@ import {
 	markFeedItemAiProcessing,
 	recordFeedItemAiResult,
 } from "@/lib/feed/storage";
-import type { AiSummaryResult } from "@/lib/feed/types";
-import { FEED_SUMMARY_MODEL } from "@/lib/feed/types";
+import type { AiTranslationResult } from "@/lib/feed/types";
+import { FEED_TRANSLATION_MODEL } from "@/lib/feed/types";
 
 export async function processAiMessage(env: FeedEnv, itemId: string): Promise<void> {
 	if (!env.AI) {
@@ -35,7 +35,7 @@ export async function processAiMessage(env: FeedEnv, itemId: string): Promise<vo
 	}
 
 	try {
-		const result = await summarizeAndTranslate(env, item.title, item.url, content.slice(0, 12000));
+		const result = await translateContent(env, item.title, item.url, content.slice(0, 12000));
 		const responseKey = createR2Key("rss/ai", `${itemId}.json`);
 		await env.RSS_BUCKET.put(responseKey, result.rawResponse, {
 			httpMetadata: { contentType: "application/json; charset=utf-8" },
@@ -43,8 +43,9 @@ export async function processAiMessage(env: FeedEnv, itemId: string): Promise<vo
 		await recordFeedItemAiResult(env, {
 			itemId,
 			sourceLanguage: result.language,
-			summary: result.summary,
-			summaryEn: result.summaryEn,
+			titleEn: result.titleEn,
+			description: result.descriptionOriginal,
+			descriptionEn: result.descriptionEn,
 			aiResponseKey: responseKey,
 		});
 	} catch (error) {
@@ -56,25 +57,26 @@ export async function processAiMessage(env: FeedEnv, itemId: string): Promise<vo
 	}
 }
 
-async function summarizeAndTranslate(
+async function translateContent(
 	env: FeedEnv,
 	title: string,
 	url: string,
 	content: string,
-): Promise<AiSummaryResult> {
-	const summaryPrompt = [
-		"You summarize web articles for a shared RSS dashboard.",
-		"Return strict JSON only.",
-		'{"language":"<ISO-639-1 or null>","summary":"<concise summary in the source language>","summary_en":"<natural English translation of the summary>"}',
-		"Keep each summary under 120 words.",
+): Promise<AiTranslationResult> {
+	const translationPrompt = [
+		"You translate web article titles and descriptions for a bilingual RSS dashboard.",
+		"Return strict JSON only with this exact structure:",
+		'{"language":"<ISO-639-1 code or null if unknown>","title_en":"<English translation of title>","description_original":"<original description text>","description_en":"<English translation of description>"}',
+		"If the source language is English, use the original title and description for both original and English fields.",
+		"Keep translations natural and concise.",
 		`Title: ${title}`,
 		`URL: ${url}`,
-		"Article:",
+		"Article content:",
 		content,
 	].join("\n\n");
 
-	const response = (await env.AI.run(FEED_SUMMARY_MODEL as keyof AiModels, {
-		prompt: summaryPrompt,
+	const response = (await env.AI.run(FEED_TRANSLATION_MODEL as keyof AiModels, {
+		prompt: translationPrompt,
 	})) as {
 		response?: string;
 		result?: { response?: string };
@@ -85,19 +87,23 @@ async function summarizeAndTranslate(
 		JSON.stringify(response ?? { error: "empty AI response" });
 	const parsed = parseJsonObject(rawResponse);
 
-	const summary = typeof parsed.summary === "string" ? parsed.summary.trim() : "";
-	const summaryEn = typeof parsed.summary_en === "string" ? parsed.summary_en.trim() : "";
 	const language =
 		typeof parsed.language === "string" ? parsed.language.trim().toLowerCase() : null;
+	const titleEn = typeof parsed.title_en === "string" ? parsed.title_en.trim() : title;
+	const descriptionOriginal =
+		typeof parsed.description_original === "string" ? parsed.description_original.trim() : content;
+	const descriptionEn =
+		typeof parsed.description_en === "string" ? parsed.description_en.trim() : descriptionOriginal;
 
-	if (!summary || !summaryEn) {
-		throw new Error("AI response did not include summary fields");
+	if (!titleEn || !descriptionEn) {
+		throw new Error("AI response did not include required translation fields");
 	}
 
 	return {
 		language,
-		summary,
-		summaryEn,
+		titleEn,
+		descriptionOriginal,
+		descriptionEn,
 		rawResponse: JSON.stringify({ rawResponse, parsed }, null, 2),
 	};
 }

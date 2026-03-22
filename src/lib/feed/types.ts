@@ -1,7 +1,7 @@
 export const FEED_COORDINATOR_NAME = "global-feed-pool";
 export const RSS_FETCH_QUEUE_NAME = "rss-fetch-queue";
 export const RSS_AI_QUEUE_NAME = "rss-ai-queue";
-export const FEED_SUMMARY_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+export const FEED_TRANSLATION_MODEL = "@cf/google/gemma-3-12b-it";
 
 export interface FeedSource {
 	id: string;
@@ -23,11 +23,12 @@ export interface FeedItemSummary {
 	feedId: string;
 	feedTitle: string;
 	title: string;
+	titleEn: string | null;
 	url: string;
 	publishedAt: string | null;
 	sourceLanguage: string | null;
-	summary: string | null;
-	summaryEn: string | null;
+	description: string | null;
+	descriptionEn: string | null;
 	aiStatus: string;
 	createdAt: string;
 	updatedAt: string;
@@ -39,10 +40,12 @@ export interface FeedRecommendation {
 	itemId: string;
 	feedTitle: string;
 	title: string;
+	titleEn: string | null;
 	url: string;
 	publishedAt: string | null;
-	summaryEn: string | null;
-	summary: string | null;
+	sourceLanguage: string | null;
+	descriptionEn: string | null;
+	description: string | null;
 }
 
 export interface FeedFetchMessage {
@@ -97,9 +100,10 @@ export interface FeedSourceCreateInput {
 	fetchMarkdown: boolean;
 }
 
-export interface AiSummaryResult {
+export interface AiTranslationResult {
 	language: string | null;
-	summary: string;
-	summaryEn: string;
+	titleEn: string;
+	descriptionOriginal: string;
+	descriptionEn: string;
 	rawResponse: string;
 }

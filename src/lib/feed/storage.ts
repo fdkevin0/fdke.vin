@@ -32,11 +32,12 @@ interface FeedItemRow {
 	feed_id: string;
 	feed_title: string;
 	title: string;
+	title_en: string | null;
 	url: string;
 	published_at: string | null;
 	source_language: string | null;
-	summary: string | null;
-	summary_en: string | null;
+	description: string | null;
+	description_en: string | null;
 	ai_status: string;
 	created_at: string;
 	updated_at: string;
@@ -49,10 +50,12 @@ interface RecommendationRow {
 	item_id: string;
 	feed_title: string;
 	title: string;
+	title_en: string | null;
 	url: string;
 	published_at: string | null;
-	summary_en: string | null;
-	summary: string | null;
+	source_language: string | null;
+	description_en: string | null;
+	description: string | null;
 }
 
 export async function listFeedSources(env: FeedEnv): Promise<FeedSource[]> {
@@ -179,8 +182,8 @@ export async function getFeedSourceById(env: FeedEnv, id: string): Promise<FeedS
 
 export async function listRecentFeedItems(env: FeedEnv, limit = 50): Promise<FeedItemSummary[]> {
 	const result = await env.DATABASE.prepare(
-		`SELECT items.id, items.feed_id, feeds.title AS feed_title, items.title, items.url, items.published_at,
-		 items.source_language, items.summary, items.summary_en, items.ai_status, items.created_at, items.updated_at,
+		`SELECT items.id, items.feed_id, feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at,
+		 items.source_language, items.description, items.description_en, items.ai_status, items.created_at, items.updated_at,
 		 items.content_markdown_r2_key
 		 FROM rss_feed_items AS items
 		 JOIN rss_feeds AS feeds ON feeds.id = items.feed_id
@@ -199,7 +202,7 @@ export async function listTodayRecommendations(
 ): Promise<FeedRecommendation[]> {
 	const result = await env.DATABASE.prepare(
 		`SELECT recommendations.day_utc, recommendations.rank, recommendations.item_id,
-		 feeds.title AS feed_title, items.title, items.url, items.published_at, items.summary_en, items.summary
+		 feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at, items.source_language, items.description_en, items.description
 		 FROM rss_item_recommendations_daily AS recommendations
 		 JOIN rss_feed_items AS items ON items.id = recommendations.item_id
 		 JOIN rss_feeds AS feeds ON feeds.id = items.feed_id
@@ -215,10 +218,12 @@ export async function listTodayRecommendations(
 		itemId: row.item_id,
 		feedTitle: row.feed_title,
 		title: row.title,
+		titleEn: row.title_en,
 		url: row.url,
 		publishedAt: row.published_at,
-		summaryEn: row.summary_en,
-		summary: row.summary,
+		sourceLanguage: row.source_language,
+		descriptionEn: row.description_en,
+		description: row.description,
 	}));
 }
 
@@ -293,12 +298,13 @@ export async function upsertFeedEntry(
 
 	await env.DATABASE.prepare(
 		`INSERT INTO rss_feed_items (
-		 id, feed_id, guid_hash, title, url, author, published_at, excerpt,
-		 raw_feed_r2_key, content_markdown_r2_key, source_language, summary, summary_en, ai_status,
+		 id, feed_id, guid_hash, title, title_en, url, author, published_at, excerpt,
+		 raw_feed_r2_key, content_markdown_r2_key, source_language, description, description_en, ai_status,
 		 created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		 title = excluded.title,
+		 title_en = COALESCE(excluded.title_en, rss_feed_items.title_en),
 		 url = excluded.url,
 		 author = excluded.author,
 		 published_at = excluded.published_at,
@@ -307,7 +313,7 @@ export async function upsertFeedEntry(
 		 content_markdown_r2_key = COALESCE(excluded.content_markdown_r2_key, rss_feed_items.content_markdown_r2_key),
 		 updated_at = excluded.updated_at,
 		 ai_status = CASE
-			WHEN rss_feed_items.summary_en IS NOT NULL THEN rss_feed_items.ai_status
+			WHEN rss_feed_items.description_en IS NOT NULL THEN rss_feed_items.ai_status
 			WHEN excluded.content_markdown_r2_key IS NOT NULL THEN 'pending'
 			ELSE rss_feed_items.ai_status
 		 END`,
@@ -317,6 +323,7 @@ export async function upsertFeedEntry(
 			options.feedId,
 			guidHash,
 			options.entry.title,
+			null,
 			options.entry.url,
 			options.entry.author,
 			options.entry.publishedAt,
@@ -372,7 +379,7 @@ export async function markFeedItemAiFailed(
 	const now = new Date().toISOString();
 	await env.DATABASE.prepare(
 		`UPDATE rss_feed_items
-		 SET ai_status = 'failed', summary = ?, summary_en = ?, updated_at = ?
+		 SET ai_status = 'failed', description = ?, description_en = ?, updated_at = ?
 		 WHERE id = ?`,
 	)
 		.bind(error.slice(0, 500), null, now, itemId)
@@ -384,21 +391,23 @@ export async function recordFeedItemAiResult(
 	options: {
 		itemId: string;
 		sourceLanguage: string | null;
-		summary: string;
-		summaryEn: string;
+		titleEn: string | null;
+		description: string;
+		descriptionEn: string;
 		aiResponseKey: string | null;
 	},
 ): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DATABASE.prepare(
 		`UPDATE rss_feed_items
-		 SET source_language = ?, summary = ?, summary_en = ?, ai_status = 'complete', ai_response_r2_key = ?, updated_at = ?
+		 SET source_language = ?, title_en = ?, description = ?, description_en = ?, ai_status = 'complete', ai_response_r2_key = ?, updated_at = ?
 		 WHERE id = ?`,
 	)
 		.bind(
 			options.sourceLanguage,
-			options.summary,
-			options.summaryEn,
+			options.titleEn,
+			options.description,
+			options.descriptionEn,
 			options.aiResponseKey,
 			now,
 			options.itemId,
@@ -476,11 +485,12 @@ function mapFeedItemRow(row: FeedItemRow): FeedItemSummary {
 		feedId: row.feed_id,
 		feedTitle: row.feed_title,
 		title: row.title,
+		titleEn: row.title_en,
 		url: row.url,
 		publishedAt: row.published_at,
 		sourceLanguage: row.source_language,
-		summary: row.summary,
-		summaryEn: row.summary_en,
+		description: row.description,
+		descriptionEn: row.description_en,
 		aiStatus: row.ai_status,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,

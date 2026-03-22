@@ -70,18 +70,57 @@ import Layout from "@/layouts/Base.astro";
 			readingEmpty.style.display = recommendations.length ? "none" : "block";
 			readingList.innerHTML = recommendations
 				.map(
-					(
-						item,
-					) => `<article class="rounded border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600">
-						<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-							<div class="space-y-2">
-								<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">No. ${escapeHtml(item.rank)} • ${escapeHtml(item.feedTitle)}</p>
-								<h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100"><a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="hover:underline">${escapeHtml(item.title)}</a></h2>
-								<p class="text-sm text-zinc-600 dark:text-zinc-300">Published ${escapeHtml(formatDate(item.publishedAt))}</p>
-							</div>
-							<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="inline-flex shrink-0 items-center rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">Read</a>
-						</div>
-					</article>`,
+					(item) => {
+						const hasOriginalLanguage = item.sourceLanguage && item.sourceLanguage.toLowerCase() !== "en";
+						const defaultTitle = item.titleEn || item.title;
+						const defaultDescription = item.descriptionEn || item.description || "";
+						const originalTitle = hasOriginalLanguage ? item.title : defaultTitle;
+						const originalDescription = hasOriginalLanguage ? item.description : defaultDescription;
+						const pubDate = item.publishedAt
+							? new Date(item.publishedAt).toLocaleDateString(undefined, {
+									day: "numeric",
+									month: "short",
+									year: "numeric",
+								})
+							: "Date unavailable";
+
+						return `<feed-item-card class="block">
+							<article class="rounded border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600">
+								<div class="flex flex-col gap-3">
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0 flex-1 space-y-1">
+											<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">No. ${escapeHtml(item.rank)} • ${escapeHtml(item.feedTitle)}</p>
+											<h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+												<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="hover:underline line-clamp-2">
+													<span data-title-en>${escapeHtml(defaultTitle)}</span>
+													<span data-title-original class="hidden">${escapeHtml(originalTitle)}</span>
+												</a>
+											</h2>
+										</div>
+										${hasOriginalLanguage ? `<button type="button" data-lang-toggle class="shrink-0 rounded border border-zinc-300 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800" title="Toggle language">
+											<span data-lang-label>${escapeHtml(item.sourceLanguage.toUpperCase())}</span>
+										</button>` : ""}
+									</div>
+									<div class="space-y-2">
+										<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 line-clamp-3">
+											<span data-desc-en>${escapeHtml(defaultDescription)}</span>
+											<span data-desc-original class="hidden">${escapeHtml(originalDescription)}</span>
+										</p>
+									</div>
+									<div class="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+										<time>Published ${pubDate}</time>
+										${hasOriginalLanguage ? "<span>•</span>" : ""}
+										${hasOriginalLanguage ? `<span class="text-[11px] tracking-[0.18em] uppercase">${escapeHtml(item.sourceLanguage)}</span>` : ""}
+									</div>
+									<div class="pt-2">
+										<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center rounded border border-zinc-300 px-3 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+											Read
+										</a>
+									</div>
+								</div>
+							</article>
+						</feed-item-card>`;
+					},
 				)
 				.join("");
 		}
@@ -102,5 +141,42 @@ import Layout from "@/layouts/Base.astro";
 		}
 
 		void loadReading();
+
+		class FeedItemCardElement extends HTMLElement {
+			#isEnglish = true;
+
+			connectedCallback() {
+				const toggleButton = this.querySelector("[data-lang-toggle]");
+				if (!toggleButton) return;
+
+				const titleEn = this.querySelector("[data-title-en]");
+				const titleOriginal = this.querySelector("[data-title-original]");
+				const descEn = this.querySelector("[data-desc-en]");
+				const descOriginal = this.querySelector("[data-desc-original]");
+				const langLabel = this.querySelector("[data-lang-label]");
+
+				if (!titleEn || !titleOriginal || !descEn || !descOriginal || !langLabel) return;
+
+				toggleButton.addEventListener("click", () => {
+					this.#isEnglish = !this.#isEnglish;
+
+					if (this.#isEnglish) {
+						titleEn.classList.remove("hidden");
+						titleOriginal.classList.add("hidden");
+						descEn.classList.remove("hidden");
+						descOriginal.classList.add("hidden");
+					} else {
+						titleEn.classList.add("hidden");
+						titleOriginal.classList.remove("hidden");
+						descEn.classList.add("hidden");
+						descOriginal.classList.remove("hidden");
+					}
+				});
+			}
+		}
+
+		if (!customElements.get("feed-item-card")) {
+			customElements.define("feed-item-card", FeedItemCardElement);
+		}
 	</script>
 </Layout>
