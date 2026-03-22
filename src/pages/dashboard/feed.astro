@@ -100,13 +100,7 @@ const user = Astro.locals.user;
 							Add Feed Source
 						</p>
 						<div class="space-y-1">
-							<h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-								Connect a shared feed
-							</h2>
-							<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-								Paste a feed URL. We fetch the feed metadata before saving, so the source is ready
-								for the next sync.
-							</p>
+							<h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Add feed</h2>
 						</div>
 					</div>
 					<button
@@ -135,7 +129,7 @@ const user = Astro.locals.user;
 							class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
 						>
 							<input name="isActive" type="checkbox" checked />
-							<span>Active in daily sync</span>
+							<span>Active</span>
 						</label>
 						<label
 							class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
@@ -143,11 +137,6 @@ const user = Astro.locals.user;
 							<input name="fetchMarkdown" type="checkbox" checked />
 							<span>Fetch article markdown/text</span>
 						</label>
-					</div>
-					<div
-						class="rounded border border-zinc-200 bg-zinc-50 px-3 py-3 text-xs leading-relaxed text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300"
-					>
-						Title and site URL are fetched automatically from the feed before the source is saved.
 					</div>
 					<button
 						type="submit"
