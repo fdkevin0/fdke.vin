@@ -48,4 +48,8 @@ export const menuLinks: { path: string; title: string }[] = [
 		path: "/dashboard/",
 		title: "Dashboard",
 	},
+	{
+		path: "https://ph.fdke.vin",
+		title: "Photos",
+	},
 ];
