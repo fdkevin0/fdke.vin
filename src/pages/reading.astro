@@ -1,0 +1,106 @@
+---
+import Layout from "@/layouts/Base.astro";
+---
+
+<Layout
+	meta={{
+		title: "Random Reading",
+		description:
+			"A daily set of 10 randomly selected articles from the shared reading pool, refreshed from the last 30 days.",
+	}}
+>
+	<section class="space-y-8">
+		<h1 class="title text-2xl md:text-3xl">Random Reading</h1>
+
+		<div id="reading-feedback" class="hidden rounded border px-4 py-3 text-sm"></div>
+
+		<div
+			id="reading-loading"
+			class="rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+		>
+			Loading today's reading list...
+		</div>
+
+		<div
+			id="reading-empty"
+			class="hidden rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+		>
+			Today's reading list is not ready yet. Check back after the next feed refresh.
+		</div>
+
+		<div id="reading-list" class="grid gap-4"></div>
+	</section>
+
+	<script is:inline>
+		const readingList = document.getElementById("reading-list");
+		const readingLoading = document.getElementById("reading-loading");
+		const readingEmpty = document.getElementById("reading-empty");
+		const readingFeedback = document.getElementById("reading-feedback");
+
+		function formatDate(value) {
+			if (!value) return "Date unavailable";
+			const date = new Date(value);
+			return Number.isNaN(date.getTime())
+				? value
+				: date.toLocaleDateString(undefined, {
+						day: "numeric",
+						month: "short",
+						year: "numeric",
+					});
+		}
+
+		function escapeHtml(value) {
+			return String(value)
+				.replaceAll("&", "&amp;")
+				.replaceAll("<", "&lt;")
+				.replaceAll(">", "&gt;")
+				.replaceAll('"', "&quot;");
+		}
+
+		function setError(message) {
+			if (!readingFeedback) return;
+			readingFeedback.textContent = message;
+			readingFeedback.className =
+				"rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300";
+			readingFeedback.classList.remove("hidden");
+		}
+
+		function renderRecommendations(recommendations) {
+			if (!readingList || !readingEmpty) return;
+			readingEmpty.style.display = recommendations.length ? "none" : "block";
+			readingList.innerHTML = recommendations
+				.map(
+					(
+						item,
+					) => `<article class="rounded border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600">
+						<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+							<div class="space-y-2">
+								<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">No. ${escapeHtml(item.rank)} • ${escapeHtml(item.feedTitle)}</p>
+								<h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100"><a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="hover:underline">${escapeHtml(item.title)}</a></h2>
+								<p class="text-sm text-zinc-600 dark:text-zinc-300">Published ${escapeHtml(formatDate(item.publishedAt))}</p>
+							</div>
+							<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="inline-flex shrink-0 items-center rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">Read</a>
+						</div>
+					</article>`,
+				)
+				.join("");
+		}
+
+		async function loadReading() {
+			try {
+				const response = await fetch("/api/reading", { headers: { Accept: "application/json" } });
+				const data = await response.json();
+				if (!response.ok) {
+					throw new Error(data.error || "Failed to load random reading");
+				}
+				renderRecommendations(data.recommendations || []);
+			} catch (error) {
+				setError(error instanceof Error ? error.message : "Failed to load random reading");
+			} finally {
+				readingLoading?.remove();
+			}
+		}
+
+		void loadReading();
+	</script>
+</Layout>

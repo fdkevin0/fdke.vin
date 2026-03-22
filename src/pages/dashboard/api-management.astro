@@ -17,15 +17,11 @@ const user = Astro.locals.user;
 	<section class="space-y-6">
 		<div class="space-y-3">
 			<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
-				<a href="/dashboard" class="hover:underline">Dashboard</a> / API Management
+				<a href="/dashboard" class="hover:underline">Dashboard</a> / API
 			</p>
 			<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
 				<div class="space-y-3">
 					<h1 class="title text-2xl">API Management</h1>
-					<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-						Private API management for bearer-token access to internal endpoints on
-						`fdke.vin/api/*`.
-					</p>
 				</div>
 				{
 					user && (
@@ -43,13 +39,7 @@ const user = Astro.locals.user;
 				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 					<div class="space-y-1">
 						<h2 class="text-lg font-semibold">Create Tokens</h2>
-						<p class="text-sm text-zinc-600 dark:text-zinc-300">
-							Default scope is `api.ping`. Add more scopes only when needed.
-						</p>
 					</div>
-					<p class="max-w-sm text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-						Create or rotate a token, then click that token row to auto-fill the curl command.
-					</p>
 				</div>
 				<form id="create-token-form" class="mt-4 space-y-4">
 					<label class="block space-y-2 text-sm">
@@ -128,9 +118,6 @@ const user = Astro.locals.user;
 							<h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">
 								Using bearer auth
 							</h3>
-							<p id="curl-selection-label" class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-								Create or rotate a token to fill this command.
-							</p>
 						</div>
 					</div>
 					<div id="curl-command-block" class="mt-3">
@@ -149,9 +136,6 @@ const user = Astro.locals.user;
 				<div class="flex items-start justify-between gap-4">
 					<div class="space-y-1">
 						<h2 class="text-lg font-semibold">Issued Tokens</h2>
-						<p class="text-sm text-zinc-600 dark:text-zinc-300">
-							Create, rotate, revoke, and update scopes or expiration.
-						</p>
 					</div>
 					<button
 						id="refresh-tokens"

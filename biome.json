@@ -19,7 +19,11 @@
 		"lineWidth": 100,
 		"expand": "auto"
 	},
-	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
 	"assist": {
 		"actions": {
 			"source": {
@@ -47,7 +51,9 @@
 				"noUselessElse": "error",
 				"useImportType": "error"
 			},
-			"suspicious": { "noExplicitAny": "warn" }
+			"suspicious": {
+				"noExplicitAny": "warn"
+			}
 		}
 	},
 	"javascript": {
@@ -57,7 +63,11 @@
 			"bracketSameLine": false
 		}
 	},
-	"html": { "formatter": { "selfCloseVoidElements": "always" } },
+	"html": {
+		"formatter": {
+			"selfCloseVoidElements": "always"
+		}
+	},
 	"css": {
 		"parser": {
 			"tailwindDirectives": true
@@ -66,8 +76,12 @@
 	"overrides": [
 		{
 			"includes": ["worker-configuration.d.ts"],
-			"formatter": { "enabled": false },
-			"linter": { "enabled": false }
+			"formatter": {
+				"enabled": false
+			},
+			"linter": {
+				"enabled": false
+			}
 		},
 		{
 			"includes": ["**/*.astro"],

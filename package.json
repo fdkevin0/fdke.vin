@@ -5,7 +5,7 @@
 	"scripts": {
 		"postinstall": "npm rebuild sharp --force",
 		"predev": "npm run icons:build",
-		"dev": "wrangler types && astro dev",
+		"dev": "wrangler types && astro build && astro dev",
 		"types": "wrangler types",
 		"start": "astro dev",
 		"prebuild": "npm run icons:build",

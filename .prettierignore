@@ -10,3 +10,4 @@ package.json
 src/styles/**/*.css
 worker-configuration.d.ts
 wrangler.jsonc
+biome.json
