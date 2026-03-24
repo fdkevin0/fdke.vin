@@ -20,6 +20,7 @@ export interface FeedDocument {
 }
 
 export const FEED_USER_AGENT = "fdke.vin feed bot/1.0 (+https://fdke.vin)";
+const FEED_XML_ENTITY_LIMIT = 10_000;
 
 export interface FeedSourceMetadata {
 	title: string;
@@ -60,6 +61,10 @@ export function extractFeedDocument(
 		ignoreAttributes: false,
 		attributeNamePrefix: "@_",
 		allowBooleanAttributes: true,
+		processEntities: {
+			enabled: true,
+			maxTotalExpansions: FEED_XML_ENTITY_LIMIT,
+		},
 	});
 
 	const result = parser.parse(input);
