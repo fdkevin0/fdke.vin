@@ -1,11 +1,10 @@
 import { sha256 } from "@/lib/api/tokens/crypto";
 import type { CloudflareAccessUser } from "@/lib/cloudflare-access";
 import type { FeedEnv } from "@/lib/feed/runtime";
-import { getDayUtc } from "@/lib/feed/runtime";
 import type {
 	FeedAiMessage,
 	FeedItemSummary,
-	FeedRecommendation,
+	FeedReadingItem,
 	FeedRunState,
 	FeedSource,
 	FeedSourceInput,
@@ -34,6 +33,8 @@ interface FeedItemRow {
 	title_en: string | null;
 	url: string;
 	published_at: string | null;
+	visible_until: string | null;
+	click_count: number;
 	source_language: string | null;
 	description: string | null;
 	description_en: string | null;
@@ -43,15 +44,15 @@ interface FeedItemRow {
 	content_markdown_r2_key?: string | null;
 }
 
-interface RecommendationRow {
-	day_utc: string;
-	rank: number;
+interface FeedReadingRow {
 	item_id: string;
 	feed_title: string;
 	title: string;
 	title_en: string | null;
 	url: string;
 	published_at: string | null;
+	visible_until: string | null;
+	click_count: number;
 	source_language: string | null;
 	description_en: string | null;
 	description: string | null;
@@ -180,6 +181,7 @@ export async function getFeedSourceById(env: FeedEnv, id: string): Promise<FeedS
 export async function listRecentFeedItems(env: FeedEnv, limit = 50): Promise<FeedItemSummary[]> {
 	const result = await env.DATABASE.prepare(
 		`SELECT items.id, items.feed_id, feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at,
+		 items.visible_until, items.click_count,
 		 items.source_language, items.description, items.description_en, items.ai_status, items.created_at, items.updated_at,
 		 items.content_markdown_r2_key
 		 FROM rss_feed_items AS items
@@ -193,35 +195,54 @@ export async function listRecentFeedItems(env: FeedEnv, limit = 50): Promise<Fee
 	return (result.results ?? []).map(mapFeedItemRow);
 }
 
-export async function listTodayRecommendations(
-	env: FeedEnv,
-	dayUtc = getDayUtc(),
-): Promise<FeedRecommendation[]> {
+export async function listVisibleFeedItems(env: FeedEnv): Promise<FeedReadingItem[]> {
 	const result = await env.DATABASE.prepare(
-		`SELECT recommendations.day_utc, recommendations.rank, recommendations.item_id,
-		 feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at, items.source_language, items.description_en, items.description
-		 FROM rss_item_recommendations_daily AS recommendations
-		 JOIN rss_feed_items AS items ON items.id = recommendations.item_id
+		`SELECT items.id AS item_id, feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at,
+		 items.visible_until, items.click_count, items.source_language, items.description_en, items.description
+		 FROM rss_feed_items AS items
 		 JOIN rss_feeds AS feeds ON feeds.id = items.feed_id
-		 WHERE recommendations.day_utc = ?
-		 ORDER BY recommendations.rank ASC`,
+		 WHERE datetime(COALESCE(items.visible_until, datetime(items.created_at, '+24 hours'))) > datetime('now')
+		 ORDER BY COALESCE(items.published_at, items.created_at) DESC`,
 	)
-		.bind(dayUtc)
-		.all<RecommendationRow>();
+		.all<FeedReadingRow>();
 
 	return (result.results ?? []).map((row) => ({
-		dayUtc: row.day_utc,
-		rank: row.rank,
 		itemId: row.item_id,
 		feedTitle: row.feed_title,
 		title: row.title,
 		titleEn: row.title_en,
 		url: row.url,
 		publishedAt: row.published_at,
+		visibleUntil: row.visible_until,
+		clickCount: Number(row.click_count ?? 0),
 		sourceLanguage: row.source_language,
 		descriptionEn: row.description_en,
 		description: row.description,
 	}));
+}
+
+export async function extendFeedItemVisibility(
+	env: FeedEnv,
+	itemId: string,
+	visibleUntil: string,
+): Promise<number | null> {
+	const result = await env.DATABASE.prepare(
+		`UPDATE rss_feed_items
+		 SET visible_until = ?, click_count = COALESCE(click_count, 0) + 1, updated_at = ?
+		 WHERE id = ?`,
+	)
+		.bind(visibleUntil, new Date().toISOString(), itemId)
+		.run();
+
+	if (!result.meta.changes) {
+		return null;
+	}
+
+	const row = await env.DATABASE.prepare("SELECT click_count FROM rss_feed_items WHERE id = ?")
+		.bind(itemId)
+		.first<{ click_count: number }>();
+
+	return Number(row?.click_count ?? 0);
 }
 
 export async function createIngestRun(
@@ -296,9 +317,9 @@ export async function upsertFeedEntry(
 	await env.DATABASE.prepare(
 		`INSERT INTO rss_feed_items (
 		 id, feed_id, guid_hash, title, title_en, url, author, published_at, excerpt,
-		 raw_feed_r2_key, content_markdown_r2_key, source_language, description, description_en, ai_status,
+		 raw_feed_r2_key, content_markdown_r2_key, source_language, description, description_en, ai_status, visible_until, click_count,
 		 created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		 title = excluded.title,
 		 title_en = COALESCE(excluded.title_en, rss_feed_items.title_en),
@@ -308,6 +329,7 @@ export async function upsertFeedEntry(
 		 excerpt = excluded.excerpt,
 		 raw_feed_r2_key = excluded.raw_feed_r2_key,
 		 content_markdown_r2_key = COALESCE(excluded.content_markdown_r2_key, rss_feed_items.content_markdown_r2_key),
+		 visible_until = COALESCE(rss_feed_items.visible_until, excluded.visible_until),
 		 updated_at = excluded.updated_at,
 		 ai_status = CASE
 			WHEN rss_feed_items.description_en IS NOT NULL THEN rss_feed_items.ai_status
@@ -328,6 +350,8 @@ export async function upsertFeedEntry(
 			options.rawFeedKey,
 			options.contentKey,
 			options.contentKey ? "pending" : "skipped",
+			new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+			0,
 			now,
 			now,
 		)
@@ -427,38 +451,6 @@ export async function queueAiMessages(env: FeedEnv, messages: FeedAiMessage[]): 
 	}
 }
 
-export async function refreshDailyRecommendations(
-	env: FeedEnv,
-	dayUtc = getDayUtc(),
-): Promise<number> {
-	await env.DATABASE.prepare("DELETE FROM rss_item_recommendations_daily WHERE day_utc = ?")
-		.bind(dayUtc)
-		.run();
-
-	await env.DATABASE.prepare(
-		`INSERT INTO rss_item_recommendations_daily (id, day_utc, item_id, rank, created_at)
-		 SELECT hex(randomblob(16)), ?, picked.id,
-		 ROW_NUMBER() OVER (ORDER BY picked.random_order), ?
-		 FROM (
-			SELECT id, random() AS random_order
-			FROM rss_feed_items
-			WHERE published_at >= datetime('now', '-30 days')
-			ORDER BY random()
-			LIMIT 10
-		 ) AS picked`,
-	)
-		.bind(dayUtc, new Date().toISOString())
-		.run();
-
-	const countRow = await env.DATABASE.prepare(
-		"SELECT COUNT(*) AS count FROM rss_item_recommendations_daily WHERE day_utc = ?",
-	)
-		.bind(dayUtc)
-		.first<{ count: number }>();
-
-	return Number(countRow?.count ?? 0);
-}
-
 function mapFeedSourceRow(row: FeedSourceRow): FeedSource {
 	return {
 		id: row.id,
@@ -484,6 +476,8 @@ function mapFeedItemRow(row: FeedItemRow): FeedItemSummary {
 		titleEn: row.title_en,
 		url: row.url,
 		publishedAt: row.published_at,
+		visibleUntil: row.visible_until,
+		clickCount: Number(row.click_count ?? 0),
 		sourceLanguage: row.source_language,
 		description: row.description,
 		descriptionEn: row.description_en,

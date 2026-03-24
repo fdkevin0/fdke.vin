@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS rss_feed_items (
 	url TEXT NOT NULL,
 	author TEXT,
 	published_at TEXT,
+	visible_until TEXT,
+	click_count INTEGER NOT NULL DEFAULT 0,
 	excerpt TEXT,
 	raw_feed_r2_key TEXT,
 	content_markdown_r2_key TEXT,
@@ -38,6 +40,7 @@ CREATE TABLE IF NOT EXISTS rss_feed_items (
 
 CREATE INDEX IF NOT EXISTS idx_rss_feed_items_feed_id ON rss_feed_items(feed_id);
 CREATE INDEX IF NOT EXISTS idx_rss_feed_items_published_at ON rss_feed_items(published_at);
+CREATE INDEX IF NOT EXISTS idx_rss_feed_items_visible_until ON rss_feed_items(visible_until);
 CREATE INDEX IF NOT EXISTS idx_rss_feed_items_ai_status ON rss_feed_items(ai_status);
 
 CREATE TABLE IF NOT EXISTS rss_ingest_runs (
@@ -55,15 +58,3 @@ CREATE TABLE IF NOT EXISTS rss_ingest_runs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_rss_ingest_runs_day ON rss_ingest_runs(day_utc);
-
-CREATE TABLE IF NOT EXISTS rss_item_recommendations_daily (
-	id TEXT PRIMARY KEY,
-	day_utc TEXT NOT NULL,
-	item_id TEXT NOT NULL,
-	rank INTEGER NOT NULL,
-	created_at TEXT NOT NULL,
-	FOREIGN KEY (item_id) REFERENCES rss_feed_items(id) ON DELETE CASCADE
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_rss_recommendations_day_rank ON rss_item_recommendations_daily(day_utc, rank);
-CREATE INDEX IF NOT EXISTS idx_rss_recommendations_day ON rss_item_recommendations_daily(day_utc);

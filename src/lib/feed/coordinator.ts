@@ -5,7 +5,6 @@ import {
 	completeIngestRun,
 	createIngestRun,
 	listActiveFeedSources,
-	refreshDailyRecommendations,
 } from "@/lib/feed/storage";
 import type { FeedRunState } from "@/lib/feed/types";
 import { FEED_COORDINATOR_NAME } from "@/lib/feed/types";
@@ -31,7 +30,7 @@ export async function startRun(
 	state: DurableObjectState,
 	env: FeedEnv,
 	options: { trigger: FeedRunState["trigger"]; triggeredByEmail: string | null },
-): Promise<FeedRunState & { recommendationCount?: number }> {
+): Promise<FeedRunState> {
 	const existing = await state.storage.get<FeedRunState>(RUN_STATE_KEY);
 	if (existing && existing.pending > 0) {
 		return existing;
@@ -59,10 +58,9 @@ export async function startRun(
 	};
 
 	if (feeds.length === 0) {
-		const recommendationCount = await refreshDailyRecommendations(env, dayUtc);
 		await completeIngestRun(env, nextState);
 		await state.storage.delete(RUN_STATE_KEY);
-		return { ...nextState, pending: 0, recommendationCount };
+		return { ...nextState, pending: 0 };
 	}
 
 	await state.storage.put(RUN_STATE_KEY, nextState);
@@ -89,7 +87,7 @@ export async function completeRunFeed(
 	state: DurableObjectState,
 	env: FeedEnv,
 	payload: { runId: string; ok: boolean },
-): Promise<(FeedRunState & { completed?: boolean; recommendationCount?: number }) | null> {
+): Promise<(FeedRunState & { completed?: boolean }) | null> {
 	const runState = await state.storage.get<FeedRunState>(RUN_STATE_KEY);
 	if (!runState || runState.runId !== payload.runId) {
 		return null;
@@ -100,11 +98,10 @@ export async function completeRunFeed(
 	runState.failureCount += payload.ok ? 0 : 1;
 
 	if (runState.pending === 0) {
-		const recommendationCount = await refreshDailyRecommendations(env, runState.dayUtc);
 		await completeIngestRun(env, runState);
 		await state.storage.delete(RUN_STATE_KEY);
 		await state.storage.deleteAlarm();
-		return { ...runState, completed: true, recommendationCount };
+		return { ...runState, completed: true };
 	}
 
 	await state.storage.put(RUN_STATE_KEY, runState);
@@ -118,7 +115,6 @@ export async function recoverTimedOutRun(state: DurableObjectState, env: FeedEnv
 	}
 
 	try {
-		await refreshDailyRecommendations(env, runState.dayUtc);
 		await completeIngestRun(env, runState);
 	} catch (error) {
 		console.error(

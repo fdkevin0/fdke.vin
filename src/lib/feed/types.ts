@@ -25,6 +25,8 @@ export interface FeedItemSummary {
 	titleEn: string | null;
 	url: string;
 	publishedAt: string | null;
+	visibleUntil: string | null;
+	clickCount: number;
 	sourceLanguage: string | null;
 	description: string | null;
 	descriptionEn: string | null;
@@ -33,15 +35,15 @@ export interface FeedItemSummary {
 	updatedAt: string;
 }
 
-export interface FeedRecommendation {
-	dayUtc: string;
-	rank: number;
+export interface FeedReadingItem {
 	itemId: string;
 	feedTitle: string;
 	title: string;
 	titleEn: string | null;
 	url: string;
 	publishedAt: string | null;
+	visibleUntil: string | null;
+	clickCount: number;
 	sourceLanguage: string | null;
 	descriptionEn: string | null;
 	description: string | null;
