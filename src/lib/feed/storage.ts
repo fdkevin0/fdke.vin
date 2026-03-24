@@ -45,6 +45,7 @@ interface FeedItemRow {
 
 interface FeedReadingRow {
 	item_id: string;
+	feed_id: string;
 	feed_title: string;
 	title: string;
 	title_en: string | null;
@@ -237,7 +238,7 @@ export async function retryFailedFeedItemsAi(env: FeedEnv): Promise<number> {
 
 export async function listVisibleFeedItems(env: FeedEnv): Promise<FeedReadingItem[]> {
 	const result = await env.DATABASE.prepare(
-		`SELECT items.id AS item_id, feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at,
+		`SELECT items.id AS item_id, items.feed_id, feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at,
 		 items.visible_until, items.click_count, items.source_language, items.description_en, items.description
 		 FROM rss_feed_items AS items
 		 JOIN rss_feeds AS feeds ON feeds.id = items.feed_id
@@ -248,6 +249,7 @@ export async function listVisibleFeedItems(env: FeedEnv): Promise<FeedReadingIte
 
 	return (result.results ?? []).map((row) => ({
 		itemId: row.item_id,
+		feedId: row.feed_id,
 		feedTitle: row.feed_title,
 		title: row.title,
 		titleEn: row.title_en,

@@ -10,9 +10,20 @@ import Layout from "@/layouts/Base.astro";
 	}}
 >
 	<section class="space-y-8">
-		<h1 class="title text-2xl md:text-3xl">Reading</h1>
+		<div class="flex items-center justify-between gap-4">
+			<h1 class="title text-2xl md:text-3xl">Reading</h1>
+			<button
+				id="reading-refresh"
+				type="button"
+				class="inline-flex shrink-0 items-center rounded border border-zinc-300 px-3 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
+			>
+				Refresh
+			</button>
+		</div>
 
 		<div id="reading-feedback" class="hidden rounded border px-4 py-3 text-sm"></div>
+
+		<div id="reading-tabs" class="hidden flex-wrap gap-2"></div>
 
 		<div
 			id="reading-loading"
@@ -36,6 +47,11 @@ import Layout from "@/layouts/Base.astro";
 		const readingLoading = document.getElementById("reading-loading");
 		const readingEmpty = document.getElementById("reading-empty");
 		const readingFeedback = document.getElementById("reading-feedback");
+		const readingTabs = document.getElementById("reading-tabs");
+		const readingRefresh = document.getElementById("reading-refresh");
+		let allItems = [];
+		let selectedFeedId = "";
+		let isLoadingReading = false;
 
 		function escapeHtml(value) {
 			return String(value)
@@ -43,6 +59,11 @@ import Layout from "@/layouts/Base.astro";
 				.replaceAll("<", "&lt;")
 				.replaceAll(">", "&gt;")
 				.replaceAll('"', "&quot;");
+		}
+
+		function getFilteredItems() {
+			if (!selectedFeedId) return allItems;
+			return allItems.filter((item) => item.feedId === selectedFeedId);
 		}
 
 		function setError(message) {
@@ -53,8 +74,57 @@ import Layout from "@/layouts/Base.astro";
 			readingFeedback.classList.remove("hidden");
 		}
 
+		function clearError() {
+			readingFeedback?.classList.add("hidden");
+		}
+
+		function updateRefreshButton() {
+			if (!(readingRefresh instanceof HTMLButtonElement)) return;
+			readingRefresh.disabled = isLoadingReading;
+			readingRefresh.textContent = isLoadingReading ? "Refreshing..." : "Refresh";
+		}
+
+		function updateLocalReadingItem(itemId, updater) {
+			const item = allItems.find((entry) => entry.itemId === itemId);
+			if (!item) return;
+			updater(item);
+			renderReading();
+		}
+
+		function renderTabs(items) {
+			if (!readingTabs) return;
+
+			const feeds = Array.from(
+				new Map(items.map((item) => [item.feedId, { id: item.feedId, title: item.feedTitle }])).values(),
+			);
+
+			if (feeds.length <= 1) {
+				readingTabs.classList.add("hidden");
+				readingTabs.innerHTML = "";
+				return;
+			}
+
+			const tabs = [{ id: "", title: "All" }, ...feeds];
+			readingTabs.innerHTML = tabs
+				.map((tab) => {
+					const isActive = tab.id === selectedFeedId;
+					const className = isActive
+						? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950"
+						: "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900";
+
+					return `<button type="button" data-feed-tab="${escapeHtml(tab.id)}" class="rounded-full border px-3 py-1.5 text-xs tracking-[0.14em] uppercase transition ${className}">
+						${escapeHtml(tab.title)}
+					</button>`;
+				})
+				.join("");
+			readingTabs.classList.remove("hidden");
+		}
+
 		function renderItems(items) {
 			if (!readingList || !readingEmpty) return;
+			readingEmpty.textContent = selectedFeedId
+				? "No posts are currently visible for the selected feed."
+				: "No posts are currently in the reading window.";
 			readingEmpty.style.display = items.length ? "none" : "block";
 			readingList.innerHTML = items
 				.map(
@@ -85,7 +155,7 @@ import Layout from "@/layouts/Base.astro";
 												</a>
 											</h2>
 										</div>
-										${hasOriginalLanguage ? `<button type="button" data-lang-toggle class="shrink-0 rounded border border-zinc-300 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800" title="Toggle language">
+										${hasOriginalLanguage ? `<button type="button" data-lang-toggle data-original-language="${escapeHtml(item.sourceLanguage.toUpperCase())}" class="shrink-0 rounded border border-zinc-300 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800" title="Show ${escapeHtml(item.sourceLanguage.toUpperCase())}">
 											<span data-lang-label>${escapeHtml(item.sourceLanguage.toUpperCase())}</span>
 										</button>` : ""}
 									</div>
@@ -98,7 +168,7 @@ import Layout from "@/layouts/Base.astro";
 									<div class="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
 										<time>Published ${pubDate}</time>
 										<span>•</span>
-										<span>${escapeHtml(item.clickCount)} clicks</span>
+										<span><span data-click-count>${escapeHtml(item.clickCount)}</span> clicks</span>
 										${hasOriginalLanguage ? "<span>•</span>" : ""}
 										${hasOriginalLanguage ? `<span class="text-[11px] tracking-[0.18em] uppercase">${escapeHtml(item.sourceLanguage)}</span>` : ""}
 									</div>
@@ -115,31 +185,57 @@ import Layout from "@/layouts/Base.astro";
 				.join("");
 		}
 
+		function renderReading() {
+			renderTabs(allItems);
+			renderItems(getFilteredItems());
+		}
+
 		async function loadReading() {
+			isLoadingReading = true;
+			updateRefreshButton();
 			try {
+				clearError();
 				const response = await fetch("/api/reading", { headers: { Accept: "application/json" } });
 				const data = await response.json();
 				if (!response.ok) {
 					throw new Error(data.error || "Failed to load reading");
 				}
-				renderItems(data.items || []);
+				allItems = Array.isArray(data.items) ? data.items : [];
+				renderReading();
 			} catch (error) {
 				setError(error instanceof Error ? error.message : "Failed to load reading");
 			} finally {
+				isLoadingReading = false;
+				updateRefreshButton();
 				readingLoading?.remove();
 			}
 		}
 
 		void loadReading();
 
-		function markReadingItemOpened(itemId) {
-			const body = JSON.stringify({ itemId });
-			if (navigator.sendBeacon) {
-				const blob = new Blob([body], { type: "application/json" });
-				navigator.sendBeacon("/api/reading/click", blob);
-				return;
-			}
+		readingTabs?.addEventListener("click", (event) => {
+			const target = event.target instanceof Element ? event.target.closest("[data-feed-tab]") : null;
+			if (!target) return;
+			selectedFeedId = target.getAttribute("data-feed-tab") || "";
+			renderReading();
+		});
 
+		readingRefresh?.addEventListener("click", () => {
+			void loadReading();
+		});
+
+		function markReadingItemOpened(itemId) {
+			const currentItem = allItems.find((entry) => entry.itemId === itemId);
+			if (!currentItem) return;
+
+			const previousClickCount = Number(currentItem.clickCount || 0);
+			const optimisticVisibleUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+			updateLocalReadingItem(itemId, (item) => {
+				item.clickCount = previousClickCount + 1;
+				item.visibleUntil = optimisticVisibleUntil;
+			});
+
+			const body = JSON.stringify({ itemId });
 			void fetch("/api/reading/click", {
 				method: "POST",
 				headers: {
@@ -148,7 +244,23 @@ import Layout from "@/layouts/Base.astro";
 				},
 				body,
 				keepalive: true,
-			}).catch(() => undefined);
+			})
+				.then(async (response) => {
+					const data = await response.json().catch(() => null);
+					if (!response.ok) {
+						throw new Error(data?.error || "Failed to extend reading item visibility");
+					}
+
+					updateLocalReadingItem(itemId, (item) => {
+						item.clickCount = Number(data?.clickCount ?? item.clickCount);
+						item.visibleUntil = data?.visibleUntil || item.visibleUntil;
+					});
+				})
+				.catch(() => {
+					updateLocalReadingItem(itemId, (item) => {
+						item.clickCount = previousClickCount;
+					});
+				});
 		}
 
 		class FeedItemCardElement extends HTMLElement {
@@ -163,6 +275,7 @@ import Layout from "@/layouts/Base.astro";
 				const descEn = this.querySelector("[data-desc-en]");
 				const descOriginal = this.querySelector("[data-desc-original]");
 				const langLabel = this.querySelector("[data-lang-label]");
+				const originalLanguage = toggleButton?.getAttribute("data-original-language") || "";
 
 				if (toggleButton && titleEn && titleOriginal && descEn && descOriginal && langLabel) {
 					toggleButton.addEventListener("click", () => {
@@ -173,11 +286,15 @@ import Layout from "@/layouts/Base.astro";
 							titleOriginal.classList.add("hidden");
 							descEn.classList.remove("hidden");
 							descOriginal.classList.add("hidden");
+							langLabel.textContent = originalLanguage;
+							toggleButton.setAttribute("title", `Show ${originalLanguage}`);
 						} else {
 							titleEn.classList.add("hidden");
 							titleOriginal.classList.remove("hidden");
 							descEn.classList.add("hidden");
 							descOriginal.classList.remove("hidden");
+							langLabel.textContent = "EN";
+							toggleButton.setAttribute("title", "Show EN");
 						}
 					});
 				}

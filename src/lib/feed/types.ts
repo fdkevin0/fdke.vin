@@ -37,6 +37,7 @@ export interface FeedItemSummary {
 
 export interface FeedReadingItem {
 	itemId: string;
+	feedId: string;
 	feedTitle: string;
 	title: string;
 	titleEn: string | null;
