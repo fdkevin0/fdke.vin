@@ -95,7 +95,7 @@ function parseFeedEntries(
 		const title = entry.title?.trim() || "Untitled item";
 		const link = entry.link?.trim() || "";
 		const guid = entry.id?.trim() || link || `${title}-${index}`;
-		const content = normalizeMarkdown(stripMarkup(entry.description?.trim() || ""));
+		const summary = normalizeSummary(entry.summary?.trim() || "");
 
 		return {
 			id: guid,
@@ -103,68 +103,12 @@ function parseFeedEntries(
 			url: link,
 			publishedAt: normalizeDate(entry.published || null),
 			author: entry.author ?? null,
-			content,
-			excerpt: truncate(content, 280),
+			summary: summary || null,
 		};
 	});
 }
 
-function stripMarkup(input: string): string {
-	if (!input.trim()) {
-		return "";
-	}
-
-	if (!input.includes("<")) {
-		return normalizePlainText(decodeEntities(input));
-	}
-
-	const normalized = input
-		.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-		.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-		.replace(/<!--([\s\S]*?)-->/g, " ")
-		.replace(/<(br|hr)\b[^>]*\/?\s*>/gi, "\n")
-		.replace(/<li\b[^>]*>/gi, "\n- ")
-		.replace(/<\/(p|div|section|article|blockquote|pre|ul|ol|h1|h2|h3|h4|h5|h6)>/gi, "\n\n")
-		.replace(/<[^>]+>/g, " ");
-
-	return normalizePlainText(decodeEntities(normalized));
-}
-
-function decodeEntities(value: string): string {
-	return value
-		.replaceAll("&#x27;", "'")
-		.replaceAll("&#x2F;", "/")
-		.replaceAll("&#x22;", '"')
-		.replaceAll("&#x3C;", "<")
-		.replaceAll("&#x3E;", ">")
-		.replaceAll("&#x26;", "&")
-		.replaceAll("&nbsp;", " ")
-		.replaceAll("&amp;", "&")
-		.replaceAll("&lt;", "<")
-		.replaceAll("&gt;", ">")
-		.replaceAll("&quot;", '"')
-		.replaceAll("&#39;", "'")
-		.replaceAll("&#x2013;", "–")
-		.replaceAll("&#x2014;", "—")
-		.replaceAll("&#x2018;", "'")
-		.replaceAll("&#x2019;", "'")
-		.replaceAll("&#x201C;", '"')
-		.replaceAll("&#x201D;", '"');
-}
-
-function normalizePlainText(value: string): string {
-	return value
-		.replace(/\r/g, "")
-		.replace(/[\t\f\v]+/g, " ")
-		.replace(/\u00a0/g, " ")
-		.replace(/ +\n/g, "\n")
-		.replace(/\n +/g, "\n")
-		.replace(/[ ]{2,}/g, " ")
-		.replace(/\n{3,}/g, "\n\n")
-		.trim();
-}
-
-function normalizeMarkdown(value: string): string {
+function normalizeSummary(value: string): string {
 	return value
 		.replace(/\r/g, "")
 		.replace(/\n{3,}/g, "\n\n")
@@ -177,12 +121,4 @@ function normalizeDate(value: string | null): string | null {
 	}
 	const parsed = new Date(value);
 	return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-}
-
-function truncate(value: string, length: number): string | null {
-	const normalized = value.trim();
-	if (!normalized) {
-		return null;
-	}
-	return normalized.length > length ? `${normalized.slice(0, length - 1)}…` : normalized;
 }

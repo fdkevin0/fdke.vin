@@ -4,7 +4,7 @@ export interface FeedDocumentEntry {
 	id: string;
 	link: string | undefined;
 	title: string | undefined;
-	description: string | undefined;
+	summary: string | undefined;
 	published: string | undefined;
 	author: string | null | undefined;
 }
@@ -171,7 +171,7 @@ function parseRssFeed(channel: Record<string, unknown>, baseUrl?: string): FeedD
 			const title = getText(item.title);
 			const link = getPureUrl(getText(item.link as string), baseUrl);
 			const guid = getText(item.guid as string) || link || `${title}-${index}`;
-			const description = getText(item.description || item["content:encoded"]);
+			const summary = getText(item.description);
 			const author =
 				getText(item.author as string) ||
 				getText(item["dc:creator"] as string) ||
@@ -182,7 +182,7 @@ function parseRssFeed(channel: Record<string, unknown>, baseUrl?: string): FeedD
 				id: guid,
 				title: title || "Untitled item",
 				link,
-				description,
+				summary,
 				published: normalizeDate(item.pubDate as string),
 				author,
 			};
@@ -208,14 +208,14 @@ function parseAtomFeed(feed: Record<string, unknown>, baseUrl?: string): FeedDoc
 			const linkEntry = entry.link as Record<string, unknown>;
 			const link = getPureUrl(getText(linkEntry?.["@_href"] as string), baseUrl);
 			const id = getText(entry.id as string) || link || `${title}-${index}`;
-			const description = getText(entry.summary || entry.content);
+			const summary = getText(entry.summary);
 			const author = getText((entry.author as Record<string, unknown>)?.name as string) || null;
 
 			return {
 				id,
 				title: title || "Untitled item",
 				link,
-				description,
+				summary,
 				published: normalizeDate((entry.updated as string) || (entry.published as string)),
 				author,
 			};
@@ -238,14 +238,14 @@ function parseRdfFeed(rdf: Record<string, unknown>, baseUrl?: string): FeedDocum
 			const title = getText(item.title);
 			const link = getPureUrl(getText(item.link as string), baseUrl);
 			const id = getText(item["dc:identifier"] as string) || link || `${title}-${index}`;
-			const description = getText(item.description);
+			const summary = getText(item.description);
 			const author = getText(item["dc:creator"] as string) || null;
 
 			return {
 				id,
 				title: title || "Untitled item",
 				link,
-				description,
+				summary,
 				published: normalizeDate(item["dc:date"] as string),
 				author,
 			};
@@ -272,14 +272,14 @@ function parseJsonFeed(json: unknown, baseUrl?: string): FeedDocument {
 			const title = getText(item.title);
 			const link = getPureUrl(getText(item.url as string), baseUrl);
 			const id = getText(item.id as string) || link || `${title}-${index}`;
-			const description = getText(item.summary || item.content_html || item.content_text);
+			const summary = getText(item.summary);
 			const author = getText(item.author as string) || null;
 
 			return {
 				id,
 				title: title || "Untitled item",
 				link,
-				description,
+				summary,
 				published: normalizeDate((item.date_published as string) || (item.date_modified as string)),
 				author,
 			};

@@ -6,8 +6,8 @@ export interface Props {
 	sourceLanguage: string | null;
 	title: string;
 	titleEn: string | null;
-	description: string | null;
-	descriptionEn: string | null;
+	summary: string | null;
+	summaryEn: string | null;
 	rank?: number;
 	showRank?: boolean;
 }
@@ -19,17 +19,17 @@ const {
 	sourceLanguage,
 	title,
 	titleEn,
-	description,
-	descriptionEn,
+	summary,
+	summaryEn,
 	rank,
 	showRank = false,
 } = Astro.props;
 
 const hasOriginalLanguage = sourceLanguage && sourceLanguage.toLowerCase() !== "en";
 const defaultTitle = titleEn || title;
-const defaultDescription = descriptionEn || description || "";
+const defaultSummary = summaryEn || summary || "";
 const originalTitle = hasOriginalLanguage ? title : defaultTitle;
-const originalDescription = hasOriginalLanguage ? description : defaultDescription;
+const originalSummary = hasOriginalLanguage ? summary : defaultSummary;
 ---
 
 <feed-item-card class="block">
@@ -76,8 +76,8 @@ const originalDescription = hasOriginalLanguage ? description : defaultDescripti
 
 			<div class="space-y-2">
 				<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 line-clamp-3">
-					<span data-desc-en>{defaultDescription}</span>
-					<span data-desc-original class="hidden">{originalDescription}</span>
+					<span data-summary-en>{defaultSummary}</span>
+					<span data-summary-original class="hidden">{originalSummary}</span>
 				</p>
 			</div>
 
@@ -121,11 +121,11 @@ const originalDescription = hasOriginalLanguage ? description : defaultDescripti
 
 			const titleEn = this.querySelector("[data-title-en]");
 			const titleOriginal = this.querySelector("[data-title-original]");
-			const descEn = this.querySelector("[data-desc-en]");
-			const descOriginal = this.querySelector("[data-desc-original]");
+			const summaryEn = this.querySelector("[data-summary-en]");
+			const summaryOriginal = this.querySelector("[data-summary-original]");
 			const langLabel = this.querySelector("[data-lang-label]");
 
-			if (!titleEn || !titleOriginal || !descEn || !descOriginal || !langLabel) return;
+			if (!titleEn || !titleOriginal || !summaryEn || !summaryOriginal || !langLabel) return;
 
 			toggleButton.addEventListener("click", () => {
 				this.#isEnglish = !this.#isEnglish;
@@ -133,13 +133,13 @@ const originalDescription = hasOriginalLanguage ? description : defaultDescripti
 				if (this.#isEnglish) {
 					titleEn.classList.remove("hidden");
 					titleOriginal.classList.add("hidden");
-					descEn.classList.remove("hidden");
-					descOriginal.classList.add("hidden");
+					summaryEn.classList.remove("hidden");
+					summaryOriginal.classList.add("hidden");
 				} else {
 					titleEn.classList.add("hidden");
 					titleOriginal.classList.remove("hidden");
-					descEn.classList.add("hidden");
-					descOriginal.classList.remove("hidden");
+					summaryEn.classList.add("hidden");
+					summaryOriginal.classList.remove("hidden");
 				}
 			});
 		}

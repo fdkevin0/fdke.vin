@@ -28,8 +28,8 @@ export interface FeedItemSummary {
 	visibleUntil: string | null;
 	clickCount: number;
 	sourceLanguage: string | null;
-	description: string | null;
-	descriptionEn: string | null;
+	summary: string | null;
+	summaryEn: string | null;
 	aiStatus: string;
 	createdAt: string;
 	updatedAt: string;
@@ -46,8 +46,8 @@ export interface FeedReadingItem {
 	visibleUntil: string | null;
 	clickCount: number;
 	sourceLanguage: string | null;
-	descriptionEn: string | null;
-	description: string | null;
+	summaryEn: string | null;
+	summary: string | null;
 }
 
 export interface FeedFetchMessage {
@@ -80,8 +80,7 @@ export interface ParsedFeedEntry {
 	url: string;
 	publishedAt: string | null;
 	author: string | null;
-	content: string;
-	excerpt: string | null;
+	summary: string | null;
 }
 
 export interface FeedSourceInput {
@@ -99,5 +98,5 @@ export interface FeedSourceCreateInput {
 export interface AiTranslationResult {
 	language: string | null;
 	titleEn: string;
-	descriptionEn: string;
+	summaryEn: string;
 }

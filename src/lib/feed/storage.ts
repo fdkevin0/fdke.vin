@@ -36,8 +36,8 @@ interface FeedItemRow {
 	visible_until: string | null;
 	click_count: number;
 	source_language: string | null;
-	description: string | null;
-	description_en: string | null;
+	summary: string | null;
+	summary_en: string | null;
 	ai_status: string;
 	created_at: string;
 	updated_at: string;
@@ -54,8 +54,8 @@ interface FeedReadingRow {
 	visible_until: string | null;
 	click_count: number;
 	source_language: string | null;
-	description_en: string | null;
-	description: string | null;
+	summary_en: string | null;
+	summary: string | null;
 }
 
 export async function listFeedSources(env: FeedEnv): Promise<FeedSource[]> {
@@ -182,7 +182,7 @@ export async function listRecentFeedItems(env: FeedEnv, limit = 50): Promise<Fee
 	const result = await env.DATABASE.prepare(
 		`SELECT items.id, items.feed_id, feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at,
 		 items.visible_until, items.click_count,
-		 items.source_language, items.description, items.description_en, items.ai_status, items.created_at, items.updated_at
+		 items.source_language, items.summary, items.summary_en, items.ai_status, items.created_at, items.updated_at
 		 FROM rss_feed_items AS items
 		 JOIN rss_feeds AS feeds ON feeds.id = items.feed_id
 		 ORDER BY COALESCE(items.published_at, items.created_at) DESC
@@ -198,7 +198,7 @@ export async function countFailedFeedItemsForAiRetry(env: FeedEnv): Promise<numb
 	const row = await env.DATABASE.prepare(
 		`SELECT COUNT(*) AS total
 		 FROM rss_feed_items
-		 WHERE ai_status = 'failed' AND description IS NOT NULL AND TRIM(description) != ''`,
+		 WHERE ai_status = 'failed' AND summary IS NOT NULL AND TRIM(summary) != ''`,
 	).first<{ total: number }>();
 
 	return Number(row?.total ?? 0);
@@ -208,7 +208,7 @@ export async function retryFailedFeedItemsAi(env: FeedEnv): Promise<number> {
 	const result = await env.DATABASE.prepare(
 		`SELECT id
 		 FROM rss_feed_items
-		 WHERE ai_status = 'failed' AND description IS NOT NULL AND TRIM(description) != ''`,
+		 WHERE ai_status = 'failed' AND summary IS NOT NULL AND TRIM(summary) != ''`,
 	).all<{ id: string }>();
 
 	const items = result.results ?? [];
@@ -239,7 +239,7 @@ export async function retryFailedFeedItemsAi(env: FeedEnv): Promise<number> {
 export async function listVisibleFeedItems(env: FeedEnv): Promise<FeedReadingItem[]> {
 	const result = await env.DATABASE.prepare(
 		`SELECT items.id AS item_id, items.feed_id, feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at,
-		 items.visible_until, items.click_count, items.source_language, items.description_en, items.description
+		 items.visible_until, items.click_count, items.source_language, items.summary_en, items.summary
 		 FROM rss_feed_items AS items
 		 JOIN rss_feeds AS feeds ON feeds.id = items.feed_id
 		 WHERE datetime(COALESCE(items.visible_until, datetime(items.created_at, '+24 hours'))) > datetime('now')
@@ -258,8 +258,8 @@ export async function listVisibleFeedItems(env: FeedEnv): Promise<FeedReadingIte
 		visibleUntil: row.visible_until,
 		clickCount: Number(row.click_count ?? 0),
 		sourceLanguage: row.source_language,
-		descriptionEn: row.description_en,
-		description: row.description,
+		summaryEn: row.summary_en,
+		summary: row.summary,
 	}));
 }
 
@@ -353,48 +353,47 @@ export async function upsertFeedEntry(
 	const now = new Date().toISOString();
 	const guidHash = await sha256(`${options.feedId}:${options.entry.id}`);
 	const itemId = guidHash;
-	const description = options.entry.content.trim() || null;
-	const hasDescription = Boolean(description);
+	const summary = options.entry.summary?.trim() || null;
+	const hasSummary = Boolean(summary);
 
 	await env.DATABASE.prepare(
 		`INSERT INTO rss_feed_items (
-		 id, feed_id, guid_hash, title, title_en, url, author, published_at, excerpt,
-		 source_language, description, description_en, ai_status, visible_until, click_count,
+		 id, feed_id, guid_hash, title, title_en, url, author, published_at,
+		 source_language, summary, summary_en, ai_status, visible_until, click_count,
 		 created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		 title = excluded.title,
 		 url = excluded.url,
 		 author = excluded.author,
 		 published_at = excluded.published_at,
-		 excerpt = excluded.excerpt,
 		 source_language = CASE
 			WHEN rss_feed_items.title != excluded.title
-				OR COALESCE(rss_feed_items.description, '') != COALESCE(excluded.description, '')
+				OR COALESCE(rss_feed_items.summary, '') != COALESCE(excluded.summary, '')
 			THEN NULL
 			ELSE rss_feed_items.source_language
 		 END,
-		 description = excluded.description,
+		 summary = excluded.summary,
 		 title_en = CASE
 			WHEN rss_feed_items.title != excluded.title
-				OR COALESCE(rss_feed_items.description, '') != COALESCE(excluded.description, '')
+				OR COALESCE(rss_feed_items.summary, '') != COALESCE(excluded.summary, '')
 			THEN NULL
 			ELSE rss_feed_items.title_en
 		 END,
-		 description_en = CASE
+		 summary_en = CASE
 			WHEN rss_feed_items.title != excluded.title
-				OR COALESCE(rss_feed_items.description, '') != COALESCE(excluded.description, '')
+				OR COALESCE(rss_feed_items.summary, '') != COALESCE(excluded.summary, '')
 			THEN NULL
-			ELSE rss_feed_items.description_en
+			ELSE rss_feed_items.summary_en
 		 END,
 		 visible_until = COALESCE(rss_feed_items.visible_until, excluded.visible_until),
 		 updated_at = excluded.updated_at,
 		 ai_status = CASE
-			WHEN excluded.description IS NULL OR TRIM(excluded.description) = '' THEN 'skipped'
+			WHEN excluded.summary IS NULL OR TRIM(excluded.summary) = '' THEN 'skipped'
 			WHEN rss_feed_items.title != excluded.title
-				OR COALESCE(rss_feed_items.description, '') != COALESCE(excluded.description, '')
+				OR COALESCE(rss_feed_items.summary, '') != COALESCE(excluded.summary, '')
 			THEN 'pending'
-			WHEN rss_feed_items.description_en IS NOT NULL THEN rss_feed_items.ai_status
+			WHEN rss_feed_items.summary_en IS NOT NULL THEN rss_feed_items.ai_status
 			ELSE 'pending'
 		 END`,
 	)
@@ -407,9 +406,8 @@ export async function upsertFeedEntry(
 			options.entry.url,
 			options.entry.author,
 			options.entry.publishedAt,
-			options.entry.excerpt,
-			description,
-			hasDescription ? "pending" : "skipped",
+			summary,
+			hasSummary ? "pending" : "skipped",
 			new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 			0,
 			now,
@@ -427,21 +425,21 @@ export async function upsertFeedEntry(
 export async function getFeedItemForAi(
 	env: FeedEnv,
 	itemId: string,
-): Promise<{ itemId: string; title: string; url: string; description: string | null } | null> {
+): Promise<{ itemId: string; title: string; url: string; summary: string | null } | null> {
 	const row = await env.DATABASE.prepare(
-		`SELECT id, title, url, description
+		`SELECT id, title, url, summary
 		 FROM rss_feed_items
 		 WHERE id = ?`,
 	)
 		.bind(itemId)
-		.first<{ id: string; title: string; url: string; description: string | null }>();
+		.first<{ id: string; title: string; url: string; summary: string | null }>();
 
 	return row
 		? {
 				itemId: row.id,
 				title: row.title,
 				url: row.url,
-				description: row.description,
+				summary: row.summary,
 			}
 		: null;
 }
@@ -471,19 +469,19 @@ export async function recordFeedItemAiResult(
 		itemId: string;
 		sourceLanguage: string | null;
 		titleEn: string | null;
-		descriptionEn: string;
+		summaryEn: string;
 	},
 ): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DATABASE.prepare(
 		`UPDATE rss_feed_items
-		 SET source_language = ?, title_en = ?, description_en = ?, ai_status = 'complete', updated_at = ?
+		 SET source_language = ?, title_en = ?, summary_en = ?, ai_status = 'complete', updated_at = ?
 		 WHERE id = ?`,
 	)
 		.bind(
 			options.sourceLanguage,
 			options.titleEn,
-			options.descriptionEn,
+			options.summaryEn,
 			now,
 			options.itemId,
 		)
@@ -533,8 +531,8 @@ function mapFeedItemRow(row: FeedItemRow): FeedItemSummary {
 		visibleUntil: row.visible_until,
 		clickCount: Number(row.click_count ?? 0),
 		sourceLanguage: row.source_language,
-		description: row.description,
-		descriptionEn: row.description_en,
+		summary: row.summary,
+		summaryEn: row.summary_en,
 		aiStatus: row.ai_status,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
