@@ -5,7 +5,7 @@ import { getErrorMessage, jsonError, jsonNoStore, logApiError } from "@/lib/api/
 import { requireAccessUser } from "@/lib/api/tokens/request";
 import { resolveFeedSourceMetadata } from "@/lib/feed/extractor";
 import { readCreateFeedSourceInput } from "@/lib/feed/request";
-import { getFeedEnv } from "@/lib/feed/runtime";
+import { getDayUtc, getFeedEnv } from "@/lib/feed/runtime";
 import { createFeedSource, listFeedSources } from "@/lib/feed/storage";
 
 export const GET: APIRoute = async ({ locals }) => {
@@ -48,6 +48,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
 			},
 			user,
 		);
+		if (feed.isActive) {
+			await env.RSS_FETCH_QUEUE.send({
+				runId: crypto.randomUUID(),
+				dayUtc: getDayUtc(),
+				feedId: feed.id,
+				feedUrl: feed.feedUrl,
+				feedTitle: feed.title,
+			});
+		}
 		return jsonNoStore({ feed }, { status: 201 });
 	} catch (error) {
 		const message = getErrorMessage(error, "Failed to create feed source");

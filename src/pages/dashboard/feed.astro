@@ -119,14 +119,6 @@ const user = Astro.locals.user;
 							class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
 						/>
 					</label>
-					<div class="grid gap-3 sm:grid-cols-2">
-						<label
-							class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
-						>
-							<input name="isActive" type="checkbox" checked />
-							<span>Active</span>
-						</label>
-					</div>
 					<button
 						type="submit"
 						class="w-full rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
@@ -169,7 +161,6 @@ const user = Astro.locals.user;
 			const data = new FormData(form);
 			return {
 				feedUrl: String(data.get("feedUrl") || "").trim(),
-				isActive: data.get("isActive") === "on",
 			};
 		}
 
@@ -320,12 +311,9 @@ const user = Astro.locals.user;
 				return;
 			}
 			form.reset();
-			for (const checkbox of form.querySelectorAll('input[type="checkbox"]')) {
-				if (checkbox instanceof HTMLInputElement) checkbox.checked = true;
-			}
 			closeCreateDialog();
 			setFeedback(
-				`Feed source added${data.feed?.title ? `: ${data.feed.title}` : ""}. Metadata fetched from the feed URL.`,
+				`Feed source added${data.feed?.title ? `: ${data.feed.title}` : ""}. Metadata fetched and the feed was queued for ingestion.`,
 			);
 			await loadAll();
 		});
