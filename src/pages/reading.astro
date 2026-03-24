@@ -23,7 +23,7 @@ import Layout from "@/layouts/Base.astro";
 
 		<div id="reading-feedback" class="hidden rounded-md px-4 py-3 text-sm"></div>
 
-		<div id="reading-tabs" class="hidden mt-6 flex-wrap gap-2"></div>
+		<div id="reading-tabs" class="hidden mt-6 flex-wrap gap-2 py-1"></div>
 
 		<div
 			id="reading-loading"
@@ -148,8 +148,8 @@ import Layout from "@/layouts/Base.astro";
 						const originalSummary = hasOriginalLanguage ? item.summary : defaultSummary;
 						const pubDate = formatPublishedAt(item.publishedAt);
 
-						return `<feed-item-card class="block">
-							<article data-item-id="${escapeHtml(item.itemId)}" class="inline-grid rounded-md bg-global-text/5 px-4 py-3">
+						return `<feed-item-card class="block w-full">
+							<article data-item-id="${escapeHtml(item.itemId)}" class="grid w-full rounded-md bg-global-text/5 px-4 py-3">
 								<div class="flex flex-col gap-4">
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0 flex-1 space-y-1">
