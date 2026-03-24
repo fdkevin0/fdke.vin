@@ -59,9 +59,6 @@ export interface FeedFetchMessage {
 
 export interface FeedAiMessage {
 	itemId: string;
-	contentKey: string;
-	title: string;
-	url: string;
 }
 
 export interface FeedRunState {
@@ -101,7 +98,5 @@ export interface FeedSourceCreateInput {
 export interface AiTranslationResult {
 	language: string | null;
 	titleEn: string;
-	descriptionOriginal: string;
 	descriptionEn: string;
-	rawResponse: string;
 }

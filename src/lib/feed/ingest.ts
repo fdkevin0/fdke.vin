@@ -1,7 +1,6 @@
 import { getErrorMessage } from "@/lib/api/http";
 import { extractFeedDocument, FEED_USER_AGENT } from "@/lib/feed/extractor";
 import type { FeedEnv } from "@/lib/feed/runtime";
-import { createR2Key, getDayUtc } from "@/lib/feed/runtime";
 import {
 	queueAiMessages,
 	recordFeedFetchFailure,
@@ -32,11 +31,6 @@ export async function processFeedFetchMessage(
 		}
 
 		const rawFeed = await response.text();
-		const rawFeedKey = createR2Key(`rss/raw/${message.feedId}`, "latest.xml");
-		await env.RSS_BUCKET.put(rawFeedKey, rawFeed, {
-			httpMetadata: { contentType: response.headers.get("content-type") || "application/xml" },
-		});
-
 		const entries = parseFeedEntries(rawFeed, {
 			contentType: response.headers.get("content-type"),
 			baseUrl: message.feedUrl,
@@ -44,36 +38,14 @@ export async function processFeedFetchMessage(
 		const aiMessages: FeedAiMessage[] = [];
 
 		for (const entry of entries) {
-			const content = resolveEntryContent(entry);
-			const contentKey = content
-				? createR2Key(
-						`rss/items/${getDayUtc()}`,
-						`${await digestForKey(message.feedId, entry.id)}.md`,
-					)
-				: null;
-
-			if (contentKey && content) {
-				await env.RSS_BUCKET.put(contentKey, content, {
-					httpMetadata: { contentType: "text/markdown; charset=utf-8" },
-				});
-			}
-
 			const saved = await upsertFeedEntry(env, {
 				feedId: message.feedId,
-				rawFeedKey,
-				contentKey,
-				entry: {
-					...entry,
-					content: content || entry.content,
-				},
+				entry,
 			});
 
-			if (saved.contentKey && (content || entry.content).trim().length > 160) {
+			if (saved.shouldQueueAi) {
 				aiMessages.push({
 					itemId: saved.itemId,
-					contentKey: saved.contentKey,
-					title: entry.title,
-					url: entry.url,
 				});
 			}
 		}
@@ -135,10 +107,6 @@ function parseFeedEntries(
 			excerpt: truncate(content, 280),
 		};
 	});
-}
-
-function resolveEntryContent(entry: ParsedFeedEntry): string | null {
-	return entry.content || null;
 }
 
 function stripMarkup(input: string): string {
@@ -217,10 +185,4 @@ function truncate(value: string, length: number): string | null {
 		return null;
 	}
 	return normalized.length > length ? `${normalized.slice(0, length - 1)}…` : normalized;
-}
-
-async function digestForKey(feedId: string, entryId: string): Promise<string> {
-	const input = `${feedId}:${entryId}`;
-	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }

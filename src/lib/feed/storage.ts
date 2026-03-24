@@ -41,7 +41,6 @@ interface FeedItemRow {
 	ai_status: string;
 	created_at: string;
 	updated_at: string;
-	content_markdown_r2_key?: string | null;
 }
 
 interface FeedReadingRow {
@@ -182,8 +181,7 @@ export async function listRecentFeedItems(env: FeedEnv, limit = 50): Promise<Fee
 	const result = await env.DATABASE.prepare(
 		`SELECT items.id, items.feed_id, feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at,
 		 items.visible_until, items.click_count,
-		 items.source_language, items.description, items.description_en, items.ai_status, items.created_at, items.updated_at,
-		 items.content_markdown_r2_key
+		 items.source_language, items.description, items.description_en, items.ai_status, items.created_at, items.updated_at
 		 FROM rss_feed_items AS items
 		 JOIN rss_feeds AS feeds ON feeds.id = items.feed_id
 		 ORDER BY COALESCE(items.published_at, items.created_at) DESC
@@ -199,7 +197,7 @@ export async function countFailedFeedItemsForAiRetry(env: FeedEnv): Promise<numb
 	const row = await env.DATABASE.prepare(
 		`SELECT COUNT(*) AS total
 		 FROM rss_feed_items
-		 WHERE ai_status = 'failed' AND content_markdown_r2_key IS NOT NULL`,
+		 WHERE ai_status = 'failed' AND description IS NOT NULL AND TRIM(description) != ''`,
 	).first<{ total: number }>();
 
 	return Number(row?.total ?? 0);
@@ -207,10 +205,10 @@ export async function countFailedFeedItemsForAiRetry(env: FeedEnv): Promise<numb
 
 export async function retryFailedFeedItemsAi(env: FeedEnv): Promise<number> {
 	const result = await env.DATABASE.prepare(
-		`SELECT id, content_markdown_r2_key, title, url
+		`SELECT id
 		 FROM rss_feed_items
-		 WHERE ai_status = 'failed' AND content_markdown_r2_key IS NOT NULL`,
-	).all<{ id: string; content_markdown_r2_key: string; title: string; url: string }>();
+		 WHERE ai_status = 'failed' AND description IS NOT NULL AND TRIM(description) != ''`,
+	).all<{ id: string }>();
 
 	const items = result.results ?? [];
 	if (items.length === 0) {
@@ -231,9 +229,6 @@ export async function retryFailedFeedItemsAi(env: FeedEnv): Promise<number> {
 		env,
 		items.map((item) => ({
 			itemId: item.id,
-			contentKey: item.content_markdown_r2_key,
-			title: item.title,
-			url: item.url,
 		})),
 	);
 
@@ -350,36 +345,55 @@ export async function upsertFeedEntry(
 	env: FeedEnv,
 	options: {
 		feedId: string;
-		rawFeedKey: string;
-		contentKey: string | null;
 		entry: ParsedFeedEntry;
 	},
-): Promise<{ itemId: string; contentKey: string | null }> {
+): Promise<{ itemId: string; shouldQueueAi: boolean }> {
 	const now = new Date().toISOString();
 	const guidHash = await sha256(`${options.feedId}:${options.entry.id}`);
 	const itemId = guidHash;
+	const description = options.entry.content.trim() || null;
+	const hasDescription = Boolean(description);
 
 	await env.DATABASE.prepare(
 		`INSERT INTO rss_feed_items (
 		 id, feed_id, guid_hash, title, title_en, url, author, published_at, excerpt,
-		 raw_feed_r2_key, content_markdown_r2_key, source_language, description, description_en, ai_status, visible_until, click_count,
+		 source_language, description, description_en, ai_status, visible_until, click_count,
 		 created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		 title = excluded.title,
-		 title_en = COALESCE(excluded.title_en, rss_feed_items.title_en),
 		 url = excluded.url,
 		 author = excluded.author,
 		 published_at = excluded.published_at,
 		 excerpt = excluded.excerpt,
-		 raw_feed_r2_key = excluded.raw_feed_r2_key,
-		 content_markdown_r2_key = COALESCE(excluded.content_markdown_r2_key, rss_feed_items.content_markdown_r2_key),
+		 source_language = CASE
+			WHEN rss_feed_items.title != excluded.title
+				OR COALESCE(rss_feed_items.description, '') != COALESCE(excluded.description, '')
+			THEN NULL
+			ELSE rss_feed_items.source_language
+		 END,
+		 description = excluded.description,
+		 title_en = CASE
+			WHEN rss_feed_items.title != excluded.title
+				OR COALESCE(rss_feed_items.description, '') != COALESCE(excluded.description, '')
+			THEN NULL
+			ELSE rss_feed_items.title_en
+		 END,
+		 description_en = CASE
+			WHEN rss_feed_items.title != excluded.title
+				OR COALESCE(rss_feed_items.description, '') != COALESCE(excluded.description, '')
+			THEN NULL
+			ELSE rss_feed_items.description_en
+		 END,
 		 visible_until = COALESCE(rss_feed_items.visible_until, excluded.visible_until),
 		 updated_at = excluded.updated_at,
 		 ai_status = CASE
+			WHEN excluded.description IS NULL OR TRIM(excluded.description) = '' THEN 'skipped'
+			WHEN rss_feed_items.title != excluded.title
+				OR COALESCE(rss_feed_items.description, '') != COALESCE(excluded.description, '')
+			THEN 'pending'
 			WHEN rss_feed_items.description_en IS NOT NULL THEN rss_feed_items.ai_status
-			WHEN excluded.content_markdown_r2_key IS NOT NULL THEN 'pending'
-			ELSE rss_feed_items.ai_status
+			ELSE 'pending'
 		 END`,
 	)
 		.bind(
@@ -392,9 +406,8 @@ export async function upsertFeedEntry(
 			options.entry.author,
 			options.entry.publishedAt,
 			options.entry.excerpt,
-			options.rawFeedKey,
-			options.contentKey,
-			options.contentKey ? "pending" : "skipped",
+			description,
+			hasDescription ? "pending" : "skipped",
 			new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 			0,
 			now,
@@ -402,31 +415,33 @@ export async function upsertFeedEntry(
 		)
 		.run();
 
-	return { itemId, contentKey: options.contentKey };
+	const row = await env.DATABASE.prepare(
+		"SELECT ai_status FROM rss_feed_items WHERE id = ?",
+	).bind(itemId).first<{ ai_status: string }>();
+
+	return { itemId, shouldQueueAi: row?.ai_status === "pending" };
 }
 
 export async function getFeedItemForAi(
 	env: FeedEnv,
 	itemId: string,
-): Promise<{ itemId: string; contentKey: string; title: string; url: string } | null> {
+): Promise<{ itemId: string; title: string; url: string; description: string | null } | null> {
 	const row = await env.DATABASE.prepare(
-		`SELECT id, title, url, content_markdown_r2_key
+		`SELECT id, title, url, description
 		 FROM rss_feed_items
 		 WHERE id = ?`,
 	)
 		.bind(itemId)
-		.first<{ id: string; title: string; url: string; content_markdown_r2_key: string | null }>();
+		.first<{ id: string; title: string; url: string; description: string | null }>();
 
-	if (!row?.content_markdown_r2_key) {
-		return null;
-	}
-
-	return {
-		itemId: row.id,
-		contentKey: row.content_markdown_r2_key,
-		title: row.title,
-		url: row.url,
-	};
+	return row
+		? {
+				itemId: row.id,
+				title: row.title,
+				url: row.url,
+				description: row.description,
+			}
+		: null;
 }
 
 export async function markFeedItemAiProcessing(env: FeedEnv, itemId: string): Promise<void> {
@@ -440,15 +455,11 @@ export async function markFeedItemAiProcessing(env: FeedEnv, itemId: string): Pr
 export async function markFeedItemAiFailed(
 	env: FeedEnv,
 	itemId: string,
-	error: string,
 ): Promise<void> {
-	const now = new Date().toISOString();
 	await env.DATABASE.prepare(
-		`UPDATE rss_feed_items
-		 SET ai_status = 'failed', description = ?, description_en = ?, updated_at = ?
-		 WHERE id = ?`,
+		"UPDATE rss_feed_items SET ai_status = 'failed', updated_at = ? WHERE id = ?",
 	)
-		.bind(error.slice(0, 500), null, now, itemId)
+		.bind(new Date().toISOString(), itemId)
 		.run();
 }
 
@@ -458,23 +469,19 @@ export async function recordFeedItemAiResult(
 		itemId: string;
 		sourceLanguage: string | null;
 		titleEn: string | null;
-		description: string;
 		descriptionEn: string;
-		aiResponseKey: string | null;
 	},
 ): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DATABASE.prepare(
 		`UPDATE rss_feed_items
-		 SET source_language = ?, title_en = ?, description = ?, description_en = ?, ai_status = 'complete', ai_response_r2_key = ?, updated_at = ?
+		 SET source_language = ?, title_en = ?, description_en = ?, ai_status = 'complete', updated_at = ?
 		 WHERE id = ?`,
 	)
 		.bind(
 			options.sourceLanguage,
 			options.titleEn,
-			options.description,
 			options.descriptionEn,
-			options.aiResponseKey,
 			now,
 			options.itemId,
 		)
