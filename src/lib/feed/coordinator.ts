@@ -76,7 +76,6 @@ export async function startRun(
 					dayUtc,
 					feedId: feed.id,
 					feedUrl: feed.feedUrl,
-					fetchMarkdown: feed.fetchMarkdown,
 					feedTitle: feed.title,
 				},
 			})),

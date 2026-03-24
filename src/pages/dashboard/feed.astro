@@ -131,12 +131,6 @@ const user = Astro.locals.user;
 							<input name="isActive" type="checkbox" checked />
 							<span>Active</span>
 						</label>
-						<label
-							class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
-						>
-							<input name="fetchMarkdown" type="checkbox" checked />
-							<span>Fetch article markdown/text</span>
-						</label>
 					</div>
 					<button
 						type="submit"
@@ -182,7 +176,6 @@ const user = Astro.locals.user;
 			return {
 				feedUrl: String(data.get("feedUrl") || "").trim(),
 				isActive: data.get("isActive") === "on",
-				fetchMarkdown: data.get("fetchMarkdown") === "on",
 			};
 		}
 
@@ -193,7 +186,6 @@ const user = Astro.locals.user;
 				feedUrl: String(data.get("feedUrl") || "").trim(),
 				siteUrl: String(data.get("siteUrl") || "").trim() || null,
 				isActive: data.get("isActive") === "on",
-				fetchMarkdown: data.get("fetchMarkdown") === "on",
 			};
 		}
 
@@ -238,7 +230,6 @@ const user = Astro.locals.user;
 								<div class="flex flex-wrap items-center gap-2">
 									<h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">${escapeHtml(feed.title)}</h3>
 									<span class="rounded px-2 py-1 text-[11px] ${feed.isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"}">${feed.isActive ? "Active" : "Paused"}</span>
-									<span class="rounded px-2 py-1 text-[11px] ${feed.fetchMarkdown ? "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" : "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"}">${feed.fetchMarkdown ? "Fetch article text" : "Feed-only"}</span>
 								</div>
 								<div class="space-y-1 text-xs text-zinc-600 dark:text-zinc-300">
 									<div><span class="font-medium">Feed:</span> <a href="${escapeHtml(feed.feedUrl)}" target="_blank" rel="noopener noreferrer" class="underline decoration-zinc-300 underline-offset-4">${escapeHtml(feed.feedUrl)}</a></div>
@@ -267,10 +258,6 @@ const user = Astro.locals.user;
 									<label class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
 										<input name="isActive" type="checkbox" ${feed.isActive ? "checked" : ""} />
 										<span>Active</span>
-									</label>
-									<label class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
-										<input name="fetchMarkdown" type="checkbox" ${feed.fetchMarkdown ? "checked" : ""} />
-										<span>Fetch article text</span>
 									</label>
 								</div>
 								<div class="flex flex-wrap gap-2">

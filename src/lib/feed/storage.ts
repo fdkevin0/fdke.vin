@@ -18,7 +18,6 @@ interface FeedSourceRow {
 	feed_url: string;
 	site_url: string | null;
 	is_active: number;
-	fetch_markdown: number;
 	last_fetched_at: string | null;
 	last_error: string | null;
 	created_at: string;
@@ -60,7 +59,7 @@ interface RecommendationRow {
 
 export async function listFeedSources(env: FeedEnv): Promise<FeedSource[]> {
 	const result = await env.DATABASE.prepare(
-		`SELECT id, title, feed_url, site_url, is_active, fetch_markdown, last_fetched_at, last_error,
+		`SELECT id, title, feed_url, site_url, is_active, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email
 		 FROM rss_feeds
 		 ORDER BY updated_at DESC`,
@@ -71,7 +70,7 @@ export async function listFeedSources(env: FeedEnv): Promise<FeedSource[]> {
 
 export async function listActiveFeedSources(env: FeedEnv): Promise<FeedSource[]> {
 	const result = await env.DATABASE.prepare(
-		`SELECT id, title, feed_url, site_url, is_active, fetch_markdown, last_fetched_at, last_error,
+		`SELECT id, title, feed_url, site_url, is_active, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email
 		 FROM rss_feeds
 		 WHERE is_active = 1
@@ -91,9 +90,9 @@ export async function createFeedSource(
 
 	await env.DATABASE.prepare(
 		`INSERT INTO rss_feeds (
-		 id, title, feed_url, site_url, is_active, fetch_markdown, last_fetched_at, last_error,
+		 id, title, feed_url, site_url, is_active, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email
-		) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)`,
 	)
 		.bind(
 			id,
@@ -101,7 +100,6 @@ export async function createFeedSource(
 			input.feedUrl,
 			input.siteUrl,
 			input.isActive ? 1 : 0,
-			input.fetchMarkdown ? 1 : 0,
 			now,
 			now,
 			user.email,
@@ -135,7 +133,7 @@ export async function updateFeedSource(
 	const now = new Date().toISOString();
 	await env.DATABASE.prepare(
 		`UPDATE rss_feeds
-		 SET title = ?, feed_url = ?, site_url = ?, is_active = ?, fetch_markdown = ?, updated_at = ?, updated_by_email = ?
+		 SET title = ?, feed_url = ?, site_url = ?, is_active = ?, updated_at = ?, updated_by_email = ?
 		 WHERE id = ?`,
 	)
 		.bind(
@@ -143,7 +141,6 @@ export async function updateFeedSource(
 			input.feedUrl,
 			input.siteUrl,
 			input.isActive ? 1 : 0,
-			input.fetchMarkdown ? 1 : 0,
 			now,
 			user.email,
 			id,
@@ -170,7 +167,7 @@ export async function deleteFeedSource(env: FeedEnv, id: string): Promise<boolea
 
 export async function getFeedSourceById(env: FeedEnv, id: string): Promise<FeedSource | null> {
 	const row = await env.DATABASE.prepare(
-		`SELECT id, title, feed_url, site_url, is_active, fetch_markdown, last_fetched_at, last_error,
+		`SELECT id, title, feed_url, site_url, is_active, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email
 		 FROM rss_feeds WHERE id = ?`,
 	)
@@ -469,7 +466,6 @@ function mapFeedSourceRow(row: FeedSourceRow): FeedSource {
 		feedUrl: row.feed_url,
 		siteUrl: row.site_url,
 		isActive: Boolean(row.is_active),
-		fetchMarkdown: Boolean(row.fetch_markdown),
 		lastFetchedAt: row.last_fetched_at,
 		lastError: row.last_error,
 		createdAt: row.created_at,

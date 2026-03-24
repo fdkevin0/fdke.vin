@@ -4,7 +4,6 @@ CREATE TABLE IF NOT EXISTS rss_feeds (
 	feed_url TEXT NOT NULL UNIQUE,
 	site_url TEXT,
 	is_active INTEGER NOT NULL DEFAULT 1,
-	fetch_markdown INTEGER NOT NULL DEFAULT 1,
 	last_fetched_at TEXT,
 	last_error TEXT,
 	created_at TEXT NOT NULL,

@@ -6,7 +6,6 @@ interface RawFeedSourceInput {
 	feedUrl?: unknown;
 	siteUrl?: unknown;
 	isActive?: unknown;
-	fetchMarkdown?: unknown;
 }
 
 export async function readCreateFeedSourceInput(
@@ -15,7 +14,6 @@ export async function readCreateFeedSourceInput(
 	const body = (await request.json()) as RawFeedSourceInput;
 	const feedUrl = normalizeUrl(body.feedUrl);
 	const isActive = body.isActive === undefined ? true : Boolean(body.isActive);
-	const fetchMarkdown = body.fetchMarkdown === undefined ? true : Boolean(body.fetchMarkdown);
 
 	if (!feedUrl) {
 		return jsonError(400, "A valid feedUrl is required");
@@ -24,7 +22,6 @@ export async function readCreateFeedSourceInput(
 	return {
 		feedUrl,
 		isActive,
-		fetchMarkdown,
 	};
 }
 
@@ -34,7 +31,6 @@ export async function readFeedSourceInput(request: Request): Promise<FeedSourceI
 	const feedUrl = normalizeUrl(body.feedUrl);
 	const siteUrl = normalizeOptionalUrl(body.siteUrl);
 	const isActive = body.isActive === undefined ? true : Boolean(body.isActive);
-	const fetchMarkdown = body.fetchMarkdown === undefined ? true : Boolean(body.fetchMarkdown);
 
 	if (!title) {
 		return jsonError(400, "Feed title is required");
@@ -53,7 +49,6 @@ export async function readFeedSourceInput(request: Request): Promise<FeedSourceI
 		feedUrl,
 		siteUrl,
 		isActive,
-		fetchMarkdown,
 	};
 }
 

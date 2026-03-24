@@ -44,7 +44,7 @@ export async function processFeedFetchMessage(
 		const aiMessages: FeedAiMessage[] = [];
 
 		for (const entry of entries) {
-			const content = await resolveEntryContent(entry, message.fetchMarkdown);
+			const content = resolveEntryContent(entry);
 			const contentKey = content
 				? createR2Key(
 						`rss/items/${getDayUtc()}`,
@@ -137,54 +137,8 @@ function parseFeedEntries(
 	});
 }
 
-async function resolveEntryContent(
-	entry: ParsedFeedEntry,
-	fetchMarkdown: boolean,
-): Promise<string | null> {
-	if (fetchMarkdown && entry.url) {
-		const fetched = await fetchRemoteMarkdown(entry.url);
-		if (fetched) {
-			return fetched;
-		}
-	}
-
+function resolveEntryContent(entry: ParsedFeedEntry): string | null {
 	return entry.content || null;
-}
-
-async function fetchRemoteMarkdown(url: string): Promise<string | null> {
-	try {
-		const response = await fetch(url, {
-			headers: {
-				"user-agent": FEED_USER_AGENT,
-				accept: "text/markdown, text/plain, text/html, application/xhtml+xml;q=0.9, */*;q=0.8",
-			},
-		});
-		if (!response.ok) {
-			return null;
-		}
-
-		const contentType = response.headers.get("content-type") || "";
-		const body = await response.text();
-		if (!body.trim()) {
-			return null;
-		}
-
-		if (
-			contentType.includes("markdown") ||
-			contentType.includes("text/plain") ||
-			/\.(md|markdown|mdx)(\?|$)/i.test(url)
-		) {
-			return normalizeMarkdown(body);
-		}
-
-		if (contentType.includes("html") || body.includes("<html") || body.includes("<article")) {
-			return normalizeMarkdown(stripMarkup(body));
-		}
-
-		return normalizeMarkdown(body);
-	} catch {
-		return null;
-	}
 }
 
 function stripMarkup(input: string): string {

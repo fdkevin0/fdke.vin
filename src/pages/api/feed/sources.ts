@@ -45,7 +45,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
 				feedUrl: input.feedUrl,
 				siteUrl: metadata.siteUrl,
 				isActive: input.isActive,
-				fetchMarkdown: input.fetchMarkdown,
 			},
 			user,
 		);
