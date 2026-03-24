@@ -12,8 +12,9 @@ const FEED_TRANSLATION_RESPONSE_SCHEMA = {
 	type: "object",
 	properties: {
 		language: {
-			type: ["string", "null"],
-			description: "Source language as a lowercase ISO-639-1 code, or null if unknown.",
+			type: "string",
+			description:
+				"Source language as a lowercase ISO-639-1 code. Return an empty string if unknown.",
 		},
 		title_en: {
 			type: "string",
@@ -88,7 +89,7 @@ async function translateContent(
 			{
 				role: "system",
 				content:
-					"You translate RSS item titles and summaries for a bilingual RSS dashboard. Detect the original language, translate into concise natural English, and preserve meaning. If the source language is English, keep the original title and summary. Return only fields that satisfy the provided JSON schema.",
+					"You translate RSS item titles and summaries for a bilingual RSS dashboard. Detect the original language, translate into concise natural English, and preserve meaning. If the source language is English, keep the original title and summary. Return only fields that satisfy the provided JSON schema. For language, return a lowercase ISO-639-1 code, or an empty string if unknown.",
 			},
 			{
 				role: "user",
@@ -126,7 +127,8 @@ async function translateContent(
 		response?.response || response?.result?.response || JSON.stringify(response ?? {});
 	const parsed = parseAiTranslationResponse(rawResponse);
 
-	const language = parsed.language ? parsed.language.trim().toLowerCase() : null;
+	const normalizedLanguage = parsed.language.trim().toLowerCase();
+	const language = normalizedLanguage || null;
 	const titleEn = parsed.title_en.trim() || title;
 	const summaryEn = parsed.summary_en.trim() || content;
 
@@ -142,7 +144,7 @@ async function translateContent(
 }
 
 function parseAiTranslationResponse(raw: string): {
-	language: string | null;
+	language: string;
 	title_en: string;
 	summary_en: string;
 } {
@@ -158,12 +160,7 @@ function parseAiTranslationResponse(raw: string): {
 	}
 
 	const candidate = parsed as Record<string, unknown>;
-	const language =
-		typeof candidate.language === "string"
-			? candidate.language
-			: candidate.language === null
-				? null
-				: undefined;
+	const language = typeof candidate.language === "string" ? candidate.language : undefined;
 	const titleEn = candidate.title_en;
 	const summaryEn = candidate.summary_en;
 
