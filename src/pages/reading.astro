@@ -9,37 +9,37 @@ import Layout from "@/layouts/Base.astro";
 			"A rolling reading list of feed posts that stay visible for 24 hours, extended for another 24 hours whenever you open them.",
 	}}
 >
-	<section class="space-y-8">
-		<div class="flex items-center justify-between gap-4">
-			<h1 class="title text-2xl md:text-3xl">Reading</h1>
+	<section>
+		<div class="mb-12 flex items-center justify-between gap-4">
+			<h1 class="title">Reading</h1>
 			<button
 				id="reading-refresh"
 				type="button"
-				class="inline-flex shrink-0 items-center rounded border border-zinc-300 px-3 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
+				class="cactus-link inline-flex shrink-0 items-center rounded-md bg-global-text/5 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-global-text/10 disabled:cursor-not-allowed disabled:opacity-60"
 			>
 				Refresh
 			</button>
 		</div>
 
-		<div id="reading-feedback" class="hidden rounded border px-4 py-3 text-sm"></div>
+		<div id="reading-feedback" class="hidden rounded-md px-4 py-3 text-sm"></div>
 
-		<div id="reading-tabs" class="hidden flex-wrap gap-2"></div>
+		<div id="reading-tabs" class="hidden mt-6 flex-wrap gap-2"></div>
 
 		<div
 			id="reading-loading"
-			class="rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+			class="mt-6 rounded-md bg-global-text/5 px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300"
 		>
 			Loading reading list...
 		</div>
 
 		<div
 			id="reading-empty"
-			class="hidden rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+			class="hidden mt-6 rounded-md bg-global-text/5 px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300"
 		>
 			No posts are currently in the reading window.
 		</div>
 
-		<div id="reading-list" class="grid gap-4"></div>
+		<div id="reading-list" class="mt-6 grid gap-8 text-start"></div>
 	</section>
 
 	<script is:inline>
@@ -70,7 +70,7 @@ import Layout from "@/layouts/Base.astro";
 			if (!readingFeedback) return;
 			readingFeedback.textContent = message;
 			readingFeedback.className =
-				"rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300";
+				"mt-6 rounded-md bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300";
 			readingFeedback.classList.remove("hidden");
 		}
 
@@ -91,6 +91,18 @@ import Layout from "@/layouts/Base.astro";
 			renderReading();
 		}
 
+		function formatPublishedAt(value) {
+			if (!value) return "Date unavailable";
+
+			return new Intl.DateTimeFormat("en-GB", {
+				day: "2-digit",
+				month: "2-digit",
+				year: "2-digit",
+				hour: "2-digit",
+				minute: "2-digit",
+			}).format(new Date(value));
+		}
+
 		function renderTabs(items) {
 			if (!readingTabs) return;
 
@@ -109,10 +121,10 @@ import Layout from "@/layouts/Base.astro";
 				.map((tab) => {
 					const isActive = tab.id === selectedFeedId;
 					const className = isActive
-						? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950"
-						: "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900";
+						? "bg-global-text text-global-bg"
+						: "bg-global-text/5 text-zinc-700 hover:bg-global-text/10 dark:text-zinc-300";
 
-					return `<button type="button" data-feed-tab="${escapeHtml(tab.id)}" class="rounded-full border px-3 py-1.5 text-xs tracking-[0.14em] uppercase transition ${className}">
+					return `<button type="button" data-feed-tab="${escapeHtml(tab.id)}" class="rounded-full px-3 py-1.5 text-xs tracking-[0.14em] uppercase transition ${className}">
 						${escapeHtml(tab.title)}
 					</button>`;
 				})
@@ -134,47 +146,41 @@ import Layout from "@/layouts/Base.astro";
 						const defaultSummary = item.summaryEn || item.summary || "";
 						const originalTitle = hasOriginalLanguage ? item.title : defaultTitle;
 						const originalSummary = hasOriginalLanguage ? item.summary : defaultSummary;
-						const pubDate = item.publishedAt
-							? new Date(item.publishedAt).toLocaleDateString(undefined, {
-									day: "numeric",
-									month: "short",
-									year: "numeric",
-								})
-							: "Date unavailable";
+						const pubDate = formatPublishedAt(item.publishedAt);
 
 						return `<feed-item-card class="block">
-							<article data-item-id="${escapeHtml(item.itemId)}" class="rounded border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600">
-								<div class="flex flex-col gap-3">
+							<article data-item-id="${escapeHtml(item.itemId)}" class="inline-grid rounded-md bg-global-text/5 px-4 py-3">
+								<div class="flex flex-col gap-4">
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0 flex-1 space-y-1">
 											<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">${escapeHtml(item.feedTitle)}</p>
-											<h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-												<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" data-reading-open class="hover:underline line-clamp-2">
+											<h2 class="title text-base">
+												<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" data-reading-open class="cactus-link line-clamp-2">
 													<span data-title-en>${escapeHtml(defaultTitle)}</span>
 													<span data-title-original class="hidden">${escapeHtml(originalTitle)}</span>
 												</a>
 											</h2>
 										</div>
-										${hasOriginalLanguage ? `<button type="button" data-lang-toggle data-original-language="${escapeHtml(item.sourceLanguage.toUpperCase())}" class="shrink-0 rounded border border-zinc-300 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800" title="Show ${escapeHtml(item.sourceLanguage.toUpperCase())}">
+										${hasOriginalLanguage ? `<button type="button" data-lang-toggle data-original-language="${escapeHtml(item.sourceLanguage.toUpperCase())}" class="shrink-0 rounded-md bg-global-bg/70 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-global-bg" title="Show ${escapeHtml(item.sourceLanguage.toUpperCase())}">
 											<span data-lang-label>${escapeHtml(item.sourceLanguage.toUpperCase())}</span>
 										</button>` : ""}
 									</div>
-									<div class="space-y-2">
-										<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 line-clamp-3">
+									<div class="prose prose-sm prose-cactus max-w-none [&>p:last-of-type]:mb-0">
+										<p class="line-clamp-4">
 											<span data-summary-en>${escapeHtml(defaultSummary)}</span>
 											<span data-summary-original class="hidden">${escapeHtml(originalSummary)}</span>
 										</p>
 									</div>
-									<div class="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-										<time>Published ${pubDate}</time>
+									<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+										<time datetime="${escapeHtml(item.publishedAt || "")}" title="${escapeHtml(item.publishedAt || "")}">${escapeHtml(pubDate)}</time>
 										<span>•</span>
 										<span><span data-click-count>${escapeHtml(item.clickCount)}</span> clicks</span>
 										${hasOriginalLanguage ? "<span>•</span>" : ""}
 										${hasOriginalLanguage ? `<span class="text-[11px] tracking-[0.18em] uppercase">${escapeHtml(item.sourceLanguage)}</span>` : ""}
 									</div>
-									<div class="pt-2">
-										<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" data-reading-open class="inline-flex items-center rounded border border-zinc-300 px-3 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
-											Read
+									<div>
+										<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" data-reading-open class="cactus-link inline-flex items-center text-xs tracking-[0.18em] uppercase text-zinc-600 dark:text-zinc-300">
+											Open article
 										</a>
 									</div>
 								</div>
