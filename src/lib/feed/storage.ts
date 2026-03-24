@@ -195,6 +195,51 @@ export async function listRecentFeedItems(env: FeedEnv, limit = 50): Promise<Fee
 	return (result.results ?? []).map(mapFeedItemRow);
 }
 
+export async function countFailedFeedItemsForAiRetry(env: FeedEnv): Promise<number> {
+	const row = await env.DATABASE.prepare(
+		`SELECT COUNT(*) AS total
+		 FROM rss_feed_items
+		 WHERE ai_status = 'failed' AND content_markdown_r2_key IS NOT NULL`,
+	).first<{ total: number }>();
+
+	return Number(row?.total ?? 0);
+}
+
+export async function retryFailedFeedItemsAi(env: FeedEnv): Promise<number> {
+	const result = await env.DATABASE.prepare(
+		`SELECT id, content_markdown_r2_key, title, url
+		 FROM rss_feed_items
+		 WHERE ai_status = 'failed' AND content_markdown_r2_key IS NOT NULL`,
+	).all<{ id: string; content_markdown_r2_key: string; title: string; url: string }>();
+
+	const items = result.results ?? [];
+	if (items.length === 0) {
+		return 0;
+	}
+
+	const now = new Date().toISOString();
+	const statements = items.map((item) =>
+		env.DATABASE.prepare(
+			`UPDATE rss_feed_items
+			 SET ai_status = 'pending', updated_at = ?
+			 WHERE id = ? AND ai_status = 'failed'`,
+		).bind(now, item.id),
+	);
+	await env.DATABASE.batch(statements);
+
+	await queueAiMessages(
+		env,
+		items.map((item) => ({
+			itemId: item.id,
+			contentKey: item.content_markdown_r2_key,
+			title: item.title,
+			url: item.url,
+		})),
+	);
+
+	return items.length;
+}
+
 export async function listVisibleFeedItems(env: FeedEnv): Promise<FeedReadingItem[]> {
 	const result = await env.DATABASE.prepare(
 		`SELECT items.id AS item_id, feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at,

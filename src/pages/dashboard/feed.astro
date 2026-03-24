@@ -54,6 +54,13 @@ const user = Astro.locals.user;
 							Run
 						</button>
 						<button
+							id="retry-feed-ai"
+							type="button"
+							class="rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
+						>
+							Retry AI
+						</button>
+						<button
 							id="refresh-feed-data"
 							type="button"
 							class="rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
@@ -141,6 +148,8 @@ const user = Astro.locals.user;
 		const createFeedUrlInput = document.getElementById("create-feed-url");
 		const refreshButton = document.getElementById("refresh-feed-data");
 		const syncButton = document.getElementById("sync-feed-run");
+		const retryAiButton = document.getElementById("retry-feed-ai");
+		let failedAiCount = 0;
 		function setFeedback(message, tone = "success") {
 			if (!feedback) return;
 			feedback.textContent = message;
@@ -204,6 +213,13 @@ const user = Astro.locals.user;
 				.replaceAll('"', "&quot;");
 		}
 
+		function updateRetryAiButton(failedCount) {
+			if (!(retryAiButton instanceof HTMLButtonElement)) return;
+			failedAiCount = failedCount;
+			retryAiButton.disabled = failedCount <= 0;
+			retryAiButton.textContent = failedCount > 0 ? `Retry AI (${failedCount})` : "Retry AI";
+		}
+
 		function renderFeeds(feeds) {
 			if (!feedsList || !feedsEmpty) return;
 			feedsEmpty.style.display = feeds.length ? "none" : "block";
@@ -258,13 +274,25 @@ const user = Astro.locals.user;
 
 		async function loadAll() {
 			clearFeedback();
-			const feedsResponse = await fetch("/api/feed/sources", {
-				headers: { Accept: "application/json" },
-			});
-			const feedsData = await feedsResponse.json();
+			const [feedsResponse, aiRetryResponse] = await Promise.all([
+				fetch("/api/feed/sources", {
+					headers: { Accept: "application/json" },
+				}),
+				fetch("/api/feed/items/ai-retry", {
+					headers: { Accept: "application/json" },
+				}),
+			]);
+			const [feedsData, aiRetryData] = await Promise.all([
+				feedsResponse.json(),
+				aiRetryResponse.json(),
+			]);
 
 			if (!feedsResponse.ok) throw new Error(feedsData.error || "Failed to load feeds");
+			if (!aiRetryResponse.ok) {
+				throw new Error(aiRetryData.error || "Failed to load AI retry status");
+			}
 
+			updateRetryAiButton(Number(aiRetryData.failedCount || 0));
 			renderFeeds(feedsData.feeds || []);
 		}
 
@@ -337,6 +365,36 @@ const user = Astro.locals.user;
 			setFeedback(
 				`Feed sync queued${data.run?.pending ? ` for ${data.run.pending} active feeds` : ""}.`,
 			);
+		});
+
+		retryAiButton?.addEventListener("click", async () => {
+			if (!(retryAiButton instanceof HTMLButtonElement)) return;
+			retryAiButton.disabled = true;
+			const originalText = retryAiButton.textContent;
+			retryAiButton.textContent = "Retrying...";
+
+			try {
+				const response = await fetch("/api/feed/items/ai-retry", { method: "POST" });
+				const data = await response.json();
+				if (!response.ok) {
+					setFeedback(data.error || "Failed to retry AI items", "error");
+					return;
+				}
+
+				const retriedCount = Number(data.retriedCount || 0);
+				setFeedback(
+					retriedCount > 0
+						? `Queued AI retry for ${retriedCount} failed item${retriedCount === 1 ? "" : "s"}.`
+						: "No failed AI items to retry.",
+				);
+				await loadAll();
+			} catch (error) {
+				setFeedback(error instanceof Error ? error.message : "Failed to retry AI items", "error");
+			} finally {
+				if (retryAiButton.textContent === "Retrying..." || retryAiButton.textContent === originalText) {
+					updateRetryAiButton(failedAiCount);
+				}
+			}
 		});
 
 		feedsList?.addEventListener("submit", async (event) => {
