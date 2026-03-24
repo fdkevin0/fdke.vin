@@ -8,6 +8,26 @@ import {
 import type { AiTranslationResult } from "@/lib/feed/types";
 import { FEED_TRANSLATION_MODEL } from "@/lib/feed/types";
 
+const FEED_TRANSLATION_RESPONSE_SCHEMA = {
+	type: "object",
+	properties: {
+		language: {
+			type: ["string", "null"],
+			description: "Source language as a lowercase ISO-639-1 code, or null if unknown.",
+		},
+		title_en: {
+			type: "string",
+			description: "English translation of the RSS item title.",
+		},
+		summary_en: {
+			type: "string",
+			description: "English translation of the RSS item summary.",
+		},
+	},
+	required: ["language", "title_en", "summary_en"],
+	additionalProperties: false,
+} as const;
+
 export async function processAiMessage(env: FeedEnv, itemId: string): Promise<void> {
 	if (!env.AI) {
 		console.error("[feed.ai] AI binding is not configured", { itemId });
@@ -63,20 +83,27 @@ async function translateContent(
 	url: string,
 	content: string,
 ): Promise<AiTranslationResult> {
-	const translationPrompt = [
-		"You translate RSS item titles and summaries for a bilingual RSS dashboard.",
-		"Return strict JSON only with this exact structure:",
-		'{"language":"<ISO-639-1 code or null if unknown>","title_en":"<English translation of title>","summary_en":"<English translation of summary>"}',
-		"If the source language is English, use the original title and summary as the English fields.",
-		"Keep translations natural and concise.",
-		`Title: ${title}`,
-		`URL: ${url}`,
-		"RSS summary:",
-		content,
-	].join("\n\n");
-
 	const request = {
-		prompt: translationPrompt,
+		messages: [
+			{
+				role: "system",
+				content:
+					"You translate RSS item titles and summaries for a bilingual RSS dashboard. Detect the original language, translate into concise natural English, and preserve meaning. If the source language is English, keep the original title and summary. Return only fields that satisfy the provided JSON schema.",
+			},
+			{
+				role: "user",
+				content: [
+					`Title: ${title}`,
+					`URL: ${url}`,
+					"RSS summary:",
+					content,
+				].join("\n\n"),
+			},
+		],
+		response_format: {
+			type: "json_schema",
+			json_schema: FEED_TRANSLATION_RESPONSE_SCHEMA,
+		},
 	};
 	console.log("[feed.ai] AI request", {
 		model: FEED_TRANSLATION_MODEL,
@@ -97,12 +124,11 @@ async function translateContent(
 	});
 	const rawResponse =
 		response?.response || response?.result?.response || JSON.stringify(response ?? {});
-	const parsed = parseJsonObject(rawResponse);
+	const parsed = parseAiTranslationResponse(rawResponse);
 
-	const language =
-		typeof parsed.language === "string" ? parsed.language.trim().toLowerCase() : null;
-	const titleEn = typeof parsed.title_en === "string" ? parsed.title_en.trim() : title;
-	const summaryEn = typeof parsed.summary_en === "string" ? parsed.summary_en.trim() : content;
+	const language = parsed.language ? parsed.language.trim().toLowerCase() : null;
+	const titleEn = parsed.title_en.trim() || title;
+	const summaryEn = parsed.summary_en.trim() || content;
 
 	if (!titleEn || !summaryEn) {
 		throw new Error("AI response did not include required translation fields");
@@ -115,16 +141,42 @@ async function translateContent(
 	};
 }
 
-function parseJsonObject(raw: string): Record<string, unknown> {
-	const trimmed = raw.trim();
+function parseAiTranslationResponse(raw: string): {
+	language: string | null;
+	title_en: string;
+	summary_en: string;
+} {
+	let parsed: unknown;
 	try {
-		return JSON.parse(trimmed) as Record<string, unknown>;
-	} catch {}
-
-	const match = trimmed.match(/\{[\s\S]*\}/);
-	if (!match) {
+		parsed = JSON.parse(raw.trim());
+	} catch {
 		throw new Error("AI response was not valid JSON");
 	}
 
-	return JSON.parse(match[0]) as Record<string, unknown>;
+	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+		throw new Error("AI response was not a JSON object");
+	}
+
+	const candidate = parsed as Record<string, unknown>;
+	const language =
+		typeof candidate.language === "string"
+			? candidate.language
+			: candidate.language === null
+				? null
+				: undefined;
+	const titleEn = candidate.title_en;
+	const summaryEn = candidate.summary_en;
+
+	if (language === undefined) {
+		throw new Error("AI response did not include a valid language field");
+	}
+	if (typeof titleEn !== "string" || typeof summaryEn !== "string") {
+		throw new Error("AI response did not include required translation fields");
+	}
+
+	return {
+		language,
+		title_en: titleEn,
+		summary_en: summaryEn,
+	};
 }
