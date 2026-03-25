@@ -55,12 +55,7 @@ export async function processAiMessage(env: FeedEnv, itemId: string): Promise<vo
 	}
 
 	try {
-		const result = await translateContent(
-			env,
-			item.title,
-			item.url,
-			item.summary.slice(0, 4000),
-		);
+		const result = await translateContent(env, item.title, item.url, item.summary.slice(0, 4000));
 		await recordFeedItemAiResult(env, {
 			itemId,
 			sourceLanguage: result.language,
@@ -93,12 +88,7 @@ async function translateContent(
 			},
 			{
 				role: "user",
-				content: [
-					`Title: ${title}`,
-					`URL: ${url}`,
-					"RSS summary:",
-					content,
-				].join("\n\n"),
+				content: [`Title: ${title}`, `URL: ${url}`, "RSS summary:", content].join("\n\n"),
 			},
 		],
 		response_format: {

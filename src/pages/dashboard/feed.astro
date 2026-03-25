@@ -47,6 +47,13 @@ const user = Astro.locals.user;
 							Add
 						</button>
 						<button
+							id="import-feed-opml"
+							type="button"
+							class="rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+						>
+							Import OPML
+						</button>
+						<button
 							id="sync-feed-run"
 							type="button"
 							class="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-xs tracking-[0.18em] text-white uppercase transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
@@ -71,6 +78,7 @@ const user = Astro.locals.user;
 				</div>
 
 				<div id="feed-feedback" class="mt-4 hidden rounded border px-3 py-2 text-sm"></div>
+				<input id="feed-opml-input" type="file" accept=".opml,.xml,text/xml,application/xml" class="hidden" />
 
 				<div
 					id="feeds-empty"
@@ -137,11 +145,14 @@ const user = Astro.locals.user;
 		const createDialog = document.getElementById("create-feed-dialog");
 		const createForm = document.getElementById("create-feed-form");
 		const openCreateButton = document.getElementById("open-create-feed");
+		const importOpmlButton = document.getElementById("import-feed-opml");
+		const opmlInput = document.getElementById("feed-opml-input");
 		const createFeedUrlInput = document.getElementById("create-feed-url");
 		const refreshButton = document.getElementById("refresh-feed-data");
 		const syncButton = document.getElementById("sync-feed-run");
 		const retryAiButton = document.getElementById("retry-feed-ai");
 		let failedAiCount = 0;
+		let knownFeedUrls = new Set();
 		function setFeedback(message, tone = "success") {
 			if (!feedback) return;
 			feedback.textContent = message;
@@ -211,8 +222,102 @@ const user = Astro.locals.user;
 			retryAiButton.textContent = failedCount > 0 ? `Retry AI (${failedCount})` : "Retry AI";
 		}
 
+		function normalizeFeedUrl(value) {
+			if (typeof value !== "string" || !value.trim()) return null;
+			try {
+				const url = new URL(value.trim());
+				if (!["http:", "https:"].includes(url.protocol)) return null;
+				return url.toString();
+			} catch {
+				return null;
+			}
+		}
+
+		function parseOpmlFeedUrls(content) {
+			const parser = new DOMParser();
+			const document = parser.parseFromString(content, "text/xml");
+			if (document.querySelector("parsererror")) {
+				throw new Error("Invalid OPML file");
+			}
+
+			const urls = [];
+			for (const outline of document.querySelectorAll("outline")) {
+				const feedUrl =
+					outline.getAttribute("xmlUrl") ||
+					outline.getAttribute("xmlurl") ||
+					outline.getAttribute("url");
+				const normalizedFeedUrl = normalizeFeedUrl(feedUrl);
+				if (normalizedFeedUrl) {
+					urls.push(normalizedFeedUrl);
+				}
+			}
+
+			return urls;
+		}
+
+		async function createFeedSource(feedUrl) {
+			const response = await fetch("/api/feed/sources", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ feedUrl }),
+			});
+			const data = await response.json();
+			return { response, data };
+		}
+
+		async function importFeedOpml(file) {
+			const opmlContent = await file.text();
+			const parsedFeedUrls = parseOpmlFeedUrls(opmlContent);
+			const uniqueFeedUrls = [...new Set(parsedFeedUrls)];
+			if (uniqueFeedUrls.length === 0) {
+				throw new Error("No valid feed URLs found in OPML");
+			}
+
+			const pendingFeedUrls = uniqueFeedUrls.filter((feedUrl) => !knownFeedUrls.has(feedUrl));
+			if (pendingFeedUrls.length === 0) {
+				setFeedback("All OPML feeds are already subscribed.");
+				return;
+			}
+
+			let importedCount = 0;
+			let duplicateCount = uniqueFeedUrls.length - pendingFeedUrls.length;
+			const failedFeeds = [];
+
+			for (const feedUrl of pendingFeedUrls) {
+				const { response, data } = await createFeedSource(feedUrl);
+				if (response.ok) {
+					importedCount += 1;
+					knownFeedUrls.add(feedUrl);
+					continue;
+				}
+
+				if (response.status === 409) {
+					duplicateCount += 1;
+					knownFeedUrls.add(feedUrl);
+					continue;
+				}
+
+				failedFeeds.push(data.error || feedUrl);
+			}
+
+			await loadAll();
+
+			if (failedFeeds.length > 0) {
+				setFeedback(
+					`Imported ${importedCount} feed${importedCount === 1 ? "" : "s"}, skipped ${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"}, failed ${failedFeeds.length}. First error: ${failedFeeds[0]}`,
+					"error",
+				);
+				return;
+			}
+
+			setFeedback(
+				`Imported ${importedCount} feed${importedCount === 1 ? "" : "s"} and skipped ${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"}.`,
+			);
+		}
+
 		function renderFeeds(feeds) {
 			if (!feedsList || !feedsEmpty) return;
+			knownFeedUrls = new Set(feeds.map((feed) => normalizeFeedUrl(feed.feedUrl)).filter(Boolean));
 			feedsEmpty.style.display = feeds.length ? "none" : "block";
 			feedsList.innerHTML = feeds
 				.map(
@@ -296,12 +401,7 @@ const user = Astro.locals.user;
 				submitButton.disabled = true;
 				submitButton.textContent = "Adding...";
 			}
-			const response = await fetch("/api/feed/sources", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(getFeedPayload(form)),
-			});
-			const data = await response.json();
+			const { response, data } = await createFeedSource(getFeedPayload(form).feedUrl);
 			if (submitButton instanceof HTMLButtonElement) {
 				submitButton.disabled = false;
 				submitButton.textContent = "Add feed source";
@@ -319,6 +419,34 @@ const user = Astro.locals.user;
 		});
 
 		openCreateButton?.addEventListener("click", openCreateDialog);
+		importOpmlButton?.addEventListener("click", () => {
+			if (opmlInput instanceof HTMLInputElement) {
+				opmlInput.click();
+			}
+		});
+		opmlInput?.addEventListener("change", async (event) => {
+			const target = event.currentTarget;
+			if (!(target instanceof HTMLInputElement)) return;
+			const file = target.files?.[0];
+			target.value = "";
+			if (!file) return;
+
+			if (importOpmlButton instanceof HTMLButtonElement) {
+				importOpmlButton.disabled = true;
+				importOpmlButton.textContent = "Importing...";
+			}
+
+			try {
+				await importFeedOpml(file);
+			} catch (error) {
+				setFeedback(error instanceof Error ? error.message : "Failed to import OPML", "error");
+			} finally {
+				if (importOpmlButton instanceof HTMLButtonElement) {
+					importOpmlButton.disabled = false;
+					importOpmlButton.textContent = "Import OPML";
+				}
+			}
+		});
 
 		createDialog?.addEventListener("click", (event) => {
 			if (!(createDialog instanceof HTMLDialogElement)) return;

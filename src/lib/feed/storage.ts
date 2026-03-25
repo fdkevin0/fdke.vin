@@ -137,15 +137,7 @@ export async function updateFeedSource(
 		 SET title = ?, feed_url = ?, site_url = ?, is_active = ?, updated_at = ?, updated_by_email = ?
 		 WHERE id = ?`,
 	)
-		.bind(
-			input.title,
-			input.feedUrl,
-			input.siteUrl,
-			input.isActive ? 1 : 0,
-			now,
-			user.email,
-			id,
-		)
+		.bind(input.title, input.feedUrl, input.siteUrl, input.isActive ? 1 : 0, now, user.email, id)
 		.run();
 
 	return {
@@ -244,8 +236,7 @@ export async function listVisibleFeedItems(env: FeedEnv): Promise<FeedReadingIte
 		 JOIN rss_feeds AS feeds ON feeds.id = items.feed_id
 		 WHERE datetime(COALESCE(items.visible_until, datetime(items.created_at, '+24 hours'))) > datetime('now')
 		 ORDER BY COALESCE(items.published_at, items.created_at) DESC`,
-	)
-		.all<FeedReadingRow>();
+	).all<FeedReadingRow>();
 
 	return (result.results ?? []).map((row) => ({
 		itemId: row.item_id,
@@ -415,9 +406,9 @@ export async function upsertFeedEntry(
 		)
 		.run();
 
-	const row = await env.DATABASE.prepare(
-		"SELECT ai_status FROM rss_feed_items WHERE id = ?",
-	).bind(itemId).first<{ ai_status: string }>();
+	const row = await env.DATABASE.prepare("SELECT ai_status FROM rss_feed_items WHERE id = ?")
+		.bind(itemId)
+		.first<{ ai_status: string }>();
 
 	return { itemId, shouldQueueAi: row?.ai_status === "pending" };
 }
@@ -452,10 +443,7 @@ export async function markFeedItemAiProcessing(env: FeedEnv, itemId: string): Pr
 		.run();
 }
 
-export async function markFeedItemAiFailed(
-	env: FeedEnv,
-	itemId: string,
-): Promise<void> {
+export async function markFeedItemAiFailed(env: FeedEnv, itemId: string): Promise<void> {
 	await env.DATABASE.prepare(
 		"UPDATE rss_feed_items SET ai_status = 'failed', updated_at = ? WHERE id = ?",
 	)
@@ -478,13 +466,7 @@ export async function recordFeedItemAiResult(
 		 SET source_language = ?, title_en = ?, summary_en = ?, ai_status = 'complete', updated_at = ?
 		 WHERE id = ?`,
 	)
-		.bind(
-			options.sourceLanguage,
-			options.titleEn,
-			options.summaryEn,
-			now,
-			options.itemId,
-		)
+		.bind(options.sourceLanguage, options.titleEn, options.summaryEn, now, options.itemId)
 		.run();
 }
 
