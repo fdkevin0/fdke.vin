@@ -9,6 +9,7 @@ export interface FeedSource {
 	feedUrl: string;
 	siteUrl: string | null;
 	isActive: boolean;
+	aiTranslationEnabled: boolean;
 	lastFetchedAt: string | null;
 	lastError: string | null;
 	createdAt: string;
@@ -56,6 +57,7 @@ export interface FeedFetchMessage {
 	feedId: string;
 	feedUrl: string;
 	feedTitle: string;
+	aiTranslationEnabled: boolean;
 }
 
 export interface FeedAiMessage {
@@ -88,11 +90,13 @@ export interface FeedSourceInput {
 	feedUrl: string;
 	siteUrl: string | null;
 	isActive: boolean;
+	aiTranslationEnabled: boolean;
 }
 
 export interface FeedSourceCreateInput {
 	feedUrl: string;
 	isActive: boolean;
+	aiTranslationEnabled: boolean;
 }
 
 export interface AiTranslationResult {

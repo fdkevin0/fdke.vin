@@ -40,6 +40,7 @@ export async function processFeedFetchMessage(
 		for (const entry of entries) {
 			const saved = await upsertFeedEntry(env, {
 				feedId: message.feedId,
+				aiTranslationEnabled: message.aiTranslationEnabled,
 				entry,
 			});
 

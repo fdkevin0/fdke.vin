@@ -6,6 +6,7 @@ interface RawFeedSourceInput {
 	feedUrl?: unknown;
 	siteUrl?: unknown;
 	isActive?: unknown;
+	aiTranslationEnabled?: unknown;
 }
 
 export async function readCreateFeedSourceInput(
@@ -14,6 +15,8 @@ export async function readCreateFeedSourceInput(
 	const body = (await request.json()) as RawFeedSourceInput;
 	const feedUrl = normalizeUrl(body.feedUrl);
 	const isActive = body.isActive === undefined ? true : Boolean(body.isActive);
+	const aiTranslationEnabled =
+		body.aiTranslationEnabled === undefined ? true : Boolean(body.aiTranslationEnabled);
 
 	if (!feedUrl) {
 		return jsonError(400, "A valid feedUrl is required");
@@ -22,6 +25,7 @@ export async function readCreateFeedSourceInput(
 	return {
 		feedUrl,
 		isActive,
+		aiTranslationEnabled,
 	};
 }
 
@@ -31,6 +35,8 @@ export async function readFeedSourceInput(request: Request): Promise<FeedSourceI
 	const feedUrl = normalizeUrl(body.feedUrl);
 	const siteUrl = normalizeOptionalUrl(body.siteUrl);
 	const isActive = body.isActive === undefined ? true : Boolean(body.isActive);
+	const aiTranslationEnabled =
+		body.aiTranslationEnabled === undefined ? true : Boolean(body.aiTranslationEnabled);
 
 	if (!title) {
 		return jsonError(400, "Feed title is required");
@@ -49,6 +55,7 @@ export async function readFeedSourceInput(request: Request): Promise<FeedSourceI
 		feedUrl,
 		siteUrl,
 		isActive,
+		aiTranslationEnabled,
 	};
 }
 

@@ -17,6 +17,7 @@ interface FeedSourceRow {
 	feed_url: string;
 	site_url: string | null;
 	is_active: number;
+	ai_translation_enabled: number;
 	last_fetched_at: string | null;
 	last_error: string | null;
 	created_at: string;
@@ -58,9 +59,31 @@ interface FeedReadingRow {
 	summary: string | null;
 }
 
+let ensureFeedSchemaPromise: Promise<void> | null = null;
+
+async function ensureFeedSchema(env: FeedEnv): Promise<void> {
+	if (!ensureFeedSchemaPromise) {
+		ensureFeedSchemaPromise = (async () => {
+			try {
+				await env.DATABASE.prepare(
+					"ALTER TABLE rss_feeds ADD COLUMN ai_translation_enabled INTEGER NOT NULL DEFAULT 1",
+				).run();
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				if (!message.includes("duplicate column name") && !message.includes("already exists")) {
+					throw error;
+				}
+			}
+		})();
+	}
+
+	return ensureFeedSchemaPromise;
+}
+
 export async function listFeedSources(env: FeedEnv): Promise<FeedSource[]> {
+	await ensureFeedSchema(env);
 	const result = await env.DATABASE.prepare(
-		`SELECT id, title, feed_url, site_url, is_active, last_fetched_at, last_error,
+		`SELECT id, title, feed_url, site_url, is_active, ai_translation_enabled, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email
 		 FROM rss_feeds
 		 ORDER BY updated_at DESC`,
@@ -70,8 +93,9 @@ export async function listFeedSources(env: FeedEnv): Promise<FeedSource[]> {
 }
 
 export async function listActiveFeedSources(env: FeedEnv): Promise<FeedSource[]> {
+	await ensureFeedSchema(env);
 	const result = await env.DATABASE.prepare(
-		`SELECT id, title, feed_url, site_url, is_active, last_fetched_at, last_error,
+		`SELECT id, title, feed_url, site_url, is_active, ai_translation_enabled, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email
 		 FROM rss_feeds
 		 WHERE is_active = 1
@@ -86,14 +110,15 @@ export async function createFeedSource(
 	input: FeedSourceInput,
 	user: CloudflareAccessUser,
 ): Promise<FeedSource> {
+	await ensureFeedSchema(env);
 	const now = new Date().toISOString();
 	const id = crypto.randomUUID();
 
 	await env.DATABASE.prepare(
 		`INSERT INTO rss_feeds (
-		 id, title, feed_url, site_url, is_active, last_fetched_at, last_error,
+		 id, title, feed_url, site_url, is_active, ai_translation_enabled, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email
-		) VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)`,
 	)
 		.bind(
 			id,
@@ -101,6 +126,7 @@ export async function createFeedSource(
 			input.feedUrl,
 			input.siteUrl,
 			input.isActive ? 1 : 0,
+			input.aiTranslationEnabled ? 1 : 0,
 			now,
 			now,
 			user.email,
@@ -134,10 +160,19 @@ export async function updateFeedSource(
 	const now = new Date().toISOString();
 	await env.DATABASE.prepare(
 		`UPDATE rss_feeds
-		 SET title = ?, feed_url = ?, site_url = ?, is_active = ?, updated_at = ?, updated_by_email = ?
+		 SET title = ?, feed_url = ?, site_url = ?, is_active = ?, ai_translation_enabled = ?, updated_at = ?, updated_by_email = ?
 		 WHERE id = ?`,
 	)
-		.bind(input.title, input.feedUrl, input.siteUrl, input.isActive ? 1 : 0, now, user.email, id)
+		.bind(
+			input.title,
+			input.feedUrl,
+			input.siteUrl,
+			input.isActive ? 1 : 0,
+			input.aiTranslationEnabled ? 1 : 0,
+			now,
+			user.email,
+			id,
+		)
 		.run();
 
 	return {
@@ -159,8 +194,9 @@ export async function deleteFeedSource(env: FeedEnv, id: string): Promise<boolea
 }
 
 export async function getFeedSourceById(env: FeedEnv, id: string): Promise<FeedSource | null> {
+	await ensureFeedSchema(env);
 	const row = await env.DATABASE.prepare(
-		`SELECT id, title, feed_url, site_url, is_active, last_fetched_at, last_error,
+		`SELECT id, title, feed_url, site_url, is_active, ai_translation_enabled, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email
 		 FROM rss_feeds WHERE id = ?`,
 	)
@@ -338,6 +374,7 @@ export async function upsertFeedEntry(
 	env: FeedEnv,
 	options: {
 		feedId: string;
+		aiTranslationEnabled: boolean;
 		entry: ParsedFeedEntry;
 	},
 ): Promise<{ itemId: string; shouldQueueAi: boolean }> {
@@ -346,19 +383,24 @@ export async function upsertFeedEntry(
 	const itemId = guidHash;
 	const summary = options.entry.summary?.trim() || null;
 	const hasSummary = Boolean(summary);
+	const titleEn = options.aiTranslationEnabled ? null : options.entry.title;
+	const sourceLanguage = options.aiTranslationEnabled ? null : "en";
+	const summaryEn = options.aiTranslationEnabled ? null : summary;
+	const aiStatus = hasSummary && options.aiTranslationEnabled ? "pending" : "skipped";
 
 	await env.DATABASE.prepare(
 		`INSERT INTO rss_feed_items (
 		 id, feed_id, guid_hash, title, title_en, url, author, published_at,
 		 source_language, summary, summary_en, ai_status, visible_until, click_count,
 		 created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		 title = excluded.title,
 		 url = excluded.url,
 		 author = excluded.author,
 		 published_at = excluded.published_at,
 		 source_language = CASE
+			WHEN excluded.ai_status = 'skipped' THEN excluded.source_language
 			WHEN rss_feed_items.title != excluded.title
 				OR COALESCE(rss_feed_items.summary, '') != COALESCE(excluded.summary, '')
 			THEN NULL
@@ -366,12 +408,14 @@ export async function upsertFeedEntry(
 		 END,
 		 summary = excluded.summary,
 		 title_en = CASE
+			WHEN excluded.ai_status = 'skipped' THEN excluded.title_en
 			WHEN rss_feed_items.title != excluded.title
 				OR COALESCE(rss_feed_items.summary, '') != COALESCE(excluded.summary, '')
 			THEN NULL
 			ELSE rss_feed_items.title_en
 		 END,
 		 summary_en = CASE
+			WHEN excluded.ai_status = 'skipped' THEN excluded.summary_en
 			WHEN rss_feed_items.title != excluded.title
 				OR COALESCE(rss_feed_items.summary, '') != COALESCE(excluded.summary, '')
 			THEN NULL
@@ -393,12 +437,14 @@ export async function upsertFeedEntry(
 			options.feedId,
 			guidHash,
 			options.entry.title,
-			null,
+			titleEn,
 			options.entry.url,
 			options.entry.author,
 			options.entry.publishedAt,
+			sourceLanguage,
 			summary,
-			hasSummary ? "pending" : "skipped",
+			summaryEn,
+			aiStatus,
 			new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 			0,
 			now,
@@ -492,6 +538,7 @@ function mapFeedSourceRow(row: FeedSourceRow): FeedSource {
 		feedUrl: row.feed_url,
 		siteUrl: row.site_url,
 		isActive: Boolean(row.is_active),
+		aiTranslationEnabled: Boolean(row.ai_translation_enabled),
 		lastFetchedAt: row.last_fetched_at,
 		lastError: row.last_error,
 		createdAt: row.created_at,

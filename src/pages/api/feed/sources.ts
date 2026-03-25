@@ -45,6 +45,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 				feedUrl: input.feedUrl,
 				siteUrl: metadata.siteUrl,
 				isActive: input.isActive,
+				aiTranslationEnabled: input.aiTranslationEnabled,
 			},
 			user,
 		);
@@ -55,6 +56,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 				feedId: feed.id,
 				feedUrl: feed.feedUrl,
 				feedTitle: feed.title,
+				aiTranslationEnabled: feed.aiTranslationEnabled,
 			});
 		}
 		return jsonNoStore({ feed }, { status: 201 });

@@ -71,6 +71,7 @@ export async function startRun(
 					feedId: feed.id,
 					feedUrl: feed.feedUrl,
 					feedTitle: feed.title,
+					aiTranslationEnabled: feed.aiTranslationEnabled,
 				},
 			})),
 		);

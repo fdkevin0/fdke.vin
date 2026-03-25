@@ -127,6 +127,10 @@ const user = Astro.locals.user;
 							class="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
 						/>
 					</label>
+					<label class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+						<input name="aiTranslationEnabled" type="checkbox" checked />
+						<span>Enable AI translation for non-English content</span>
+					</label>
 					<button
 						type="submit"
 						class="w-full rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
@@ -172,6 +176,7 @@ const user = Astro.locals.user;
 			const data = new FormData(form);
 			return {
 				feedUrl: String(data.get("feedUrl") || "").trim(),
+				aiTranslationEnabled: data.get("aiTranslationEnabled") === "on",
 			};
 		}
 
@@ -182,6 +187,7 @@ const user = Astro.locals.user;
 				feedUrl: String(data.get("feedUrl") || "").trim(),
 				siteUrl: String(data.get("siteUrl") || "").trim() || null,
 				isActive: data.get("isActive") === "on",
+				aiTranslationEnabled: data.get("aiTranslationEnabled") === "on",
 			};
 		}
 
@@ -255,11 +261,11 @@ const user = Astro.locals.user;
 			return urls;
 		}
 
-		async function createFeedSource(feedUrl) {
+		async function createFeedSource(payload) {
 			const response = await fetch("/api/feed/sources", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ feedUrl }),
+				body: JSON.stringify(payload),
 			});
 			const data = await response.json();
 			return { response, data };
@@ -284,7 +290,10 @@ const user = Astro.locals.user;
 			const failedFeeds = [];
 
 			for (const feedUrl of pendingFeedUrls) {
-				const { response, data } = await createFeedSource(feedUrl);
+				const { response, data } = await createFeedSource({
+					feedUrl,
+					aiTranslationEnabled: true,
+				});
 				if (response.ok) {
 					importedCount += 1;
 					knownFeedUrls.add(feedUrl);
@@ -327,6 +336,7 @@ const user = Astro.locals.user;
 								<div class="flex flex-wrap items-center gap-2">
 									<h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">${escapeHtml(feed.title)}</h3>
 									<span class="rounded px-2 py-1 text-[11px] ${feed.isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"}">${feed.isActive ? "Active" : "Paused"}</span>
+									<span class="rounded px-2 py-1 text-[11px] ${feed.aiTranslationEnabled ? "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" : "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"}">${feed.aiTranslationEnabled ? "AI Translation" : "Assume English"}</span>
 								</div>
 								<div class="space-y-1 text-xs text-zinc-600 dark:text-zinc-300">
 									<div><span class="font-medium">Feed:</span> <a href="${escapeHtml(feed.feedUrl)}" target="_blank" rel="noopener noreferrer" class="underline decoration-zinc-300 underline-offset-4">${escapeHtml(feed.feedUrl)}</a></div>
@@ -355,6 +365,10 @@ const user = Astro.locals.user;
 									<label class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
 										<input name="isActive" type="checkbox" ${feed.isActive ? "checked" : ""} />
 										<span>Active</span>
+									</label>
+									<label class="flex items-center gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+										<input name="aiTranslationEnabled" type="checkbox" ${feed.aiTranslationEnabled ? "checked" : ""} />
+										<span>Enable AI translation</span>
 									</label>
 								</div>
 								<div class="flex flex-wrap gap-2">
@@ -401,7 +415,7 @@ const user = Astro.locals.user;
 				submitButton.disabled = true;
 				submitButton.textContent = "Adding...";
 			}
-			const { response, data } = await createFeedSource(getFeedPayload(form).feedUrl);
+			const { response, data } = await createFeedSource(getFeedPayload(form));
 			if (submitButton instanceof HTMLButtonElement) {
 				submitButton.disabled = false;
 				submitButton.textContent = "Add feed source";
