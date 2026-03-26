@@ -1,11 +1,6 @@
 ---
 import Layout from "@/layouts/Base.astro";
-import {
-	SITE_LANGS,
-	getRequestSiteLang,
-	getSiteLangMeta,
-	getSiteUrlWithLang,
-} from "@/lib/i18n";
+import { getRequestSiteLang, getSiteLangMeta, getSiteUrlWithLang, SITE_LANGS } from "@/lib/i18n";
 
 export const prerender = false;
 
@@ -56,8 +51,7 @@ const readingCopy = {
 		title: "Reading",
 	},
 	zh: {
-		description:
-			"这里展示最近 24 小时内可见的订阅内容；每次打开文章后，可见时间会再顺延 24 小时。",
+		description: "这里展示最近 24 小时内可见的订阅内容；每次打开文章后，可见时间会再顺延 24 小时。",
 		emptyAll: "当前没有处于展示窗口内的内容。",
 		emptyFeed: "当前所选订阅源没有处于展示窗口内的内容。",
 		feedbackLoad: "加载 Reading 列表失败",

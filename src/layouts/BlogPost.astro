@@ -4,14 +4,14 @@ import { type CollectionEntry, render } from "astro:content";
 import Masthead from "@/components/blog/Masthead.astro";
 import TOC from "@/components/blog/TOC.astro";
 import WebMentions from "@/components/blog/webmentions/index.astro";
-import {
-	SITE_LANGS,
-	getSiteLangMeta,
-	getBlogRssPath,
-	hasExplicitSiteLang,
-	getPostPath,
-} from "@/lib/i18n";
 import { getPostTranslationsByLang } from "@/data/post";
+import {
+	getBlogRssPath,
+	getPostPath,
+	getSiteLangMeta,
+	hasExplicitSiteLang,
+	SITE_LANGS,
+} from "@/lib/i18n";
 
 import BaseLayout from "./Base.astro";
 

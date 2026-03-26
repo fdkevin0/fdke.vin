@@ -1,7 +1,7 @@
 ---
 import Search from "@/components/Search.astro";
 import ThemeToggle from "@/components/ThemeToggle.astro";
-import { type SiteLang, getSiteLangMeta, SITE_LANG_STORAGE_KEY } from "@/lib/i18n";
+import { getSiteLangMeta, SITE_LANG_STORAGE_KEY, type SiteLang } from "@/lib/i18n";
 import { menuLinks } from "@/site.config";
 import { siteConfig } from "../../site.config";
 
@@ -20,11 +20,11 @@ export interface Props {
 const { blogLanguage = "en", blogLanguageOptions } = Astro.props as Props;
 const normalizedLanguageOptions = blogLanguageOptions as
 	| Array<{
-	disabled?: boolean;
-	href?: string;
-	lang: string;
-	label: string;
-}>
+			disabled?: boolean;
+			href?: string;
+			lang: string;
+			label: string;
+	  }>
 	| undefined;
 const currentLanguageLabel = getSiteLangMeta(blogLanguage).label;
 ---

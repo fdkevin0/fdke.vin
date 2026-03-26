@@ -1,16 +1,16 @@
 ---
 import { getPostsByLang, getUniqueTagsWithCount } from "@/data/post";
-import {
-	SITE_LANGS,
-	getSiteLanguageOptions,
-	getSiteLangMeta,
-	getBlogRssPath,
-	getSiteUrlWithLang,
-	hasExplicitSiteLang,
-	getRequestSiteLang,
-	getTagPath,
-} from "@/lib/i18n";
 import PageLayout from "@/layouts/Base.astro";
+import {
+	getBlogRssPath,
+	getRequestSiteLang,
+	getSiteLangMeta,
+	getSiteLanguageOptions,
+	getSiteUrlWithLang,
+	getTagPath,
+	hasExplicitSiteLang,
+	SITE_LANGS,
+} from "@/lib/i18n";
 
 export const prerender = false;
 

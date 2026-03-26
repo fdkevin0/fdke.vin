@@ -1,27 +1,27 @@
 ---
 import { render } from "astro:content";
-import Pagination from "@/components/Paginator.astro";
 import PostPreview from "@/components/blog/PostPreview.astro";
+import Pagination from "@/components/Paginator.astro";
 import {
 	getPostBySlugWithFallback,
 	getPostsByLang,
 	getUniqueTags,
 	groupPostsByYear,
 } from "@/data/post";
-import {
-	SITE_LANGS,
-	getSiteLanguageOptions,
-	getSiteLangMeta,
-	getBlogRssPath,
-	hasExplicitSiteLang,
-	getRequestSiteLang,
-	getTagPath,
-	getTagsIndexPath,
-	getSiteUrlWithLang,
-	getPostsPath,
-} from "@/lib/i18n";
 import PageLayout from "@/layouts/Base.astro";
 import PostLayout from "@/layouts/BlogPost.astro";
+import {
+	getBlogRssPath,
+	getPostsPath,
+	getRequestSiteLang,
+	getSiteLangMeta,
+	getSiteLanguageOptions,
+	getSiteUrlWithLang,
+	getTagPath,
+	getTagsIndexPath,
+	hasExplicitSiteLang,
+	SITE_LANGS,
+} from "@/lib/i18n";
 import { collectionDateSort } from "@/utils/date";
 
 export const prerender = false;

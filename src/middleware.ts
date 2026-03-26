@@ -9,9 +9,9 @@ import {
 } from "@/lib/cloudflare-access";
 import {
 	DEFAULT_SITE_LANG,
-	SITE_LANG_COOKIE_KEY,
 	getCountrySiteLang,
 	getSiteLangOrDefault,
+	SITE_LANG_COOKIE_KEY,
 } from "@/lib/i18n";
 
 const PROTECTED_ROUTE_PATTERNS = [

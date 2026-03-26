@@ -2,10 +2,10 @@
 import { WEBMENTION_PINGBACK, WEBMENTION_URL } from "astro:env/client";
 import {
 	DEFAULT_SITE_LANG,
+	getBlogRssPath,
 	SITE_LANG_COOKIE_KEY,
 	SITE_LANG_QUERY_KEY,
 	SITE_LANG_STORAGE_KEY,
-	getBlogRssPath,
 } from "@/lib/i18n";
 import { siteConfig } from "@/site.config";
 import type { SiteMeta } from "@/types";
