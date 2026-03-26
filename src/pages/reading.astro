@@ -15,7 +15,7 @@ import Layout from "@/layouts/Base.astro";
 			<button
 				id="reading-refresh"
 				type="button"
-				class="cactus-link inline-flex shrink-0 items-center rounded-md bg-global-text/5 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-global-text/10 disabled:cursor-not-allowed disabled:opacity-60"
+				class="cactus-link bg-global-text/5 hover:bg-global-text/10 inline-flex shrink-0 items-center rounded-md px-3 py-2 text-xs tracking-[0.18em] uppercase transition disabled:cursor-not-allowed disabled:opacity-60"
 			>
 				Refresh
 			</button>
@@ -23,23 +23,23 @@ import Layout from "@/layouts/Base.astro";
 
 		<div id="reading-feedback" class="hidden rounded-md px-4 py-3 text-sm"></div>
 
-		<div id="reading-tabs" class="hidden mt-6 flex-wrap gap-x-3"></div>
+		<div id="reading-tabs" class="mt-6 flex hidden flex-wrap gap-x-3 gap-y-2"></div>
 
 		<div
 			id="reading-loading"
-			class="mt-6 rounded-md bg-global-text/5 px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300"
+			class="bg-global-text/5 mt-6 rounded-md px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300"
 		>
 			Loading reading list...
 		</div>
 
 		<div
 			id="reading-empty"
-			class="hidden mt-6 rounded-md bg-global-text/5 px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300"
+			class="bg-global-text/5 mt-6 hidden rounded-md px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300"
 		>
 			No posts are currently in the reading window.
 		</div>
 
-		<div id="reading-list" class="mt-6 grid gap-8 text-start"></div>
+		<div id="reading-list" class="mt-6 space-y-8 text-start"></div>
 	</section>
 
 	<script is:inline>
@@ -107,7 +107,9 @@ import Layout from "@/layouts/Base.astro";
 			if (!readingTabs) return;
 
 			const feeds = Array.from(
-				new Map(items.map((item) => [item.feedId, { id: item.feedId, title: item.feedTitle }])).values(),
+				new Map(
+					items.map((item) => [item.feedId, { id: item.feedId, title: item.feedTitle }]),
+				).values(),
 			);
 
 			if (feeds.length <= 1) {
@@ -139,17 +141,17 @@ import Layout from "@/layouts/Base.astro";
 				: "No posts are currently in the reading window.";
 			readingEmpty.style.display = items.length ? "none" : "block";
 			readingList.innerHTML = items
-				.map(
-					(item) => {
-						const hasOriginalLanguage = item.sourceLanguage && item.sourceLanguage.toLowerCase() !== "en";
-						const defaultTitle = item.titleEn || item.title;
-						const defaultSummary = item.summaryEn || item.summary || "";
-						const originalTitle = hasOriginalLanguage ? item.title : defaultTitle;
-						const originalSummary = hasOriginalLanguage ? item.summary : defaultSummary;
-						const pubDate = formatPublishedAt(item.publishedAt);
+				.map((item) => {
+					const hasOriginalLanguage =
+						item.sourceLanguage && item.sourceLanguage.toLowerCase() !== "en";
+					const defaultTitle = item.titleEn || item.title;
+					const defaultSummary = item.summaryEn || item.summary || "";
+					const originalTitle = hasOriginalLanguage ? item.title : defaultTitle;
+					const originalSummary = hasOriginalLanguage ? item.summary : defaultSummary;
+					const pubDate = formatPublishedAt(item.publishedAt);
 
-						return `<feed-item-card class="block w-full">
-							<article data-item-id="${escapeHtml(item.itemId)}" class="grid w-full rounded-md bg-global-text/5 px-4 py-3">
+					return `<feed-item-card class="block max-w-full">
+							<article data-item-id="${escapeHtml(item.itemId)}" class="grid min-w-0 max-w-full overflow-hidden rounded-md bg-global-text/5 px-4 py-3">
 								<div class="flex flex-col gap-4">
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0 flex-1 space-y-1">
@@ -161,9 +163,13 @@ import Layout from "@/layouts/Base.astro";
 												</a>
 											</h2>
 										</div>
-										${hasOriginalLanguage ? `<button type="button" data-lang-toggle data-original-language="${escapeHtml(item.sourceLanguage.toUpperCase())}" class="shrink-0 rounded-md bg-global-bg/70 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-global-bg" title="Show ${escapeHtml(item.sourceLanguage.toUpperCase())}">
+										${
+											hasOriginalLanguage
+												? `<button type="button" data-lang-toggle data-original-language="${escapeHtml(item.sourceLanguage.toUpperCase())}" class="shrink-0 rounded-md bg-global-bg/70 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-global-bg" title="Show ${escapeHtml(item.sourceLanguage.toUpperCase())}">
 											<span data-lang-label>${escapeHtml(item.sourceLanguage.toUpperCase())}</span>
-										</button>` : ""}
+										</button>`
+												: ""
+										}
 									</div>
 									<div class="prose prose-sm prose-cactus max-w-none [&>p:last-of-type]:mb-0">
 										<p class="line-clamp-4">
@@ -186,8 +192,7 @@ import Layout from "@/layouts/Base.astro";
 								</div>
 							</article>
 						</feed-item-card>`;
-					},
-				)
+				})
 				.join("");
 		}
 
@@ -220,7 +225,8 @@ import Layout from "@/layouts/Base.astro";
 		void loadReading();
 
 		readingTabs?.addEventListener("click", (event) => {
-			const target = event.target instanceof Element ? event.target.closest("[data-feed-tab]") : null;
+			const target =
+				event.target instanceof Element ? event.target.closest("[data-feed-tab]") : null;
 			if (!target) return;
 			selectedFeedId = target.getAttribute("data-feed-tab") || "";
 			renderReading();
@@ -283,14 +289,7 @@ import Layout from "@/layouts/Base.astro";
 				const langLabel = this.querySelector("[data-lang-label]");
 				const originalLanguage = toggleButton?.getAttribute("data-original-language") || "";
 
-				if (
-					toggleButton &&
-					titleEn &&
-					titleOriginal &&
-					summaryEn &&
-					summaryOriginal &&
-					langLabel
-				) {
+				if (toggleButton && titleEn && titleOriginal && summaryEn && summaryOriginal && langLabel) {
 					toggleButton.addEventListener("click", () => {
 						this.#isEnglish = !this.#isEnglish;
 

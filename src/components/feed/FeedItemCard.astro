@@ -39,43 +39,47 @@ const originalSummary = hasOriginalLanguage ? summary : defaultSummary;
 		<div class="flex flex-col gap-3">
 			<div class="flex items-start justify-between gap-3">
 				<div class="min-w-0 flex-1 space-y-1">
-					{showRank && rank ? (
-						<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">
-							No. {rank} {feedTitle ? `• ${feedTitle}` : ""}
-						</p>
-					) : feedTitle ? (
-						<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">
-							{feedTitle}
-						</p>
-					) : null}
+					{
+						showRank && rank ? (
+							<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">
+								No. {rank} {feedTitle ? `• ${feedTitle}` : ""}
+							</p>
+						) : feedTitle ? (
+							<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">
+								{feedTitle}
+							</p>
+						) : null
+					}
 					<h2
-						class="text-base font-semibold text-zinc-900 dark:text-zinc-100 {compact ? 'text-sm' : 'text-lg'}"
+						class="{compact ? 'text-sm' : 'text-lg'} text-base font-semibold text-zinc-900 dark:text-zinc-100"
 					>
 						<a
 							href={url}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="hover:underline line-clamp-2"
+							class="line-clamp-2 hover:underline"
 						>
 							<span data-title-en>{defaultTitle}</span>
 							<span data-title-original class="hidden">{originalTitle}</span>
 						</a>
 					</h2>
 				</div>
-				{hasOriginalLanguage && (
-					<button
-						type="button"
-						data-lang-toggle
-						class="shrink-0 rounded border border-zinc-300 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-						title="Toggle language"
-					>
-						<span data-lang-label>{sourceLanguage?.toUpperCase()}</span>
-					</button>
-				)}
+				{
+					hasOriginalLanguage && (
+						<button
+							type="button"
+							data-lang-toggle
+							class="shrink-0 rounded border border-zinc-300 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+							title="Toggle language"
+						>
+							<span data-lang-label>{sourceLanguage?.toUpperCase()}</span>
+						</button>
+					)
+				}
 			</div>
 
 			<div class="space-y-2">
-				<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 line-clamp-3">
+				<p class="line-clamp-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
 					<span data-summary-en>{defaultSummary}</span>
 					<span data-summary-original class="hidden">{originalSummary}</span>
 				</p>
@@ -83,18 +87,22 @@ const originalSummary = hasOriginalLanguage ? summary : defaultSummary;
 
 			<div class="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
 				<time datetime={publishedAt ?? undefined}>
-					{publishedAt
-						? new Date(publishedAt).toLocaleDateString(undefined, {
-								day: "numeric",
-								month: "short",
-								year: "numeric",
-							})
-						: "Date unavailable"}
+					{
+						publishedAt
+							? new Date(publishedAt).toLocaleDateString(undefined, {
+									day: "numeric",
+									month: "short",
+									year: "numeric",
+								})
+							: "Date unavailable"
+					}
 				</time>
 				{hasOriginalLanguage && <span>•</span>}
-				{hasOriginalLanguage && (
-					<span class="text-[11px] tracking-[0.18em] uppercase">{sourceLanguage}</span>
-				)}
+				{
+					hasOriginalLanguage && (
+						<span class="text-[11px] tracking-[0.18em] uppercase">{sourceLanguage}</span>
+					)
+				}
 			</div>
 
 			<div class="pt-2">

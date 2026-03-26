@@ -30,19 +30,19 @@ import { siteConfig } from "../../site.config";
 			class="bg-global-bg absolute -inset-x-4 top-12 hidden flex-col divide-y px-2 py-4 group-[.menu-open]:z-50 group-[.menu-open]:flex sm:static sm:z-auto sm:-ms-4 sm:mt-1 sm:flex sm:flex-row sm:divide-x sm:divide-y-0 sm:bg-transparent sm:p-0"
 			id="navigation-menu"
 		>
-		{
-			menuLinks.map((link) => (
-				<a
-					aria-current={Astro.url.pathname === link.path ? "page" : false}
-					class="text-accent px-2 py-4 font-semibold sm:px-4 sm:py-0 sm:underline-offset-2 sm:hover:underline"
-					href={link.path}
-					target={link.path.startsWith("http") ? "_blank" : undefined}
-					rel={link.path.startsWith("http") ? "noopener noreferrer" : undefined}
-				>
-					{link.title}
-				</a>
-			))
-		}
+			{
+				menuLinks.map((link) => (
+					<a
+						aria-current={Astro.url.pathname === link.path ? "page" : false}
+						class="text-accent px-2 py-4 font-semibold sm:px-4 sm:py-0 sm:underline-offset-2 sm:hover:underline"
+						href={link.path}
+						target={link.path.startsWith("http") ? "_blank" : undefined}
+						rel={link.path.startsWith("http") ? "noopener noreferrer" : undefined}
+					>
+						{link.title}
+					</a>
+				))
+			}
 		</nav>
 	</div>
 	<Search />
