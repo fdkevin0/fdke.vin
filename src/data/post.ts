@@ -1,5 +1,5 @@
 import { type CollectionEntry, getCollection } from "astro:content";
-import { type BlogLang, BLOG_LANGS, DEFAULT_BLOG_LANG, getPostSlug } from "@/lib/blog-i18n";
+import { DEFAULT_SITE_LANG, getPostSlug, SITE_LANGS, type SiteLang } from "@/lib/i18n";
 
 function assertPostShape(posts: CollectionEntry<"post">[]) {
 	const seen = new Set<string>();
@@ -30,7 +30,7 @@ function assertPostShape(posts: CollectionEntry<"post">[]) {
 }
 
 /** filter out draft posts based on the environment */
-export async function getAllPosts(lang?: BlogLang): Promise<CollectionEntry<"post">[]> {
+export async function getAllPosts(lang?: SiteLang): Promise<CollectionEntry<"post">[]> {
 	const posts = await getCollection("post", ({ data }) => {
 		const draftAllowed = import.meta.env.PROD ? !data.draft : true;
 		return draftAllowed && (lang ? data.lang === lang : true);
@@ -38,11 +38,11 @@ export async function getAllPosts(lang?: BlogLang): Promise<CollectionEntry<"pos
 	return assertPostShape(posts);
 }
 
-export async function getPostsByLang(lang: BlogLang = DEFAULT_BLOG_LANG) {
+export async function getPostsByLang(lang: SiteLang = DEFAULT_SITE_LANG) {
 	return await getAllPosts(lang);
 }
 
-export async function getPostBySlug(lang: BlogLang, slug: string) {
+export async function getPostBySlug(lang: SiteLang, slug: string) {
 	const posts = await getPostsByLang(lang);
 	return posts.find((post) => getPostSlug(post) === slug);
 }
@@ -52,7 +52,7 @@ export async function getPostBySlugAnyLang(slug: string) {
 	return allPosts.find((post) => getPostSlug(post) === slug);
 }
 
-export async function getPostBySlugWithFallback(lang: BlogLang, slug: string) {
+export async function getPostBySlugWithFallback(lang: SiteLang, slug: string) {
 	const allPosts = await getAllPosts();
 	const exact = allPosts.find((post) => post.data.lang === lang && getPostSlug(post) === slug);
 	if (exact) return exact;
@@ -114,11 +114,11 @@ export async function getPostTranslations(post: CollectionEntry<"post">) {
 export async function getPostTranslationsByLang(post: CollectionEntry<"post">) {
 	const translations = await getPostTranslations(post);
 	return Object.fromEntries(
-		BLOG_LANGS.map((lang) => [
+		SITE_LANGS.map((lang) => [
 			lang,
 			lang === post.data.lang
 				? post
 				: translations.find((candidate) => candidate.data.lang === lang),
 		]),
-	) as Record<BlogLang, CollectionEntry<"post"> | undefined>;
+	) as Record<SiteLang, CollectionEntry<"post"> | undefined>;
 }

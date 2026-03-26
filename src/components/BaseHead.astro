@@ -1,10 +1,11 @@
 ---
 import { WEBMENTION_PINGBACK, WEBMENTION_URL } from "astro:env/client";
-import { DEFAULT_BLOG_LANG, getBlogRssPath } from "@/lib/blog-i18n";
 import {
+	DEFAULT_SITE_LANG,
 	SITE_LANG_COOKIE_KEY,
 	SITE_LANG_QUERY_KEY,
 	SITE_LANG_STORAGE_KEY,
+	getBlogRssPath,
 } from "@/lib/i18n";
 import { siteConfig } from "@/site.config";
 import type { SiteMeta } from "@/types";
@@ -19,7 +20,7 @@ const {
 	lang = siteConfig.lang,
 	ogImage,
 	ogLocale = siteConfig.ogLocale,
-	rssHref = getBlogRssPath(DEFAULT_BLOG_LANG),
+	rssHref = getBlogRssPath(DEFAULT_SITE_LANG),
 	title,
 } = Astro.props;
 

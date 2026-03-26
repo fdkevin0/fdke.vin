@@ -1,7 +1,7 @@
 import { defineCollection } from "astro:content";
 import { glob } from "astro/loaders";
 import { z } from "zod";
-import { BLOG_LANGS } from "@/lib/blog-i18n";
+import { SITE_LANGS } from "@/lib/i18n";
 
 function removeDupsAndLowerCase(array: string[]) {
 	return [...new Set(array.map((str) => str.toLowerCase()))];
@@ -25,7 +25,7 @@ const post = defineCollection({
 				})
 				.optional(),
 			draft: z.boolean().default(false),
-			lang: z.enum(BLOG_LANGS).default("zh"),
+			lang: z.enum(SITE_LANGS).default("zh"),
 			ogImage: z.string().optional(),
 			tags: z.array(z.string()).default([]).transform(removeDupsAndLowerCase),
 			publishDate: z

@@ -4,7 +4,7 @@ import Footer from "@/components/layout/Footer.astro";
 import Header from "@/components/layout/Header.astro";
 import SkipLink from "@/components/SkipLink.astro";
 import ThemeProvider from "@/components/ThemeProvider.astro";
-import { DEFAULT_BLOG_LANG, getBlogRssPath } from "@/lib/blog-i18n";
+import { DEFAULT_SITE_LANG, getBlogRssPath } from "@/lib/i18n";
 import { siteConfig } from "@/site.config";
 import type { SiteMeta } from "@/types";
 
@@ -12,26 +12,25 @@ interface Props {
 	meta: SiteMeta;
 }
 
+const { meta } = Astro.props;
 const {
-	meta: {
-		alternates,
-		articleDate,
-		blogLanguage = Astro.locals.siteDefaultLang ?? DEFAULT_BLOG_LANG,
-		blogLanguageOptions,
-		description = siteConfig.description,
-		lang = siteConfig.lang,
-		ogImage,
-		ogLocale,
-		rssHref,
-		title,
-	},
-} = Astro.props;
+	alternates = undefined,
+	articleDate = undefined,
+	blogLanguage = (Astro.locals.siteDefaultLang ?? DEFAULT_SITE_LANG) as "zh" | "en" | "ja",
+	blogLanguageOptions = undefined,
+	description = siteConfig.description,
+	lang = siteConfig.lang,
+	ogImage = undefined,
+	ogLocale = undefined,
+	rssHref = undefined,
+	title,
+} = meta;
 ---
 
 <html class="scroll-smooth" lang={lang}>
 	<head>
 		<BaseHead
-			alternates={alternates}
+			alternates={alternates as Array<{ href: string; hreflang: string; }> | undefined}
 			articleDate={articleDate}
 			description={description}
 			lang={lang}

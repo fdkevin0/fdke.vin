@@ -9,17 +9,17 @@ import {
 	groupPostsByYear,
 } from "@/data/post";
 import {
-	BLOG_LANGS,
-	getBlogLanguageOptions,
-	getBlogLangMeta,
+	SITE_LANGS,
+	getSiteLanguageOptions,
+	getSiteLangMeta,
 	getBlogRssPath,
-	hasExplicitBlogLang,
-	getRequestBlogLang,
+	hasExplicitSiteLang,
+	getRequestSiteLang,
 	getTagPath,
 	getTagsIndexPath,
-	getBlogUrlWithLang,
+	getSiteUrlWithLang,
 	getPostsPath,
-} from "@/lib/blog-i18n";
+} from "@/lib/i18n";
 import PageLayout from "@/layouts/Base.astro";
 import PostLayout from "@/layouts/BlogPost.astro";
 import { collectionDateSort } from "@/utils/date";
@@ -27,8 +27,8 @@ import { collectionDateSort } from "@/utils/date";
 export const prerender = false;
 
 const slugParam = Astro.params.slug;
-const blogLang = getRequestBlogLang(Astro.url, Astro.locals.siteDefaultLang);
-const explicitLang = hasExplicitBlogLang(Astro.url);
+const blogLang = getRequestSiteLang(Astro.url, Astro.locals.siteDefaultLang);
+const explicitLang = hasExplicitSiteLang(Astro.url);
 const isListing = slugParam === undefined || /^\d+$/.test(slugParam);
 
 let pageContent:
@@ -94,12 +94,12 @@ if (isListing) {
 	pageContent = { Content, post, type: "post" };
 }
 
-const langMeta = getBlogLangMeta(blogLang);
+const langMeta = getSiteLangMeta(blogLang);
 const meta = {
 	blogLanguage: blogLang,
-	blogLanguageOptions: getBlogLanguageOptions(
+	blogLanguageOptions: getSiteLanguageOptions(
 		Object.fromEntries(
-			BLOG_LANGS.map((lang) => [lang, { href: getBlogUrlWithLang(Astro.url, lang) }]),
+			SITE_LANGS.map((lang) => [lang, { href: getSiteUrlWithLang(Astro.url, lang) }]),
 		),
 	).map((option) => ({
 		href: option.href,

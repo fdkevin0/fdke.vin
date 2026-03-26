@@ -1,19 +1,20 @@
 ---
 import Search from "@/components/Search.astro";
 import ThemeToggle from "@/components/ThemeToggle.astro";
-import { BLOG_LANGS, type BlogLang, getBlogLangMeta } from "@/lib/blog-i18n";
-import { SITE_LANG_STORAGE_KEY } from "@/lib/i18n";
+import { type SiteLang, getSiteLangMeta, SITE_LANG_STORAGE_KEY } from "@/lib/i18n";
 import { menuLinks } from "@/site.config";
 import { siteConfig } from "../../site.config";
 
-interface Props {
-	blogLanguage?: BlogLang;
-	blogLanguageOptions?: Array<{
-		disabled?: boolean;
-		href?: string;
-		lang: string;
-		label: string;
-	}>;
+export interface Props {
+	blogLanguage?: SiteLang;
+	blogLanguageOptions?:
+		| Array<{
+				disabled?: boolean;
+				href?: string | undefined;
+				lang: string;
+				label: string;
+		  }>
+		| undefined;
 }
 
 const { blogLanguage = "en", blogLanguageOptions } = Astro.props as Props;
@@ -25,7 +26,7 @@ const normalizedLanguageOptions = blogLanguageOptions as
 	label: string;
 }>
 	| undefined;
-const currentLanguageLabel = getBlogLangMeta(blogLanguage).label;
+const currentLanguageLabel = getSiteLangMeta(blogLanguage).label;
 ---
 
 <header class="group relative mb-28 flex items-center sm:ps-18" id="main-header">

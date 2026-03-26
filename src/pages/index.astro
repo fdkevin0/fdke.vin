@@ -5,13 +5,13 @@ import Note from "@/components/note/Note.astro";
 import SocialList from "@/components/SocialList.astro";
 import { getPostsByLang } from "@/data/post";
 import {
-	BLOG_LANGS,
-	getBlogLanguageOptions,
-	getBlogUrlWithLang,
+	SITE_LANGS,
+	getSiteLanguageOptions,
+	getSiteUrlWithLang,
 	getPostsPath,
-	getRequestBlogLang,
-	hasExplicitBlogLang,
-} from "@/lib/blog-i18n";
+	getRequestSiteLang,
+	hasExplicitSiteLang,
+} from "@/lib/i18n";
 import PageLayout from "@/layouts/Base.astro";
 import { collectionDateSort } from "@/utils/date";
 
@@ -19,8 +19,8 @@ export const prerender = false;
 
 // Posts
 const MAX_POSTS = 10;
-const blogLang = getRequestBlogLang(Astro.url, Astro.locals.siteDefaultLang);
-const explicitLang = hasExplicitBlogLang(Astro.url);
+const blogLang = getRequestSiteLang(Astro.url, Astro.locals.siteDefaultLang);
+const explicitLang = hasExplicitSiteLang(Astro.url);
 const allPosts = await getPostsByLang(blogLang);
 const allPostsByDate = allPosts.sort(collectionDateSort) as CollectionEntry<"post">[];
 const latestPosts = allPostsByDate.slice(0, MAX_POSTS);
@@ -40,15 +40,15 @@ const latestNotes = allNotes
 <PageLayout
 	meta={{
 		blogLanguage: blogLang,
-		blogLanguageOptions: getBlogLanguageOptions(
-			Object.fromEntries(
-				BLOG_LANGS.map((lang) => [lang, { href: getBlogUrlWithLang(Astro.url, lang, true) }]),
-			),
-		).map((option) => ({
-			href: option.href,
-			label: option.meta.label,
-			lang: option.lang,
-		})),
+	blogLanguageOptions: getSiteLanguageOptions(
+		Object.fromEntries(
+			SITE_LANGS.map((lang) => [lang, { href: getSiteUrlWithLang(Astro.url, lang, true) }]),
+		),
+	).map((option) => ({
+		href: option.href,
+		label: option.meta.label,
+		lang: option.lang,
+	})),
 		title: "Home",
 	}}
 >

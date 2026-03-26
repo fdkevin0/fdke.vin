@@ -18,23 +18,25 @@ export interface PaginationLink {
 }
 
 export interface SiteMeta {
-	blogLanguage?: string;
+	blogLanguage?: "zh" | "en" | "ja";
 	blogLanguageOptions?: Array<{
 		disabled?: boolean;
-		href?: string;
+		href?: string | undefined;
 		lang: string;
 		label: string;
 	}>;
-	alternates?: Array<{
-		href: string;
-		hreflang: string;
-	}>;
+	alternates?:
+		| Array<{
+				href: string;
+				hreflang: string;
+		  }>
+		| undefined;
 	articleDate?: string | undefined;
-	description?: string;
-	lang?: string;
+	description?: string | undefined;
+	lang?: string | undefined;
 	ogImage?: string | undefined;
-	ogLocale?: string;
-	rssHref?: string;
+	ogLocale?: string | undefined;
+	rssHref?: string | undefined;
 	title: string;
 }
 

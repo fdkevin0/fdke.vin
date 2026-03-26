@@ -5,13 +5,11 @@ import {
 	getRequestSiteLang,
 	getSiteLangMeta,
 	getSiteUrlWithLang,
-	hasExplicitSiteLang,
 } from "@/lib/i18n";
 
 export const prerender = false;
 
 const siteLang = getRequestSiteLang(Astro.url, Astro.locals.siteDefaultLang);
-const explicitLang = hasExplicitSiteLang(Astro.url);
 const langMeta = getSiteLangMeta(siteLang);
 
 const readingCopy = {

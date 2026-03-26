@@ -1,3 +1,5 @@
+import type { CollectionEntry } from "astro:content";
+
 export const SITE_LANG_QUERY_KEY = "lang";
 export const SITE_LANG_STORAGE_KEY = "site-language";
 export const SITE_LANG_COOKIE_KEY = "site-language";
@@ -87,4 +89,47 @@ export function getSiteUrlWithLang(url: URL, lang: SiteLang, explicit = true) {
 	}
 	nextUrl.searchParams.set(SITE_LANG_QUERY_KEY, getSiteLangMeta(lang).queryValue);
 	return `${nextUrl.pathname}${nextUrl.search}`;
+}
+
+// Blog-specific functions
+
+export function getPostSlug(post: Pick<CollectionEntry<"post">, "id">) {
+	const match = post.id.match(/^\d{4}-\d{2}-\d{2}-(.+)-([a-z]{2,3})$/);
+	if (!match) {
+		throw new Error(`Post "${post.id}" must follow the "{date}-{slug}-{lang}" naming convention.`);
+	}
+	return match[1];
+}
+
+export function getPostPath(post: Pick<CollectionEntry<"post">, "id" | "data">, explicit = false) {
+	return withSiteLangQuery(`/posts/${getPostSlug(post)}/`, post.data.lang, explicit);
+}
+
+export function getPostsPath(lang: SiteLang, page = 1, explicit = false) {
+	const path = page === 1 ? "/posts/" : `/posts/${page}/`;
+	return withSiteLangQuery(path, lang, explicit);
+}
+
+export function getTagPath(tag: string, lang: SiteLang, page = 1, explicit = false) {
+	const path = page === 1 ? `/tags/${tag}/` : `/tags/${tag}/${page}/`;
+	return withSiteLangQuery(path, lang, explicit);
+}
+
+export function getTagsIndexPath(lang: SiteLang, explicit = false) {
+	return withSiteLangQuery("/tags/", lang, explicit);
+}
+
+export function getBlogRssPath(lang: SiteLang, explicit = false) {
+	return withSiteLangQuery("/rss.xml", lang, explicit);
+}
+
+export function getSiteLanguageOptions(
+	options: Partial<Record<SiteLang, { disabled?: boolean; href?: string }>> = {},
+) {
+	return SITE_LANGS.map((lang) => ({
+		disabled: options[lang]?.disabled ?? false,
+		href: options[lang]?.href,
+		lang,
+		meta: getSiteLangMeta(lang),
+	}));
 }

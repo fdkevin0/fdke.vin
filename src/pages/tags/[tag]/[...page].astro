@@ -4,16 +4,16 @@ import Pagination from "@/components/Paginator.astro";
 import PostPreview from "@/components/blog/PostPreview.astro";
 import { getPostsByLang, getTagMeta } from "@/data/post";
 import {
-	BLOG_LANGS,
-	getBlogLanguageOptions,
-	getBlogLangMeta,
+	SITE_LANGS,
+	getSiteLanguageOptions,
+	getSiteLangMeta,
 	getBlogRssPath,
-	getRequestBlogLang,
+	getRequestSiteLang,
 	getTagPath,
 	getTagsIndexPath,
-	getBlogUrlWithLang,
-	hasExplicitBlogLang,
-} from "@/lib/blog-i18n";
+	getSiteUrlWithLang,
+	hasExplicitSiteLang,
+} from "@/lib/i18n";
 import PageLayout from "@/layouts/Base.astro";
 import { collectionDateSort } from "@/utils/date";
 
@@ -22,8 +22,11 @@ export const prerender = false;
 const pageParam = Astro.params.page;
 const pageNumber = pageParam ? Number.parseInt(pageParam, 10) : 1;
 const { tag } = Astro.params;
-const blogLang = getRequestBlogLang(Astro.url, Astro.locals.siteDefaultLang);
-const explicitLang = hasExplicitBlogLang(Astro.url);
+if (!tag) {
+	return Astro.redirect("/404");
+}
+const blogLang = getRequestSiteLang(Astro.url, Astro.locals.siteDefaultLang);
+const explicitLang = hasExplicitSiteLang(Astro.url);
 const allPosts = (await getPostsByLang(blogLang))
 	.sort(collectionDateSort)
 	.filter((post) => post.data.tags.includes(tag));
@@ -38,13 +41,13 @@ const tagMeta = await getTagMeta(tag);
 const TagContent = tagMeta ? (await render(tagMeta)).Content : null;
 const offset = (pageNumber - 1) * pageSize;
 const pagePosts = allPosts.slice(offset, offset + pageSize);
-const langMeta = getBlogLangMeta(blogLang);
+const langMeta = getSiteLangMeta(blogLang);
 
 const meta = {
 	blogLanguage: blogLang,
-	blogLanguageOptions: getBlogLanguageOptions(
+	blogLanguageOptions: getSiteLanguageOptions(
 		Object.fromEntries(
-			BLOG_LANGS.map((lang) => [lang, { href: getBlogUrlWithLang(Astro.url, lang) }]),
+			SITE_LANGS.map((lang) => [lang, { href: getSiteUrlWithLang(Astro.url, lang) }]),
 		),
 	).map((option) => ({
 		href: option.href,

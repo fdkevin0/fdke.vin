@@ -5,12 +5,12 @@ import Masthead from "@/components/blog/Masthead.astro";
 import TOC from "@/components/blog/TOC.astro";
 import WebMentions from "@/components/blog/webmentions/index.astro";
 import {
-	BLOG_LANGS,
-	getBlogLangMeta,
+	SITE_LANGS,
+	getSiteLangMeta,
 	getBlogRssPath,
-	hasExplicitBlogLang,
+	hasExplicitSiteLang,
 	getPostPath,
-} from "@/lib/blog-i18n";
+} from "@/lib/i18n";
 import { getPostTranslationsByLang } from "@/data/post";
 
 import BaseLayout from "./Base.astro";
@@ -26,25 +26,25 @@ const articleDate = updatedDate?.toISOString() ?? publishDate.toISOString();
 const { headings, remarkPluginFrontmatter } = await render(post);
 const readingTime: string = remarkPluginFrontmatter.readingTime;
 const translations = await getPostTranslationsByLang(post);
-const explicitLang = hasExplicitBlogLang(Astro.url);
-const supportedTranslations = BLOG_LANGS.flatMap((lang) => {
+const explicitLang = hasExplicitSiteLang(Astro.url);
+const supportedTranslations = SITE_LANGS.flatMap((lang) => {
 	const translatedPost = translations[lang];
 	if (!translatedPost) return [];
 	return [
 		{
 			href: getPostPath(translatedPost, true),
-			label: getBlogLangMeta(lang).label,
+			label: getSiteLangMeta(lang).label,
 			lang,
 		},
 	];
 });
-const alternates = BLOG_LANGS.flatMap((lang) => {
+const alternates = SITE_LANGS.flatMap((lang) => {
 	const translatedPost = translations[lang];
 	if (!translatedPost) return [];
 	return [
 		{
 			href: new URL(getPostPath(translatedPost, true), Astro.site).href,
-			hreflang: getBlogLangMeta(lang).htmlLang,
+			hreflang: getSiteLangMeta(lang).htmlLang,
 		},
 	];
 });
@@ -56,9 +56,9 @@ const alternates = BLOG_LANGS.flatMap((lang) => {
 		articleDate,
 		blogLanguage: post.data.lang,
 		description,
-		lang: getBlogLangMeta(post.data.lang).htmlLang,
+		lang: getSiteLangMeta(post.data.lang).htmlLang,
 		ogImage: socialImage,
-		ogLocale: getBlogLangMeta(post.data.lang).ogLocale,
+		ogLocale: getSiteLangMeta(post.data.lang).ogLocale,
 		rssHref: getBlogRssPath(post.data.lang, explicitLang),
 		title,
 	}}
