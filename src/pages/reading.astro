@@ -1,25 +1,138 @@
 ---
 import Layout from "@/layouts/Base.astro";
+import {
+	SITE_LANGS,
+	getRequestSiteLang,
+	getSiteLangMeta,
+	getSiteUrlWithLang,
+	hasExplicitSiteLang,
+} from "@/lib/i18n";
+
+export const prerender = false;
+
+const siteLang = getRequestSiteLang(Astro.url, Astro.locals.siteDefaultLang);
+const explicitLang = hasExplicitSiteLang(Astro.url);
+const langMeta = getSiteLangMeta(siteLang);
+
+const readingCopy = {
+	en: {
+		description:
+			"A rolling reading list of feed posts that stay visible for 24 hours, extended for another 24 hours whenever you open them.",
+		emptyAll: "No posts are currently in the reading window.",
+		emptyFeed: "No posts are currently visible for the selected feed.",
+		feedbackLoad: "Failed to load reading",
+		feedbackVisibility: "Failed to extend reading item visibility",
+		filterAll: "All",
+		loading: "Loading reading list...",
+		modeOriginal: "Original",
+		modeTranslated: "Translated",
+		modeTranslatedHint:
+			"Showing English when available. Use a card toggle to switch back to the source language.",
+		modeOriginalHint:
+			"Showing the source language by default. Use a card toggle to switch to English when available.",
+		noDate: "Date unavailable",
+		openArticle: "Open article",
+		refresh: "Refresh",
+		refreshing: "Refreshing...",
+		title: "Reading",
+	},
+	ja: {
+		description:
+			"24時間表示されるフィード記事の読みリストです。記事を開くたびに表示期間がさらに24時間延長されます。",
+		emptyAll: "現在、表示中の投稿はありません。",
+		emptyFeed: "選択したフィードに表示中の投稿はありません。",
+		feedbackLoad: "読み込みに失敗しました",
+		feedbackVisibility: "表示期間の延長に失敗しました",
+		filterAll: "All",
+		loading: "読み込み中...",
+		modeOriginal: "Original",
+		modeTranslated: "Translated",
+		modeTranslatedHint:
+			"英訳がある場合は英語を表示します。カード右上の切り替えで原文を表示できます。",
+		modeOriginalHint:
+			"原文を優先表示しています。英訳がある場合はカード右上の切り替えで英語にできます。",
+		noDate: "日付なし",
+		openArticle: "記事を開く",
+		refresh: "更新",
+		refreshing: "更新中...",
+		title: "Reading",
+	},
+	zh: {
+		description:
+			"这里展示最近 24 小时内可见的订阅内容；每次打开文章后，可见时间会再顺延 24 小时。",
+		emptyAll: "当前没有处于展示窗口内的内容。",
+		emptyFeed: "当前所选订阅源没有处于展示窗口内的内容。",
+		feedbackLoad: "加载 Reading 列表失败",
+		feedbackVisibility: "延长可见时间失败",
+		filterAll: "全部",
+		loading: "正在加载 Reading 列表...",
+		modeOriginal: "原文",
+		modeTranslated: "译文",
+		modeTranslatedHint: "优先显示英文译文；可在单条卡片右上角切回原文。",
+		modeOriginalHint: "优先显示原文；如果有英文译文，可在单条卡片右上角切换查看。",
+		noDate: "暂无日期",
+		openArticle: "打开文章",
+		refresh: "刷新",
+		refreshing: "刷新中...",
+		title: "Reading",
+	},
+} as const;
+
+const copy = readingCopy[siteLang];
+const initialDisplayMode = siteLang === "en" ? "translated" : "original";
 ---
 
 <Layout
 	meta={{
-		title: "Reading",
-		description:
-			"A rolling reading list of feed posts that stay visible for 24 hours, extended for another 24 hours whenever you open them.",
+		title: copy.title,
+		description: copy.description,
+		lang: langMeta.htmlLang,
+		ogLocale: langMeta.ogLocale,
+		blogLanguage: siteLang,
+		blogLanguageOptions: SITE_LANGS.map((lang) => ({
+			href: getSiteUrlWithLang(Astro.url, lang, true),
+			label: getSiteLangMeta(lang).label,
+			lang,
+		})),
 	}}
 >
 	<section>
-		<div class="mb-12 flex items-center justify-between gap-4">
-			<h1 class="title">Reading</h1>
-			<button
-				id="reading-refresh"
-				type="button"
-				class="cactus-link bg-global-text/5 hover:bg-global-text/10 inline-flex shrink-0 items-center rounded-md px-3 py-2 text-xs tracking-[0.18em] uppercase transition disabled:cursor-not-allowed disabled:opacity-60"
-			>
-				Refresh
-			</button>
+		<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+			<h1 class="title">{copy.title}</h1>
+			<div class="flex flex-wrap items-center gap-3">
+				<div
+					id="reading-display-mode"
+					class="bg-global-text/5 inline-flex rounded-full p-1 text-xs tracking-[0.14em] uppercase"
+				>
+					<button
+						type="button"
+						data-reading-mode="translated"
+						class="rounded-full px-3 py-1.5 transition"
+					>
+						{copy.modeTranslated}
+					</button>
+					<button
+						type="button"
+						data-reading-mode="original"
+						class="rounded-full px-3 py-1.5 transition"
+					>
+						{copy.modeOriginal}
+					</button>
+				</div>
+				<button
+					id="reading-refresh"
+					type="button"
+					class="cactus-link bg-global-text/5 hover:bg-global-text/10 inline-flex shrink-0 items-center rounded-md px-3 py-2 text-xs tracking-[0.18em] uppercase transition disabled:cursor-not-allowed disabled:opacity-60"
+				>
+					{copy.refresh}
+				</button>
+			</div>
 		</div>
+
+		<p
+			id="reading-mode-hint"
+			class="bg-global-text/5 rounded-md px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300"
+		></p>
 
 		<div id="reading-feedback" class="hidden rounded-md px-4 py-3 text-sm"></div>
 
@@ -29,29 +142,40 @@ import Layout from "@/layouts/Base.astro";
 			id="reading-loading"
 			class="bg-global-text/5 mt-6 rounded-md px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300"
 		>
-			Loading reading list...
+			{copy.loading}
 		</div>
 
 		<div
 			id="reading-empty"
 			class="bg-global-text/5 mt-6 hidden rounded-md px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300"
 		>
-			No posts are currently in the reading window.
+			{copy.emptyAll}
 		</div>
 
 		<div id="reading-list" class="mt-6 space-y-8 text-start"></div>
 	</section>
 
-	<script is:inline>
+	<script
+		is:inline
+		define:vars={{
+			copy,
+			initialDisplayMode,
+			siteLang,
+		}}
+	>
+		const READING_DISPLAY_STORAGE_KEY = "reading-display-mode";
 		const readingList = document.getElementById("reading-list");
 		const readingLoading = document.getElementById("reading-loading");
 		const readingEmpty = document.getElementById("reading-empty");
 		const readingFeedback = document.getElementById("reading-feedback");
 		const readingTabs = document.getElementById("reading-tabs");
 		const readingRefresh = document.getElementById("reading-refresh");
+		const readingDisplayMode = document.getElementById("reading-display-mode");
+		const readingModeHint = document.getElementById("reading-mode-hint");
 		let allItems = [];
 		let selectedFeedId = "";
 		let isLoadingReading = false;
+		let displayMode = initialDisplayMode;
 
 		function escapeHtml(value) {
 			return String(value)
@@ -59,6 +183,30 @@ import Layout from "@/layouts/Base.astro";
 				.replaceAll("<", "&lt;")
 				.replaceAll(">", "&gt;")
 				.replaceAll('"', "&quot;");
+		}
+
+		function normalizeDisplayMode(value) {
+			return value === "original" || value === "translated" ? value : undefined;
+		}
+
+		function readStoredDisplayMode() {
+			return normalizeDisplayMode(localStorage.getItem(READING_DISPLAY_STORAGE_KEY));
+		}
+
+		function writeStoredDisplayMode(value) {
+			localStorage.setItem(READING_DISPLAY_STORAGE_KEY, value);
+		}
+
+		function prefersOriginalByDefault() {
+			return siteLang !== "en";
+		}
+
+		function shouldShowOriginal(item, overrideMode) {
+			const mode = overrideMode ?? displayMode;
+			if (mode === "original") {
+				return Boolean(item.sourceLanguage && item.sourceLanguage.toLowerCase() !== "en");
+			}
+			return false;
 		}
 
 		function getFilteredItems() {
@@ -81,7 +229,22 @@ import Layout from "@/layouts/Base.astro";
 		function updateRefreshButton() {
 			if (!(readingRefresh instanceof HTMLButtonElement)) return;
 			readingRefresh.disabled = isLoadingReading;
-			readingRefresh.textContent = isLoadingReading ? "Refreshing..." : "Refresh";
+			readingRefresh.textContent = isLoadingReading ? copy.refreshing : copy.refresh;
+		}
+
+		function updateModeControls() {
+			const buttons = readingDisplayMode?.querySelectorAll("[data-reading-mode]") ?? [];
+			for (const button of buttons) {
+				if (!(button instanceof HTMLButtonElement)) continue;
+				const isActive = button.dataset.readingMode === displayMode;
+				button.className = isActive
+					? "bg-global-text text-global-bg rounded-full px-3 py-1.5 transition"
+					: "text-zinc-700 hover:bg-global-text/10 dark:text-zinc-300 rounded-full px-3 py-1.5 transition";
+			}
+			if (readingModeHint) {
+				readingModeHint.textContent =
+					displayMode === "translated" ? copy.modeTranslatedHint : copy.modeOriginalHint;
+			}
 		}
 
 		function updateLocalReadingItem(itemId, updater) {
@@ -92,9 +255,9 @@ import Layout from "@/layouts/Base.astro";
 		}
 
 		function formatPublishedAt(value) {
-			if (!value) return "Date unavailable";
+			if (!value) return copy.noDate;
 
-			return new Intl.DateTimeFormat("en-GB", {
+			return new Intl.DateTimeFormat(siteLang === "zh" ? "zh-CN" : siteLang === "ja" ? "ja-JP" : "en-GB", {
 				day: "2-digit",
 				month: "2-digit",
 				year: "2-digit",
@@ -118,7 +281,7 @@ import Layout from "@/layouts/Base.astro";
 				return;
 			}
 
-			const tabs = [{ id: "", title: "All" }, ...feeds];
+			const tabs = [{ id: "", title: copy.filterAll }, ...feeds];
 			readingTabs.innerHTML = tabs
 				.map((tab) => {
 					const isActive = tab.id === selectedFeedId;
@@ -136,21 +299,26 @@ import Layout from "@/layouts/Base.astro";
 
 		function renderItems(items) {
 			if (!readingList || !readingEmpty) return;
-			readingEmpty.textContent = selectedFeedId
-				? "No posts are currently visible for the selected feed."
-				: "No posts are currently in the reading window.";
+			readingEmpty.textContent = selectedFeedId ? copy.emptyFeed : copy.emptyAll;
 			readingEmpty.style.display = items.length ? "none" : "block";
 			readingList.innerHTML = items
 				.map((item) => {
 					const hasOriginalLanguage =
 						item.sourceLanguage && item.sourceLanguage.toLowerCase() !== "en";
-					const defaultTitle = item.titleEn || item.title;
-					const defaultSummary = item.summaryEn || item.summary || "";
-					const originalTitle = hasOriginalLanguage ? item.title : defaultTitle;
-					const originalSummary = hasOriginalLanguage ? item.summary : defaultSummary;
+					const translatedTitle = item.titleEn || item.title;
+					const translatedSummary = item.summaryEn || item.summary || "";
+					const originalTitle = hasOriginalLanguage ? item.title : translatedTitle;
+					const originalSummary = hasOriginalLanguage ? item.summary : translatedSummary;
 					const pubDate = formatPublishedAt(item.publishedAt);
+					const showOriginal = shouldShowOriginal(item);
+					const titleCurrent = showOriginal ? originalTitle : translatedTitle;
+					const summaryCurrent = showOriginal ? originalSummary : translatedSummary;
+					const nextLabel = showOriginal ? "EN" : (item.sourceLanguage || "").toUpperCase();
+					const toggleTitle = showOriginal
+						? "Show EN"
+						: `Show ${(item.sourceLanguage || "").toUpperCase()}`;
 
-					return `<feed-item-card class="block max-w-full">
+					return `<feed-item-card class="block max-w-full" data-default-mode="${escapeHtml(displayMode)}">
 							<article data-item-id="${escapeHtml(item.itemId)}" class="grid min-w-0 max-w-full overflow-hidden rounded-md bg-global-text/5 px-4 py-3">
 								<div class="flex flex-col gap-4">
 									<div class="flex items-start justify-between gap-3">
@@ -158,22 +326,24 @@ import Layout from "@/layouts/Base.astro";
 											<p class="text-[11px] tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">${escapeHtml(item.feedTitle)}</p>
 											<h2 class="title text-base">
 												<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" data-reading-open class="cactus-link line-clamp-2">
-													<span data-title-en>${escapeHtml(defaultTitle)}</span>
+													<span data-title-current>${escapeHtml(titleCurrent)}</span>
+													<span data-title-en class="hidden">${escapeHtml(translatedTitle)}</span>
 													<span data-title-original class="hidden">${escapeHtml(originalTitle)}</span>
 												</a>
 											</h2>
 										</div>
 										${
 											hasOriginalLanguage
-												? `<button type="button" data-lang-toggle data-original-language="${escapeHtml(item.sourceLanguage.toUpperCase())}" class="shrink-0 rounded-md bg-global-bg/70 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-global-bg" title="Show ${escapeHtml(item.sourceLanguage.toUpperCase())}">
-											<span data-lang-label>${escapeHtml(item.sourceLanguage.toUpperCase())}</span>
+												? `<button type="button" data-lang-toggle data-original-language="${escapeHtml(item.sourceLanguage.toUpperCase())}" class="shrink-0 rounded-md bg-global-bg/70 px-2.5 py-1.5 text-xs tracking-[0.18em] uppercase transition hover:bg-global-bg" title="${escapeHtml(toggleTitle)}">
+											<span data-lang-label>${escapeHtml(nextLabel)}</span>
 										</button>`
 												: ""
 										}
 									</div>
 									<div class="prose prose-sm prose-cactus max-w-none [&>p:last-of-type]:mb-0">
 										<p class="line-clamp-4">
-											<span data-summary-en>${escapeHtml(defaultSummary)}</span>
+											<span data-summary-current>${escapeHtml(summaryCurrent)}</span>
+											<span data-summary-en class="hidden">${escapeHtml(translatedSummary)}</span>
 											<span data-summary-original class="hidden">${escapeHtml(originalSummary)}</span>
 										</p>
 									</div>
@@ -186,7 +356,7 @@ import Layout from "@/layouts/Base.astro";
 									</div>
 									<div>
 										<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" data-reading-open class="cactus-link inline-flex items-center text-xs tracking-[0.18em] uppercase text-zinc-600 dark:text-zinc-300">
-											Open article
+											${escapeHtml(copy.openArticle)}
 										</a>
 									</div>
 								</div>
@@ -197,6 +367,7 @@ import Layout from "@/layouts/Base.astro";
 		}
 
 		function renderReading() {
+			updateModeControls();
 			renderTabs(allItems);
 			renderItems(getFilteredItems());
 		}
@@ -209,12 +380,12 @@ import Layout from "@/layouts/Base.astro";
 				const response = await fetch("/api/reading", { headers: { Accept: "application/json" } });
 				const data = await response.json();
 				if (!response.ok) {
-					throw new Error(data.error || "Failed to load reading");
+					throw new Error(data.error || copy.feedbackLoad);
 				}
 				allItems = Array.isArray(data.items) ? data.items : [];
 				renderReading();
 			} catch (error) {
-				setError(error instanceof Error ? error.message : "Failed to load reading");
+				setError(error instanceof Error ? error.message : copy.feedbackLoad);
 			} finally {
 				isLoadingReading = false;
 				updateRefreshButton();
@@ -222,6 +393,9 @@ import Layout from "@/layouts/Base.astro";
 			}
 		}
 
+		const storedDisplayMode = readStoredDisplayMode();
+		displayMode = storedDisplayMode ?? initialDisplayMode;
+		updateModeControls();
 		void loadReading();
 
 		readingTabs?.addEventListener("click", (event) => {
@@ -229,6 +403,17 @@ import Layout from "@/layouts/Base.astro";
 				event.target instanceof Element ? event.target.closest("[data-feed-tab]") : null;
 			if (!target) return;
 			selectedFeedId = target.getAttribute("data-feed-tab") || "";
+			renderReading();
+		});
+
+		readingDisplayMode?.addEventListener("click", (event) => {
+			const target =
+				event.target instanceof Element ? event.target.closest("[data-reading-mode]") : null;
+			if (!(target instanceof HTMLButtonElement)) return;
+			const nextMode = normalizeDisplayMode(target.dataset.readingMode);
+			if (!nextMode || nextMode === displayMode) return;
+			displayMode = nextMode;
+			writeStoredDisplayMode(nextMode);
 			renderReading();
 		});
 
@@ -260,7 +445,7 @@ import Layout from "@/layouts/Base.astro";
 				.then(async (response) => {
 					const data = await response.json().catch(() => null);
 					if (!response.ok) {
-						throw new Error(data?.error || "Failed to extend reading item visibility");
+						throw new Error(data?.error || copy.feedbackVisibility);
 					}
 
 					updateLocalReadingItem(itemId, (item) => {
@@ -276,38 +461,55 @@ import Layout from "@/layouts/Base.astro";
 		}
 
 		class FeedItemCardElement extends HTMLElement {
-			#isEnglish = true;
+			#mode = "translated";
 
 			connectedCallback() {
 				const toggleButton = this.querySelector("[data-lang-toggle]");
 				const itemId = this.querySelector("[data-item-id]")?.getAttribute("data-item-id");
 				const openLinks = this.querySelectorAll("[data-reading-open]");
+				const titleCurrent = this.querySelector("[data-title-current]");
 				const titleEn = this.querySelector("[data-title-en]");
 				const titleOriginal = this.querySelector("[data-title-original]");
+				const summaryCurrent = this.querySelector("[data-summary-current]");
 				const summaryEn = this.querySelector("[data-summary-en]");
 				const summaryOriginal = this.querySelector("[data-summary-original]");
 				const langLabel = this.querySelector("[data-lang-label]");
 				const originalLanguage = toggleButton?.getAttribute("data-original-language") || "";
+				this.#mode = this.getAttribute("data-default-mode") || "translated";
 
-				if (toggleButton && titleEn && titleOriginal && summaryEn && summaryOriginal && langLabel) {
+				const syncContent = () => {
+					if (
+						!titleCurrent ||
+						!titleEn ||
+						!titleOriginal ||
+						!summaryCurrent ||
+						!summaryEn ||
+						!summaryOriginal
+					) {
+						return;
+					}
+
+					const showOriginal = this.#mode === "original";
+					titleCurrent.textContent = showOriginal ? titleOriginal.textContent : titleEn.textContent;
+					summaryCurrent.textContent = showOriginal
+						? summaryOriginal.textContent
+						: summaryEn.textContent;
+
+					if (toggleButton && langLabel) {
+						langLabel.textContent = showOriginal ? "EN" : originalLanguage;
+						toggleButton.setAttribute(
+							"title",
+							showOriginal ? "Show EN" : `Show ${originalLanguage}`,
+						);
+					}
+				};
+
+				syncContent();
+
+				if (toggleButton && langLabel) {
 					toggleButton.addEventListener("click", () => {
-						this.#isEnglish = !this.#isEnglish;
-
-						if (this.#isEnglish) {
-							titleEn.classList.remove("hidden");
-							titleOriginal.classList.add("hidden");
-							summaryEn.classList.remove("hidden");
-							summaryOriginal.classList.add("hidden");
-							langLabel.textContent = originalLanguage;
-							toggleButton.setAttribute("title", `Show ${originalLanguage}`);
-						} else {
-							titleEn.classList.add("hidden");
-							titleOriginal.classList.remove("hidden");
-							summaryEn.classList.add("hidden");
-							summaryOriginal.classList.remove("hidden");
-							langLabel.textContent = "EN";
-							toggleButton.setAttribute("title", "Show EN");
-						}
+						this.#mode = this.#mode === "original" ? "translated" : "original";
+						syncContent();
 					});
 				}
 

@@ -71,3 +71,20 @@ export function getRequestSiteLang(url: URL, fallback: SiteLang): SiteLang {
 export function hasExplicitSiteLang(url: URL) {
 	return normalizeSiteLang(url.searchParams.get(SITE_LANG_QUERY_KEY) ?? undefined) !== undefined;
 }
+
+export function withSiteLangQuery(path: string, lang: SiteLang, explicit = true) {
+	const url = new URL(path, "https://fdke.vin");
+	if (!explicit) return url.pathname;
+	url.searchParams.set(SITE_LANG_QUERY_KEY, getSiteLangMeta(lang).queryValue);
+	return `${url.pathname}${url.search}`;
+}
+
+export function getSiteUrlWithLang(url: URL, lang: SiteLang, explicit = true) {
+	const nextUrl = new URL(url);
+	if (!explicit) {
+		nextUrl.searchParams.delete(SITE_LANG_QUERY_KEY);
+		return `${nextUrl.pathname}${nextUrl.search}`;
+	}
+	nextUrl.searchParams.set(SITE_LANG_QUERY_KEY, getSiteLangMeta(lang).queryValue);
+	return `${nextUrl.pathname}${nextUrl.search}`;
+}
