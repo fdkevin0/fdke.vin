@@ -1,24 +1,205 @@
 ---
 import { render } from "astro:content";
-import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
-import { getAllPosts } from "@/data/post";
+import Pagination from "@/components/Paginator.astro";
+import PostPreview from "@/components/blog/PostPreview.astro";
+import {
+	getPostBySlugWithFallback,
+	getPostsByLang,
+	getUniqueTags,
+	groupPostsByYear,
+} from "@/data/post";
+import {
+	BLOG_LANGS,
+	getBlogLanguageOptions,
+	getBlogLangMeta,
+	getBlogRssPath,
+	hasExplicitBlogLang,
+	getRequestBlogLang,
+	getTagPath,
+	getTagsIndexPath,
+	getBlogUrlWithLang,
+	getPostsPath,
+} from "@/lib/blog-i18n";
+import PageLayout from "@/layouts/Base.astro";
 import PostLayout from "@/layouts/BlogPost.astro";
+import { collectionDateSort } from "@/utils/date";
 
-// if you're using an adaptor in SSR mode, getStaticPaths wont work -> https://docs.astro.build/en/guides/routing/#modifying-the-slug-example-for-ssr
-export const getStaticPaths = (async () => {
-	const blogEntries = await getAllPosts();
-	return blogEntries.map((post) => ({
-		params: { slug: post.id },
-		props: { post },
-	}));
-}) satisfies GetStaticPaths;
+export const prerender = false;
 
-type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const slugParam = Astro.params.slug;
+const blogLang = getRequestBlogLang(Astro.url, Astro.locals.siteDefaultLang);
+const explicitLang = hasExplicitBlogLang(Astro.url);
+const isListing = slugParam === undefined || /^\d+$/.test(slugParam);
 
-const { post } = Astro.props;
-const { Content } = await render(post);
+let pageContent:
+	| {
+			groupedByYear: ReturnType<typeof groupPostsByYear>;
+			pageNumber: number;
+			paginationProps: Record<string, unknown>;
+			pinnedPosts: Awaited<ReturnType<typeof getPostsByLang>>;
+			type: "listing";
+			uniqueTags: string[];
+	  }
+	| {
+			Content: Awaited<ReturnType<typeof render>>["Content"];
+			post: NonNullable<Awaited<ReturnType<typeof getPostBySlugWithFallback>>>;
+			type: "post";
+	  };
+
+if (isListing) {
+	const MAX_POSTS_PER_PAGE = 10;
+	const MAX_TAGS = 7;
+	const MAX_PINNED_POSTS = 3;
+	const pageNumber = slugParam ? Number.parseInt(slugParam, 10) : 1;
+	const allPosts = (await getPostsByLang(blogLang)).sort(collectionDateSort);
+	const totalPages = Math.max(1, Math.ceil(allPosts.length / MAX_POSTS_PER_PAGE));
+
+	if (pageNumber < 1 || pageNumber > totalPages) {
+		return Astro.rewrite("/404");
+	}
+
+	const pagePosts = allPosts.slice(
+		(pageNumber - 1) * MAX_POSTS_PER_PAGE,
+		pageNumber * MAX_POSTS_PER_PAGE,
+	);
+	pageContent = {
+		groupedByYear: groupPostsByYear(pagePosts),
+		pageNumber,
+		paginationProps: {
+			...(pageNumber > 1 && {
+				prevUrl: {
+					text: "← Previous Page",
+					url: getPostsPath(blogLang, pageNumber - 1, explicitLang),
+				},
+			}),
+			...(pageNumber < totalPages && {
+				nextUrl: {
+					text: "Next Page →",
+					url: getPostsPath(blogLang, pageNumber + 1, explicitLang),
+				},
+			}),
+		},
+		pinnedPosts: allPosts.filter((p) => p.data.pinned).slice(0, MAX_PINNED_POSTS),
+		type: "listing",
+		uniqueTags: getUniqueTags(allPosts).slice(0, MAX_TAGS),
+	};
+} else {
+	const post = await getPostBySlugWithFallback(blogLang, slugParam);
+
+	if (!post) {
+		return Astro.rewrite("/404");
+	}
+
+	const { Content } = await render(post);
+	pageContent = { Content, post, type: "post" };
+}
+
+const langMeta = getBlogLangMeta(blogLang);
+const meta = {
+	blogLanguage: blogLang,
+	blogLanguageOptions: getBlogLanguageOptions(
+		Object.fromEntries(
+			BLOG_LANGS.map((lang) => [lang, { href: getBlogUrlWithLang(Astro.url, lang) }]),
+		),
+	).map((option) => ({
+		href: option.href,
+		label: option.meta.label,
+		lang: option.lang,
+	})),
+	description: "Read my collection of posts and the things that interest me",
+	lang: langMeta.htmlLang,
+	ogLocale: langMeta.ogLocale,
+	rssHref: getBlogRssPath(blogLang, explicitLang),
+	title: "Posts",
+};
+const descYearKeys =
+	pageContent.type === "listing"
+		? Object.keys(pageContent.groupedByYear).sort((a, b) => +b - +a)
+		: [];
 ---
 
-<PostLayout post={post}>
-	<Content />
-</PostLayout>
+{
+	pageContent.type === "post" ? (
+		<PostLayout post={pageContent.post}>
+			<pageContent.Content />
+		</PostLayout>
+	) : (
+		<PageLayout meta={meta}>
+			<div class="mb-12 flex items-center gap-3">
+				<h1 class="title">Posts</h1>
+				<a class="text-accent" href={getBlogRssPath(blogLang, explicitLang)} target="_blank">
+					<span class="sr-only">RSS feed</span>
+					<svg
+						aria-hidden="true"
+						class="h-6 w-6"
+						fill="none"
+						focusable="false"
+						stroke="currentColor"
+						stroke-width="1.5"
+						viewBox="0 0 24 24"
+						xmlns="http://www.w3.org/2000/svg"
+					>
+						<path d="M5 3a16 16 0 0 1 16 16" stroke-linecap="round" stroke-linejoin="round" />
+						<path d="M5 11a8 8 0 0 1 8 8" stroke-linecap="round" stroke-linejoin="round" />
+						<circle cx="6" cy="18" r="1.5" fill="currentColor" />
+					</svg>
+				</a>
+			</div>
+			<div class="grid sm:grid-cols-[3fr_1fr] sm:gap-x-8 sm:gap-y-16">
+				<div>
+					{pageContent.pageNumber === 1 && pageContent.pinnedPosts.length > 0 && (
+						<section class="mb-16">
+							<h2 class="title mb-6 text-xl">Pinned Posts</h2>
+							<ul class="space-y-4" role="list">
+								{pageContent.pinnedPosts.map((p) => (
+									<li class="grid gap-1 sm:grid-cols-[auto_1fr]">
+										<PostPreview explicitLanguage={explicitLang} post={p} />
+									</li>
+								))}
+							</ul>
+						</section>
+					)}
+					{descYearKeys.map((yearKey) => (
+						<section class="mb-16">
+							<h2 id={`year-${yearKey}`} class="title text-lg">
+								<span class="sr-only">Posts in</span>
+								{yearKey}
+							</h2>
+							<ul class="mt-5 space-y-4 text-start">
+								{pageContent.groupedByYear[yearKey]?.map((p) => (
+									<li class="grid gap-1 sm:grid-cols-[auto_1fr] sm:[&_q]:col-start-2">
+										<PostPreview explicitLanguage={explicitLang} post={p} />
+									</li>
+								))}
+							</ul>
+						</section>
+					))}
+					<Pagination {...pageContent.paginationProps} />
+				</div>
+				{!!pageContent.uniqueTags.length && (
+					<aside>
+						<h2 class="title mb-4 text-lg">Tags</h2>
+						<ul class="flex flex-wrap gap-2">
+							{pageContent.uniqueTags.map((tag) => (
+								<li>
+									<a
+										class="cactus-link flex items-center justify-center"
+										href={getTagPath(tag, blogLang, 1, explicitLang)}
+									>
+										<span aria-hidden="true">#</span>
+										{tag}
+									</a>
+								</li>
+							))}
+						</ul>
+						<span class="mt-4 block sm:text-end">
+							<a class="hover:text-link" href={getTagsIndexPath(blogLang, explicitLang)}>
+								View all <span aria-hidden="true">→</span>
+							</a>
+						</span>
+					</aside>
+				)}
+			</div>
+		</PageLayout>
+	)
+}

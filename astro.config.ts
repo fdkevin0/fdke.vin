@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import cloudflare from "@astrojs/cloudflare";
 // Rehype plugins
 import { rehypeHeadingIds } from "@astrojs/markdown-remark";
@@ -92,6 +93,14 @@ export default defineConfig({
 	vite: {
 		optimizeDeps: {
 			exclude: ["@resvg/resvg-wasm"],
+		},
+		resolve: {
+			alias: {
+				debug: fileURLToPath(new URL("./src/shims/debug.ts", import.meta.url)),
+			},
+		},
+		ssr: {
+			noExternal: ["debug"],
 		},
 		// biome-ignore lint/suspicious/noExplicitAny: Astro and Tailwind resolve incompatible Vite plugin types here.
 		plugins: [tailwind(), rawFonts([".ttf", ".woff"])] as any,

@@ -3,13 +3,25 @@ import { type CollectionEntry, getCollection } from "astro:content";
 import PostPreview from "@/components/blog/PostPreview.astro";
 import Note from "@/components/note/Note.astro";
 import SocialList from "@/components/SocialList.astro";
-import { getAllPosts } from "@/data/post";
+import { getPostsByLang } from "@/data/post";
+import {
+	BLOG_LANGS,
+	getBlogLanguageOptions,
+	getBlogUrlWithLang,
+	getPostsPath,
+	getRequestBlogLang,
+	hasExplicitBlogLang,
+} from "@/lib/blog-i18n";
 import PageLayout from "@/layouts/Base.astro";
 import { collectionDateSort } from "@/utils/date";
 
+export const prerender = false;
+
 // Posts
 const MAX_POSTS = 10;
-const allPosts = await getAllPosts();
+const blogLang = getRequestBlogLang(Astro.url, Astro.locals.siteDefaultLang);
+const explicitLang = hasExplicitBlogLang(Astro.url);
+const allPosts = await getPostsByLang(blogLang);
 const allPostsByDate = allPosts.sort(collectionDateSort) as CollectionEntry<"post">[];
 const latestPosts = allPostsByDate.slice(0, MAX_POSTS);
 
@@ -25,7 +37,21 @@ const latestNotes = allNotes
 	.slice(0, MAX_NOTES) as CollectionEntry<"note">[];
 ---
 
-<PageLayout meta={{ title: "Home" }}>
+<PageLayout
+	meta={{
+		blogLanguage: blogLang,
+		blogLanguageOptions: getBlogLanguageOptions(
+			Object.fromEntries(
+				BLOG_LANGS.map((lang) => [lang, { href: getBlogUrlWithLang(Astro.url, lang, true) }]),
+			),
+		).map((option) => ({
+			href: option.href,
+			label: option.meta.label,
+			lang: option.lang,
+		})),
+		title: "Home",
+	}}
+>
 	<section>
 		<h1 class="title mb-12">Hey!</h1>
 		<p class="mb-4">
@@ -45,7 +71,7 @@ const latestNotes = allNotes
 				<ul class="space-y-4" role="list">
 					{pinnedPosts.map((p) => (
 						<li class="grid gap-1 sm:grid-cols-[auto_1fr]">
-							<PostPreview post={p} />
+							<PostPreview explicitLanguage={explicitLang} post={p} />
 						</li>
 					))}
 				</ul>
@@ -53,13 +79,15 @@ const latestNotes = allNotes
 		)
 	}
 	<section class="mt-16">
-		<h2 class="title text-accent mb-6 text-xl"><a href="/posts/">Posts</a></h2>
+		<h2 class="title text-accent mb-6 text-xl">
+			<a href={getPostsPath(blogLang, 1, explicitLang)}>Posts</a>
+		</h2>
 		{
 			latestPosts.length > 0 ? (
 				<ul class="space-y-4" role="list">
 					{latestPosts.map((p) => (
 						<li class="grid gap-1 sm:grid-cols-[auto_1fr]">
-							<PostPreview post={p} />
+							<PostPreview explicitLanguage={explicitLang} post={p} />
 						</li>
 					))}
 				</ul>

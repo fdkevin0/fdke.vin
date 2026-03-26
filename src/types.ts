@@ -18,9 +18,23 @@ export interface PaginationLink {
 }
 
 export interface SiteMeta {
+	blogLanguage?: string;
+	blogLanguageOptions?: Array<{
+		disabled?: boolean;
+		href?: string;
+		lang: string;
+		label: string;
+	}>;
+	alternates?: Array<{
+		href: string;
+		hreflang: string;
+	}>;
 	articleDate?: string | undefined;
 	description?: string;
+	lang?: string;
 	ogImage?: string | undefined;
+	ogLocale?: string;
+	rssHref?: string;
 	title: string;
 }
 

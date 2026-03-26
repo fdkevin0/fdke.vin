@@ -54,6 +54,8 @@ declare namespace App {
 			scopes: string[];
 			ownerEmail: string;
 		} | null;
+		siteCountry: string | null;
+		siteDefaultLang: "zh" | "en" | "ja";
 		cfContext: ExecutionContext;
 	}
 }

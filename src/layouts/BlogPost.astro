@@ -4,6 +4,14 @@ import { type CollectionEntry, render } from "astro:content";
 import Masthead from "@/components/blog/Masthead.astro";
 import TOC from "@/components/blog/TOC.astro";
 import WebMentions from "@/components/blog/webmentions/index.astro";
+import {
+	BLOG_LANGS,
+	getBlogLangMeta,
+	getBlogRssPath,
+	hasExplicitBlogLang,
+	getPostPath,
+} from "@/lib/blog-i18n";
+import { getPostTranslationsByLang } from "@/data/post";
 
 import BaseLayout from "./Base.astro";
 
@@ -17,20 +25,78 @@ const socialImage = ogImage ?? `/og-image/${post.id}.png`;
 const articleDate = updatedDate?.toISOString() ?? publishDate.toISOString();
 const { headings, remarkPluginFrontmatter } = await render(post);
 const readingTime: string = remarkPluginFrontmatter.readingTime;
+const translations = await getPostTranslationsByLang(post);
+const explicitLang = hasExplicitBlogLang(Astro.url);
+const supportedTranslations = BLOG_LANGS.flatMap((lang) => {
+	const translatedPost = translations[lang];
+	if (!translatedPost) return [];
+	return [
+		{
+			href: getPostPath(translatedPost, true),
+			label: getBlogLangMeta(lang).label,
+			lang,
+		},
+	];
+});
+const alternates = BLOG_LANGS.flatMap((lang) => {
+	const translatedPost = translations[lang];
+	if (!translatedPost) return [];
+	return [
+		{
+			href: new URL(getPostPath(translatedPost, true), Astro.site).href,
+			hreflang: getBlogLangMeta(lang).htmlLang,
+		},
+	];
+});
 ---
 
 <BaseLayout
 	meta={{
+		alternates,
 		articleDate,
+		blogLanguage: post.data.lang,
 		description,
+		lang: getBlogLangMeta(post.data.lang).htmlLang,
 		ogImage: socialImage,
+		ogLocale: getBlogLangMeta(post.data.lang).ogLocale,
+		rssHref: getBlogRssPath(post.data.lang, explicitLang),
 		title,
 	}}
 >
 	<article class="grow break-words" data-pagefind-body>
-		<div id="blog-hero" class="mb-12"><Masthead content={post} readingTime={readingTime} /></div>
+		<div id="blog-hero" class="mb-12">
+			<Masthead content={post} explicitLanguage={explicitLang} readingTime={readingTime} />
+		</div>
 		<div class="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
-			{!!headings.length && <TOC headings={headings} />}
+			{(supportedTranslations.length > 1 || headings.length > 0) && (
+				<aside class="lg:sticky lg:top-12 lg:order-2 lg:-me-32 lg:basis-64">
+					{
+						supportedTranslations.length > 1 && (
+							<nav class="mb-6" aria-label="Post language">
+								<h2 class="title mb-3 text-lg">Language</h2>
+								<ul class="flex flex-wrap gap-2">
+									{supportedTranslations.map((translation) => (
+										<li>
+											<a
+												class:list={[
+													"rounded border px-2 py-1 text-xs transition-colors sm:text-sm",
+													translation.lang === post.data.lang
+														? "border-accent bg-accent/10 text-accent"
+														: "hover:border-accent hover:text-accent border-zinc-300 dark:border-zinc-700",
+												]}
+												href={translation.href}
+											>
+												{translation.label}
+											</a>
+										</li>
+									))}
+								</ul>
+							</nav>
+						)
+					}
+					{!!headings.length && <TOC headings={headings} />}
+				</aside>
+			)}
 			<div
 				class="prose prose-sm prose-headings:font-semibold prose-headings:text-accent-2 prose-headings:before:absolute prose-headings:before:-ms-4 prose-headings:before:text-gray-600 prose-headings:hover:before:text-accent sm:prose-headings:before:content-['#'] sm:prose-th:before:content-none"
 			>

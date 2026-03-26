@@ -7,6 +7,12 @@ import {
 	parseAudienceList,
 	verifyCloudflareAccessToken,
 } from "@/lib/cloudflare-access";
+import {
+	DEFAULT_SITE_LANG,
+	SITE_LANG_COOKIE_KEY,
+	getCountrySiteLang,
+	getSiteLangOrDefault,
+} from "@/lib/i18n";
 
 const PROTECTED_ROUTE_PATTERNS = [
 	/^\/auth\/?$/,
@@ -33,8 +39,18 @@ function createAuthRedirect(url: URL): Response {
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
-	const { request, url } = context;
+	const { url } = context;
 	context.locals.apiToken = null;
+	const requestHeaders = !context.isPrerendered ? context.request.headers : null;
+	context.locals.siteCountry = requestHeaders?.get("cf-ipcountry") ?? null;
+	const siteLangCookie = !context.isPrerendered
+		? context.cookies.get(SITE_LANG_COOKIE_KEY)?.value
+		: undefined;
+	context.locals.siteDefaultLang = siteLangCookie
+		? getSiteLangOrDefault(siteLangCookie)
+		: context.isPrerendered
+			? DEFAULT_SITE_LANG
+			: getCountrySiteLang(context.locals.siteCountry ?? undefined);
 
 	if (!routeNeedsAuth(url.pathname)) {
 		context.locals.user = null;
@@ -42,7 +58,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 	}
 
 	const requiredApiScope = getRequiredApiScope(url.pathname);
-	const authorization = request.headers.get("authorization");
+	const authorization = requestHeaders?.get("authorization");
 	if (requiredApiScope && authorization?.startsWith("Bearer ")) {
 		const bearerToken = authorization.slice("Bearer ".length).trim();
 
@@ -89,7 +105,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 	}
 
 	const token =
-		request.headers.get("cf-access-jwt-assertion") ||
+		requestHeaders?.get("cf-access-jwt-assertion") ||
 		context.cookies.get("CF_Authorization")?.value;
 
 	if (!token) {

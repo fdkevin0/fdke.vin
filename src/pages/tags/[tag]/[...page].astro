@@ -1,51 +1,74 @@
 ---
 import { render } from "astro:content";
-import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
-import { Icon } from "astro-icon/components";
-import PostPreview from "@/components/blog/PostPreview.astro";
 import Pagination from "@/components/Paginator.astro";
-import { getAllPosts, getTagMeta, getUniqueTags } from "@/data/post";
+import PostPreview from "@/components/blog/PostPreview.astro";
+import { getPostsByLang, getTagMeta } from "@/data/post";
+import {
+	BLOG_LANGS,
+	getBlogLanguageOptions,
+	getBlogLangMeta,
+	getBlogRssPath,
+	getRequestBlogLang,
+	getTagPath,
+	getTagsIndexPath,
+	getBlogUrlWithLang,
+	hasExplicitBlogLang,
+} from "@/lib/blog-i18n";
 import PageLayout from "@/layouts/Base.astro";
 import { collectionDateSort } from "@/utils/date";
 
-export const getStaticPaths = (async ({ paginate }) => {
-	const allPosts = await getAllPosts();
-	const sortedPosts = allPosts.sort(collectionDateSort);
-	const uniqueTags = getUniqueTags(sortedPosts);
+export const prerender = false;
 
-	return uniqueTags.flatMap((tag) => {
-		const postsWithTag = sortedPosts.filter((post) => post.data.tags.includes(tag));
-		return paginate(postsWithTag, {
-			pageSize: 10,
-			params: { tag },
-		});
-	});
-}) satisfies GetStaticPaths;
-
-type Props = InferGetStaticPropsType<typeof getStaticPaths>;
-
-const { page } = Astro.props as Props;
+const pageParam = Astro.params.page;
+const pageNumber = pageParam ? Number.parseInt(pageParam, 10) : 1;
 const { tag } = Astro.params;
-const tagMeta = await getTagMeta(tag);
+const blogLang = getRequestBlogLang(Astro.url, Astro.locals.siteDefaultLang);
+const explicitLang = hasExplicitBlogLang(Astro.url);
+const allPosts = (await getPostsByLang(blogLang))
+	.sort(collectionDateSort)
+	.filter((post) => post.data.tags.includes(tag));
+const pageSize = 10;
+const totalPages = Math.max(1, Math.ceil(allPosts.length / pageSize));
 
+if (pageNumber < 1 || pageNumber > totalPages) {
+	return Astro.redirect("/404");
+}
+
+const tagMeta = await getTagMeta(tag);
 const TagContent = tagMeta ? (await render(tagMeta)).Content : null;
+const offset = (pageNumber - 1) * pageSize;
+const pagePosts = allPosts.slice(offset, offset + pageSize);
+const langMeta = getBlogLangMeta(blogLang);
 
 const meta = {
+	blogLanguage: blogLang,
+	blogLanguageOptions: getBlogLanguageOptions(
+		Object.fromEntries(
+			BLOG_LANGS.map((lang) => [lang, { href: getBlogUrlWithLang(Astro.url, lang) }]),
+		),
+	).map((option) => ({
+		href: option.href,
+		label: option.meta.label,
+		lang: option.lang,
+	})),
 	description: tagMeta?.data.description ?? `View all posts with the tag - ${tag}`,
+	lang: langMeta.htmlLang,
+	ogLocale: langMeta.ogLocale,
+	rssHref: getBlogRssPath(blogLang, explicitLang),
 	title: tagMeta?.data.title ?? `Posts about ${tag}`,
 };
 
 const paginationProps = {
-	...(page.url.prev && {
+	...(pageNumber > 1 && {
 		prevUrl: {
 			text: "← Previous Tags",
-			url: page.url.prev,
+			url: getTagPath(tag, blogLang, pageNumber - 1, explicitLang),
 		},
 	}),
-	...(page.url.next && {
+	...(pageNumber < totalPages && {
 		nextUrl: {
 			text: "Next Tags →",
-			url: page.url.next,
+			url: getTagPath(tag, blogLang, pageNumber + 1, explicitLang),
 		},
 	}),
 };
@@ -55,10 +78,10 @@ const paginationProps = {
 	<nav class="mb-8" aria-label="Breadcrumbs">
 		<ul class="flex items-center">
 			<li class="flex items-center">
-				<a class="text-accent" href="/tags/">Tags</a>
-				<Icon aria-hidden="true" name="mdi:chevron-right" class="mx-1.5" />
+				<a class="text-accent" href={getTagsIndexPath(blogLang, explicitLang)}>Tags</a>
+				<span class="mx-1.5">/</span>
 			</li>
-			<li aria-current="page" class=""><span aria-hidden="true">#</span>{tag}</li>
+			<li aria-current="page"><span aria-hidden="true">#</span>{tag}</li>
 		</ul>
 	</nav>
 	<h1 class="title capitalize">{tagMeta?.data.title ?? `Posts about ${tag}`}</h1>
@@ -68,9 +91,9 @@ const paginationProps = {
 	</div>
 	<ul class="space-y-4">
 		{
-			page.data.map((p) => (
+			pagePosts.map((p) => (
 				<li class="grid gap-1 sm:grid-cols-[auto_1fr]">
-					<PostPreview as="h2" post={p} />
+					<PostPreview as="h2" explicitLanguage={explicitLang} post={p} />
 				</li>
 			))
 		}

@@ -1,12 +1,40 @@
 ---
-import { getAllPosts, getUniqueTagsWithCount } from "@/data/post";
+import { getPostsByLang, getUniqueTagsWithCount } from "@/data/post";
+import {
+	BLOG_LANGS,
+	getBlogLanguageOptions,
+	getBlogLangMeta,
+	getBlogRssPath,
+	getBlogUrlWithLang,
+	hasExplicitBlogLang,
+	getRequestBlogLang,
+	getTagPath,
+} from "@/lib/blog-i18n";
 import PageLayout from "@/layouts/Base.astro";
 
-const allPosts = await getAllPosts();
+export const prerender = false;
+
+const blogLang = getRequestBlogLang(Astro.url, Astro.locals.siteDefaultLang);
+const explicitLang = hasExplicitBlogLang(Astro.url);
+const allPosts = await getPostsByLang(blogLang);
 const allTags = getUniqueTagsWithCount(allPosts);
+const langMeta = getBlogLangMeta(blogLang);
 
 const meta = {
+	blogLanguage: blogLang,
+	blogLanguageOptions: getBlogLanguageOptions(
+		Object.fromEntries(
+			BLOG_LANGS.map((lang) => [lang, { href: getBlogUrlWithLang(Astro.url, lang) }]),
+		),
+	).map((option) => ({
+		href: option.href,
+		label: option.meta.label,
+		lang: option.lang,
+	})),
 	description: "A list of all the topics I've written about in my posts",
+	lang: langMeta.htmlLang,
+	ogLocale: langMeta.ogLocale,
+	rssHref: getBlogRssPath(blogLang, explicitLang),
 	title: "All Tags",
 };
 ---
@@ -18,11 +46,7 @@ const meta = {
 			<ul class="space-y-4">
 				{allTags.map(([tag, val]) => (
 					<li class="flex items-center gap-x-2">
-						<a
-							class="cactus-link inline-block"
-							href={`/tags/${tag}/`}
-							title={`View posts with the tag: ${tag}`}
-						>
+						<a class="cactus-link inline-block" href={getTagPath(tag, blogLang, 1, explicitLang)}>
 							&#35;{tag}
 						</a>
 						<span class="inline-block">

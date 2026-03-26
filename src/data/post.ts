@@ -1,10 +1,66 @@
 import { type CollectionEntry, getCollection } from "astro:content";
+import { type BlogLang, BLOG_LANGS, DEFAULT_BLOG_LANG, getPostSlug } from "@/lib/blog-i18n";
+
+function assertPostShape(posts: CollectionEntry<"post">[]) {
+	const seen = new Set<string>();
+
+	for (const post of posts) {
+		const match = post.id.match(/^\d{4}-\d{2}-\d{2}-(.+)-([a-z]{2,3})$/);
+		if (!match) {
+			throw new Error(
+				`Post "${post.id}" must follow the "{date}-{slug}-{lang}" naming convention.`,
+			);
+		}
+
+		const [, fileSlug, fileLang] = match;
+		if (post.data.lang !== fileLang) {
+			throw new Error(
+				`Post "${post.id}" has lang "${post.data.lang}" but filename lang "${fileLang}".`,
+			);
+		}
+
+		const key = `${fileSlug}:${post.data.lang}`;
+		if (seen.has(key)) {
+			throw new Error(`Duplicate post locale entry "${key}".`);
+		}
+		seen.add(key);
+	}
+
+	return posts;
+}
 
 /** filter out draft posts based on the environment */
-export async function getAllPosts(): Promise<CollectionEntry<"post">[]> {
-	return await getCollection("post", ({ data }) => {
-		return import.meta.env.PROD ? !data.draft : true;
+export async function getAllPosts(lang?: BlogLang): Promise<CollectionEntry<"post">[]> {
+	const posts = await getCollection("post", ({ data }) => {
+		const draftAllowed = import.meta.env.PROD ? !data.draft : true;
+		return draftAllowed && (lang ? data.lang === lang : true);
 	});
+	return assertPostShape(posts);
+}
+
+export async function getPostsByLang(lang: BlogLang = DEFAULT_BLOG_LANG) {
+	return await getAllPosts(lang);
+}
+
+export async function getPostBySlug(lang: BlogLang, slug: string) {
+	const posts = await getPostsByLang(lang);
+	return posts.find((post) => getPostSlug(post) === slug);
+}
+
+export async function getPostBySlugAnyLang(slug: string) {
+	const allPosts = await getAllPosts();
+	return allPosts.find((post) => getPostSlug(post) === slug);
+}
+
+export async function getPostBySlugWithFallback(lang: BlogLang, slug: string) {
+	const allPosts = await getAllPosts();
+	const exact = allPosts.find((post) => post.data.lang === lang && getPostSlug(post) === slug);
+	if (exact) return exact;
+
+	const english = allPosts.find((post) => post.data.lang === "en" && getPostSlug(post) === slug);
+	if (english) return english;
+
+	return allPosts.find((post) => getPostSlug(post) === slug);
 }
 
 /** Get tag metadata by tag name */
@@ -46,4 +102,23 @@ export function getUniqueTagsWithCount(posts: CollectionEntry<"post">[]): [strin
 			new Map<string, number>(),
 		),
 	].sort((a, b) => b[1] - a[1]);
+}
+
+export async function getPostTranslations(post: CollectionEntry<"post">) {
+	const allPosts = await getAllPosts();
+	return allPosts.filter(
+		(candidate) => candidate.id !== post.id && getPostSlug(candidate) === getPostSlug(post),
+	);
+}
+
+export async function getPostTranslationsByLang(post: CollectionEntry<"post">) {
+	const translations = await getPostTranslations(post);
+	return Object.fromEntries(
+		BLOG_LANGS.map((lang) => [
+			lang,
+			lang === post.data.lang
+				? post
+				: translations.find((candidate) => candidate.data.lang === lang),
+		]),
+	) as Record<BlogLang, CollectionEntry<"post"> | undefined>;
 }

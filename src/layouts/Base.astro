@@ -4,6 +4,7 @@ import Footer from "@/components/layout/Footer.astro";
 import Header from "@/components/layout/Header.astro";
 import SkipLink from "@/components/SkipLink.astro";
 import ThemeProvider from "@/components/ThemeProvider.astro";
+import { DEFAULT_BLOG_LANG, getBlogRssPath } from "@/lib/blog-i18n";
 import { siteConfig } from "@/site.config";
 import type { SiteMeta } from "@/types";
 
@@ -12,20 +13,40 @@ interface Props {
 }
 
 const {
-	meta: { articleDate, description = siteConfig.description, ogImage, title },
+	meta: {
+		alternates,
+		articleDate,
+		blogLanguage = Astro.locals.siteDefaultLang ?? DEFAULT_BLOG_LANG,
+		blogLanguageOptions,
+		description = siteConfig.description,
+		lang = siteConfig.lang,
+		ogImage,
+		ogLocale,
+		rssHref,
+		title,
+	},
 } = Astro.props;
 ---
 
-<html class="scroll-smooth" lang={siteConfig.lang}>
+<html class="scroll-smooth" lang={lang}>
 	<head>
-		<BaseHead articleDate={articleDate} description={description} ogImage={ogImage} title={title} />
+		<BaseHead
+			alternates={alternates}
+			articleDate={articleDate}
+			description={description}
+			lang={lang}
+			ogImage={ogImage}
+			ogLocale={ogLocale}
+			rssHref={rssHref ?? getBlogRssPath(blogLanguage)}
+			title={title}
+		/>
 	</head>
 	<body
 		class="bg-global-bg text-global-text mx-auto flex min-h-screen max-w-3xl flex-col px-4 pt-16 font-mono text-sm font-normal antialiased sm:px-8"
 	>
 		<ThemeProvider />
 		<SkipLink />
-		<Header />
+		<Header blogLanguage={blogLanguage} blogLanguageOptions={blogLanguageOptions} />
 		<main id="main">
 			<slot />
 		</main>
