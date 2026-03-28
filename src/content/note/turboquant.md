@@ -1,6 +1,6 @@
 ---
 title: "TurboQuant"
-publishDate: 2026-03-28T00:00:00Z
+publishDate: 2026-03-26T00:00:00Z
 ---
 
 > We introduce a set of advanced theoretically grounded quantization algorithms that enable massive compression for large language models and vector search engines.
