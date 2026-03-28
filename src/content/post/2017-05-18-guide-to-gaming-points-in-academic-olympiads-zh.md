@@ -38,4 +38,4 @@ NOIP 取消保送的传言前一段时间沸沸扬扬。竞赛回归自然，确
 
 衷心祝愿各位读者在《骗分导论》的引导下，在 OI 之路上越走越远，越走越成功。
 
-[全文](http://fdkevin.ml/reading/骗分导论.pdf)
+[全文](./2017-05-18-guide-to-gaming-points-in-academic-olympiads-assets/骗分导论.pdf)

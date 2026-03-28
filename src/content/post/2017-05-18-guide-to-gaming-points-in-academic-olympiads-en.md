@@ -38,4 +38,4 @@ Some time ago, rumors that NOIP would cancel guaranteed admission spread widely.
 
 I sincerely wish every reader, guided by _Guide to Gaming Points_, can go farther and farther, and more and more successfully, along the road of OI.
 
-[Full text](http://fdkevin.ml/reading/骗分导论.pdf)
+[Full text](./2017-05-18-guide-to-gaming-points-in-academic-olympiads-assets/骗分导论.pdf)
