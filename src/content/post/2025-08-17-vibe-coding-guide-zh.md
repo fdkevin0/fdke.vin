@@ -2,7 +2,7 @@
 title: "Vibe Coding 指南"
 description: "整理 AI 编码工具、Agent 工作流、模型类型与上下文管理的一份中文速查指南。"
 publishDate: 2025-08-17T00:00:00+08:00
-updatedDate: 2026-03-28T00:00:00Z
+updatedDate: "2026-03-28T00:00:00Z"
 ---
 
 **Vibe Coding 指南**

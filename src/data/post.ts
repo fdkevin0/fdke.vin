@@ -38,8 +38,42 @@ export async function getAllPosts(lang?: SiteLang): Promise<CollectionEntry<"pos
 	return assertPostShape(posts);
 }
 
+function getPostFallbackLangs(lang: SiteLang) {
+	return [
+		lang,
+		...(lang === DEFAULT_SITE_LANG ? [] : [DEFAULT_SITE_LANG]),
+		...SITE_LANGS.filter((candidate) => candidate !== lang && candidate !== DEFAULT_SITE_LANG),
+	];
+}
+
+function pickPostByLangPriority(posts: CollectionEntry<"post">[], lang: SiteLang) {
+	const fallbackLangs = getPostFallbackLangs(lang);
+	return fallbackLangs
+		.map((candidateLang) => posts.find((post) => post.data.lang === candidateLang))
+		.find((post) => post !== undefined);
+}
+
 export async function getPostsByLang(lang: SiteLang = DEFAULT_SITE_LANG) {
-	return await getAllPosts(lang);
+	const allPosts = await getAllPosts();
+	const postsBySlug = new Map<string, CollectionEntry<"post">[]>();
+
+	for (const post of allPosts) {
+		const slug = getPostSlug(post);
+		if (!slug) {
+			continue;
+		}
+		const groupedPosts = postsBySlug.get(slug);
+		if (groupedPosts) {
+			groupedPosts.push(post);
+			continue;
+		}
+		postsBySlug.set(slug, [post]);
+	}
+
+	return [...postsBySlug.values()].flatMap((posts) => {
+		const preferredPost = pickPostByLangPriority(posts, lang);
+		return preferredPost ? [preferredPost] : [];
+	});
 }
 
 export async function getPostBySlug(lang: SiteLang, slug: string) {
@@ -54,13 +88,8 @@ export async function getPostBySlugAnyLang(slug: string) {
 
 export async function getPostBySlugWithFallback(lang: SiteLang, slug: string) {
 	const allPosts = await getAllPosts();
-	const exact = allPosts.find((post) => post.data.lang === lang && getPostSlug(post) === slug);
-	if (exact) return exact;
-
-	const english = allPosts.find((post) => post.data.lang === "en" && getPostSlug(post) === slug);
-	if (english) return english;
-
-	return allPosts.find((post) => getPostSlug(post) === slug);
+	const matchedPosts = allPosts.filter((post) => getPostSlug(post) === slug);
+	return pickPostByLangPriority(matchedPosts, lang);
 }
 
 /** Get tag metadata by tag name */
