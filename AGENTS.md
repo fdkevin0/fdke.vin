@@ -82,3 +82,17 @@ Retrieve API references and limits from:
 - Ensure `pnpm run check` passes and note the Pagefind rebuild in validation steps when content or search logic changes.
 - Before creating a commit, always run `pnpm run build` and `pnpm astro check`, and fix any failures first.
 - **Do not commit changes without explicit permission from the user.**
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked as GitHub Issues via the `gh` CLI; external PRs are not treated as a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Uses the default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
