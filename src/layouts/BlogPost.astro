@@ -5,13 +5,8 @@ import Masthead from "@/components/blog/Masthead.astro";
 import TOC from "@/components/blog/TOC.astro";
 import WebMentions from "@/components/blog/webmentions/index.astro";
 import { getPostTranslationsByLang } from "@/data/post";
-import {
-	getBlogRssPath,
-	getPostPath,
-	getSiteLangMeta,
-	hasExplicitSiteLang,
-	SITE_LANGS,
-} from "@/lib/i18n";
+import { getBlogRssPath, getSiteLangMeta, hasExplicitSiteLang, SITE_LANGS } from "@/lib/i18n";
+import { getPostPath } from "@/lib/post";
 
 import BaseLayout from "./Base.astro";
 

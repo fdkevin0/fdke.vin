@@ -16,6 +16,7 @@
 		"check": "astro check && biome check",
 		"lint": "biome check --write",
 		"format": "prettier -w . --cache",
+		"test": "vitest run",
 		"icons:build": "node scripts/build-icons.mjs"
 	},
 	"dependencies": {
@@ -67,10 +68,16 @@
 		"reading-time": "^1.5.0",
 		"tailwindcss": "^4.2.2",
 		"typescript": "^5.9.3",
+		"vitest": "^4.1.9",
 		"wrangler": "^4.75.0"
 	},
 	"pnpm": {
-		"onlyBuiltDependencies": ["@biomejs/biome", "@tailwindcss/oxide", "esbuild", "sharp"],
+		"onlyBuiltDependencies": [
+			"@biomejs/biome",
+			"@tailwindcss/oxide",
+			"esbuild",
+			"sharp"
+		],
 		"overrides": {
 			"sharp": "^0.34.5"
 		}

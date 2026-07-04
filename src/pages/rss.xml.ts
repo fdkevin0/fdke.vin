@@ -1,6 +1,7 @@
 import rss from "@astrojs/rss";
 import { getPostsByLang } from "@/data/post";
-import { getPostPath, getRequestSiteLang, hasExplicitSiteLang } from "@/lib/i18n";
+import { getRequestSiteLang, hasExplicitSiteLang } from "@/lib/i18n";
+import { getPostPath } from "@/lib/post";
 import { siteConfig } from "@/site.config";
 
 export const prerender = false;

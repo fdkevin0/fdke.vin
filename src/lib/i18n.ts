@@ -1,5 +1,3 @@
-import type { CollectionEntry } from "astro:content";
-
 export const SITE_LANG_QUERY_KEY = "lang";
 export const SITE_LANG_STORAGE_KEY = "site-language";
 export const SITE_LANG_COOKIE_KEY = "site-language";
@@ -91,19 +89,7 @@ export function getSiteUrlWithLang(url: URL, lang: SiteLang, explicit = true) {
 	return `${nextUrl.pathname}${nextUrl.search}`;
 }
 
-// Blog-specific functions
-
-export function getPostSlug(post: Pick<CollectionEntry<"post">, "id">) {
-	const match = post.id.match(/^\d{4}-\d{2}-\d{2}-(.+)-([a-z]{2,3})$/);
-	if (!match) {
-		throw new Error(`Post "${post.id}" must follow the "{date}-{slug}-{lang}" naming convention.`);
-	}
-	return match[1];
-}
-
-export function getPostPath(post: Pick<CollectionEntry<"post">, "id" | "data">, explicit = false) {
-	return withSiteLangQuery(`/posts/${getPostSlug(post)}/`, post.data.lang, explicit);
-}
+// Language-decorated route builders (post grammar itself lives in @/lib/post)
 
 export function getPostsPath(lang: SiteLang, page = 1, explicit = false) {
 	const path = page === 1 ? "/posts/" : `/posts/${page}/`;

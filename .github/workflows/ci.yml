@@ -37,6 +37,10 @@ jobs:
       - name: Run Astro check
         run: pnpm astro check
 
+        # unit tests for pure modules
+      - name: Run tests
+        run: pnpm test
+
         # ensure build works
       - name: Run Astro build
         run: pnpm build

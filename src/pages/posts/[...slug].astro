@@ -2,12 +2,7 @@
 import { render } from "astro:content";
 import PostPreview from "@/components/blog/PostPreview.astro";
 import Pagination from "@/components/Paginator.astro";
-import {
-	getPostBySlugWithFallback,
-	getPostsByLang,
-	getUniqueTags,
-	groupPostsByYear,
-} from "@/data/post";
+import { getPostBySlug, getPostsByLang, getUniqueTags, groupPostsByYear } from "@/data/post";
 import PageLayout from "@/layouts/Base.astro";
 import PostLayout from "@/layouts/BlogPost.astro";
 import {
@@ -42,7 +37,7 @@ let pageContent:
 	  }
 	| {
 			Content: Awaited<ReturnType<typeof render>>["Content"];
-			post: NonNullable<Awaited<ReturnType<typeof getPostBySlugWithFallback>>>;
+			post: NonNullable<Awaited<ReturnType<typeof getPostBySlug>>>;
 			type: "post";
 	  };
 
@@ -84,7 +79,7 @@ if (isListing) {
 		uniqueTags: getUniqueTags(allPosts).slice(0, MAX_TAGS),
 	};
 } else {
-	const post = await getPostBySlugWithFallback(blogLang, slugParam);
+	const post = await getPostBySlug(blogLang, slugParam);
 
 	if (!post) {
 		return Astro.rewrite("/404");

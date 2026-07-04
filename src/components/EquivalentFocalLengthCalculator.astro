@@ -111,6 +111,8 @@
 </equivalent-focal-length-calculator>
 
 <script>
+	import { equivalentFocalLength, formatFocalLength } from "@/lib/tools/optics";
+
 	class EquivalentFocalLengthCalculatorElement extends HTMLElement {
 		connectedCallback() {
 			const form = this.querySelector("[data-equivalent-form]") as HTMLFormElement | null;
@@ -150,14 +152,6 @@
 				custom: "custom sensor",
 			};
 
-			const formatFocalLength = (focalLength: number) => {
-				if (Number.isInteger(focalLength)) {
-					return `${focalLength.toFixed(0)} mm`;
-				}
-
-				return `${focalLength.toFixed(1)} mm`;
-			};
-
 			const getCropFactor = (input: HTMLSelectElement) => {
 				if (input.value === "custom") {
 					return Number(customCropFactorInput.value);
@@ -181,28 +175,21 @@
 				const focalLength = Number(focalLengthInput.value);
 				const sourceCropFactor = getCropFactor(sourceCropFactorInput);
 				const targetCropFactor = getCropFactor(targetCropFactorInput);
+				const result = equivalentFocalLength(focalLength, sourceCropFactor, targetCropFactor);
 
-				if (
-					!Number.isFinite(focalLength) ||
-					!Number.isFinite(sourceCropFactor) ||
-					!Number.isFinite(targetCropFactor) ||
-					focalLength <= 0 ||
-					sourceCropFactor <= 0 ||
-					targetCropFactor <= 0
-				) {
+				if (result === null) {
 					output.textContent = "Invalid input";
 					summary.textContent = "Enter positive values for focal length and crop factor.";
 					return;
 				}
 
-				const equivalentFocalLength = focalLength * (targetCropFactor / sourceCropFactor);
 				const sourceLabel = getSensorLabel(sourceCropFactorInput);
 				const targetLabel = getSensorLabel(targetCropFactorInput);
 
-				output.textContent = formatFocalLength(equivalentFocalLength);
+				output.textContent = formatFocalLength(result);
 				summary.textContent =
 					`A ${formatFocalLength(focalLength)} lens on ${sourceLabel} gives the same angle ` +
-					`of view as a ${formatFocalLength(equivalentFocalLength)} lens on ${targetLabel}.`;
+					`of view as a ${formatFocalLength(result)} lens on ${targetLabel}.`;
 			};
 
 			form.addEventListener("input", update);

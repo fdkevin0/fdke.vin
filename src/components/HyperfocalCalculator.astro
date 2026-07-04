@@ -103,6 +103,8 @@
 </hyperfocal-calculator>
 
 <script>
+	import { formatDistance, hyperfocalDistance } from "@/lib/tools/optics";
+
 	class HyperfocalCalculatorElement extends HTMLElement {
 		connectedCallback() {
 			const form = this.querySelector("[data-hyperfocal-form]") as HTMLFormElement | null;
@@ -129,14 +131,6 @@
 				return;
 			}
 
-			const formatDistance = (distanceMm: number) => {
-				if (distanceMm >= 1000) {
-					return `${(distanceMm / 1000).toFixed(2)} m`;
-				}
-
-				return `${Math.round(distanceMm)} mm`;
-			};
-
 			const syncPreset = () => {
 				if (sensorPresetInput.value !== "custom") {
 					cocInput.value = sensorPresetInput.value;
@@ -147,28 +141,19 @@
 				const focalLength = Number(focalLengthInput.value);
 				const aperture = Number(apertureInput.value);
 				const coc = Number(cocInput.value);
+				const result = hyperfocalDistance(focalLength, aperture, coc);
 
-				if (
-					!Number.isFinite(focalLength) ||
-					!Number.isFinite(aperture) ||
-					!Number.isFinite(coc) ||
-					focalLength <= 0 ||
-					aperture <= 0 ||
-					coc <= 0
-				) {
+				if (!result) {
 					output.textContent = "Invalid input";
 					summary.textContent = "Enter positive values for focal length, aperture, and CoC.";
 					return;
 				}
 
-				const hyperfocalDistanceMm = (focalLength * focalLength) / (aperture * coc) + focalLength;
-				const nearLimitMm = hyperfocalDistanceMm / 2;
-
-				output.textContent = formatDistance(hyperfocalDistanceMm);
+				output.textContent = formatDistance(result.distanceMm);
 				summary.textContent =
 					`With a ${focalLength.toFixed(0)} mm lens at f/${aperture.toFixed(1)}, ` +
-					`focus at ${formatDistance(hyperfocalDistanceMm)} to keep depth of field ` +
-					`extending from roughly ${formatDistance(nearLimitMm)} to infinity.`;
+					`focus at ${formatDistance(result.distanceMm)} to keep depth of field ` +
+					`extending from roughly ${formatDistance(result.nearLimitMm)} to infinity.`;
 			};
 
 			sensorPresetInput.addEventListener("change", () => {
