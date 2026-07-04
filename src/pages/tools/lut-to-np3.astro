@@ -1,0 +1,313 @@
+---
+import PageLayout from "@/layouts/Base.astro";
+import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut-to-np3";
+---
+
+<PageLayout
+	meta={{
+		title: "LUT to NP3",
+		description:
+			"Convert a constrained display-referred 3D .cube LUT into an approximate Nikon Flexible Color NP3 profile.",
+	}}
+>
+	<section class="space-y-6">
+		<div class="space-y-3">
+			<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
+				<a href="/tools/" class="hover:underline">Tools</a> / LUT to NP3
+			</p>
+			<h1 class="title text-2xl">LUT to NP3</h1>
+			<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+				Convert a constrained 3D <code>.cube</code> LUT into an approximate Nikon Flexible Color
+				<code>.NP3</code>. This tool targets display-referred, sRGB-like LUTs and generates an
+				editable Nikon starting point rather than an exact equivalent.
+			</p>
+		</div>
+
+		<lut-to-np3-tool class="block">
+			<div class="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+				<form
+					class="space-y-5 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+					data-tool-form
+				>
+					<div class="grid gap-4 sm:grid-cols-2">
+						<label class="space-y-2">
+							<span
+								class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
+							>
+								LUT file
+							</span>
+							<input
+								class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+								accept=".cube"
+								name="file"
+								required
+								type="file"
+							/>
+						</label>
+						<label class="space-y-2">
+							<span
+								class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
+							>
+								NP3 name
+							</span>
+							<input
+								class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+								maxlength="19"
+								name="name"
+								placeholder="ConvertedLUT"
+								type="text"
+							/>
+						</label>
+					</div>
+
+					<div class="grid gap-4 sm:grid-cols-2">
+						<label class="space-y-2">
+							<span
+								class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
+							>
+								Input space
+							</span>
+							<select
+								class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+								name="inputSpace"
+							>
+								<option value="auto">Auto detect</option>
+								{
+									Object.entries(supportedInputSpaceLabels).map(([value, label]) => (
+										<option value={value}>{label}</option>
+									))
+								}
+							</select>
+						</label>
+						<label class="space-y-2">
+							<span
+								class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
+							>
+								Gamma
+							</span>
+							<select
+								class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+								name="gamma"
+							>
+								<option value="auto">Auto detect</option>
+								{
+									Object.entries(supportedGammaLabels).map(([value, label]) => (
+										<option value={value}>{label}</option>
+									))
+								}
+							</select>
+						</label>
+					</div>
+
+					<label class="space-y-2">
+						<span
+							class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
+						>
+							Gray-axis weighting
+						</span>
+						<input
+							class="w-full"
+							max="1"
+							min="0"
+							name="grayWeight"
+							step="0.05"
+							type="range"
+							value="0.8"
+						/>
+						<p class="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+							Higher values push the fit toward neutral-axis tone response. Lower values let the
+							converter borrow more average RGB behavior.
+						</p>
+					</label>
+
+					<div class="rounded-md border border-dashed border-zinc-300 p-3 text-xs leading-relaxed text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+						<p class="font-semibold">First version constraints</p>
+						<p class="mt-2">
+							Supported inputs are display-referred 3D <code>.cube</code> LUTs with
+							<code>DOMAIN_MIN 0 0 0</code> and <code>DOMAIN_MAX 1 1 1</code>. Log, ACES,
+							HDR, and scene-referred LUTs are rejected.
+						</p>
+					</div>
+
+					<div class="flex flex-wrap gap-3">
+						<button
+							class="rounded-md border border-zinc-300 px-4 py-2 font-semibold transition hover:border-zinc-500 dark:border-zinc-700 dark:hover:border-zinc-500"
+							data-inspect
+							type="button"
+						>
+							Inspect LUT
+						</button>
+						<button
+							class="text-global-bg rounded-md border border-emerald-600 bg-emerald-500 px-4 py-2 font-semibold transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+							data-convert
+							type="submit"
+						>
+							Generate NP3
+						</button>
+					</div>
+				</form>
+
+				<div class="space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+					<div class="space-y-2">
+						<p class="text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+							Inspection
+						</p>
+						<div class="space-y-2 text-sm leading-relaxed" data-inspection-panel>
+							<p class="text-zinc-600 dark:text-zinc-300">
+								Upload a LUT and inspect its metadata before conversion.
+							</p>
+						</div>
+					</div>
+					<div class="space-y-2">
+						<p class="text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
+							Status
+						</p>
+						<div
+							class="rounded-md border border-dashed border-zinc-300 p-3 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
+							data-status
+							role="status"
+						>
+							Waiting for input.
+						</div>
+					</div>
+				</div>
+			</div>
+		</lut-to-np3-tool>
+	</section>
+</PageLayout>
+
+<script>
+	class LutToNp3Tool extends HTMLElement {
+		connectedCallback() {
+			const form = this.querySelector("[data-tool-form]");
+			const inspectButton = this.querySelector("[data-inspect]");
+			const status = this.querySelector("[data-status]");
+			const inspectionPanel = this.querySelector("[data-inspection-panel]");
+
+			if (!(form instanceof HTMLFormElement) || !(status instanceof HTMLElement) || !(inspectionPanel instanceof HTMLElement)) {
+				return;
+			}
+
+			const setStatus = (message: string, isError = false) => {
+				status.textContent = message;
+				status.classList.toggle("border-red-500", isError);
+				status.classList.toggle("text-red-600", isError);
+			};
+
+			const fileInput = form.querySelector('input[name="file"]');
+			const nameInput = form.querySelector('input[name="name"]');
+
+			const renderInspection = (payload: {
+				title?: string | null;
+				size?: number;
+				detectedInputSpace?: string | null;
+				detectedGamma?: string | null;
+				warnings?: string[];
+			}) => {
+				const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+				const rows = [
+					["Title", payload.title || "Untitled"],
+					["3D size", String(payload.size || "--")],
+					["Detected input space", payload.detectedInputSpace || "Unknown"],
+					["Detected gamma", payload.detectedGamma || "Unknown"],
+				];
+				inspectionPanel.innerHTML = `
+					<div class="space-y-2">
+						${rows
+							.map(
+								([label, value]) => `
+								<div class="flex items-start justify-between gap-4 text-xs">
+									<span class="tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">${label}</span>
+									<span class="text-right text-zinc-800 dark:text-zinc-100">${value}</span>
+								</div>`,
+							)
+							.join("")}
+					</div>
+					${
+						warnings.length > 0
+							? `<div class="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">${warnings.join("<br>")}</div>`
+							: `<p class="text-xs text-zinc-500 dark:text-zinc-400">No metadata warnings were detected.</p>`
+					}
+				`;
+				if (nameInput instanceof HTMLInputElement && !nameInput.value && payload.title) {
+					nameInput.value = String(payload.title).replace(/[^A-Za-z0-9 _-]+/gu, "").slice(0, 19);
+				}
+			};
+
+			const buildFormData = (action: "inspect" | "convert") => {
+				const data = new FormData(form);
+				data.set("action", action);
+				return data;
+			};
+
+			const send = async (action: "inspect" | "convert") => {
+				const file = fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : null;
+				if (!file) {
+					setStatus("Select a .cube file first.", true);
+					return null;
+				}
+
+				setStatus(action === "inspect" ? "Inspecting LUT…" : "Generating NP3…");
+				const response = await fetch("/api/tools/lut-to-np3", {
+					body: buildFormData(action),
+					method: "POST",
+				});
+
+				if (!response.ok) {
+					let message = "Request failed.";
+					try {
+						const payload = (await response.json()) as { error?: string };
+						message = payload.error || message;
+					} catch {}
+					throw new Error(message);
+				}
+				return response;
+			};
+
+			inspectButton?.addEventListener("click", async () => {
+				try {
+					const response = await send("inspect");
+					if (!response) return;
+					const payload = (await response.json()) as {
+						title?: string | null;
+						size?: number;
+						detectedInputSpace?: string | null;
+						detectedGamma?: string | null;
+						warnings?: string[];
+					};
+					renderInspection(payload);
+					setStatus("Inspection complete.");
+				} catch (error) {
+					setStatus(error instanceof Error ? error.message : "Inspection failed.", true);
+				}
+			});
+
+			form.addEventListener("submit", async (event) => {
+				event.preventDefault();
+				try {
+					const response = await send("convert");
+					if (!response) return;
+					const blob = await response.blob();
+					const contentDisposition = response.headers.get("Content-Disposition") || "";
+					const match = contentDisposition.match(/filename="([^"]+)"/u);
+					const filename = decodeURIComponent(match?.[1] || "ConvertedLUT.NP3");
+					const url = URL.createObjectURL(blob);
+					const anchor = document.createElement("a");
+					anchor.href = url;
+					anchor.download = filename;
+					document.body.appendChild(anchor);
+					anchor.click();
+					anchor.remove();
+					URL.revokeObjectURL(url);
+					setStatus(`Generated ${filename}.`);
+				} catch (error) {
+					setStatus(error instanceof Error ? error.message : "Conversion failed.", true);
+				}
+			});
+		}
+	}
+
+	if (!customElements.get("lut-to-np3-tool")) {
+		customElements.define("lut-to-np3-tool", LutToNp3Tool);
+	}
+</script>

@@ -34,6 +34,7 @@ macos-titlebar-style = native
 macos-option-as-alt = true
 
 keybind = global:cmd+backquote=toggle_quick_terminal
+shell-integration-features = ssh-terminfo,ssh-env
 ```
 
 ## Tmux
@@ -56,10 +57,12 @@ set -g status-interval 5
 # Make layouts easier to manage during agent work
 setw -g aggressive-resize on
 
+set -g allow-passthrough on
+set -s extended-keys on
 
 set -s set-clipboard on
 
-set -as terminal-features ',xterm-256color:clipboard'
+set -as terminal-features 'xterm*:extkeys,xterm-256color:clipboard'
 ```
 
 Reload Config for Tmux
