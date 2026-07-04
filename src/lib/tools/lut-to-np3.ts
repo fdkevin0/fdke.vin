@@ -231,7 +231,9 @@ function detectConstraints(lut: CubeLut): {
 	if (combined.includes("gamma 2.2") || combined.includes("gamma2.2")) gamma = "gamma-2.2";
 	else if (combined.includes("srgb")) gamma = "srgb";
 	else if (combined.includes("gamma 2.4") || combined.includes("gamma2.4")) {
-		warnings.push("Detected gamma 2.4 metadata. First version only supports sRGB-like display LUTs.");
+		warnings.push(
+			"Detected gamma 2.4 metadata. First version only supports sRGB-like display LUTs.",
+		);
 	}
 
 	if (
@@ -391,7 +393,11 @@ function serializeProfile(profile: ConvertedProfile): Uint8Array {
 	}
 
 	for (const [rangeName, , offset] of GRADING_RANGES) {
-		writeColorGradingValues(data, offset, profile.colorGrading[rangeName] ?? { brightness: 0, chroma: 0, hue: 0 });
+		writeColorGradingValues(
+			data,
+			offset,
+			profile.colorGrading[rangeName] ?? { brightness: 0, chroma: 0, hue: 0 },
+		);
 	}
 	writeSignedByte(data, OFFSET_COLOR_GRADING_BLENDING, profile.colorGradingBlending, 0, 100);
 	writeSignedByte(data, OFFSET_COLOR_GRADING_BALANCE, profile.colorGradingBalance, -100, 100);
@@ -509,7 +515,7 @@ function decodeBase64(value: string): Uint8Array {
 }
 
 function hsvDegToRgb(h: number, s: number, v: number): [number, number, number] {
-	const [r, g, b] = hsvToRgb(((h % 360) + 360) % 360 / 360, clamp(s, 0, 1), clamp(v, 0, 1));
+	const [r, g, b] = hsvToRgb((((h % 360) + 360) % 360) / 360, clamp(s, 0, 1), clamp(v, 0, 1));
 	return [r, g, b];
 }
 

@@ -2,11 +2,7 @@ import { generateApiToken, sha256 } from "@/lib/api/tokens/crypto";
 import type { ApiScope } from "@/lib/api/tokens/scopes";
 import { hasRequiredScope, isApiScope } from "@/lib/api/tokens/scopes";
 import type { CloudflareAccessUser } from "@/lib/cloudflare-access";
-import { getCloudflareEnv } from "@/lib/cloudflare-runtime";
-
-interface ApiTokensEnv {
-	DATABASE?: D1Database;
-}
+import { requireCloudflareEnv } from "@/lib/cloudflare-runtime";
 
 export interface StoredApiToken {
 	id: string;
@@ -318,12 +314,7 @@ export async function verifyApiToken(
 }
 
 async function getApiTokensDb(): Promise<D1Database> {
-	const runtimeEnv = await getCloudflareEnv<ApiTokensEnv>();
-	if (!runtimeEnv.DATABASE) {
-		throw new Error("DATABASE is not configured");
-	}
-
-	return runtimeEnv.DATABASE;
+	return (await requireCloudflareEnv("DATABASE")).DATABASE;
 }
 
 async function getOwnedTokenRow(

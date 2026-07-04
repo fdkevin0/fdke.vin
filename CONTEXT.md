@@ -34,3 +34,21 @@ _Avoid_: post lookup, language negotiation
 **Fallback priority**:
 The order tried during post resolution: requested SiteLang, then the default SiteLang (`en`), then the remaining SiteLangs.
 _Avoid_: language fallback chain
+
+### Feeds
+
+**Site feed**:
+An RSS feed the site publishes about its own content (blog posts, notes).
+_Avoid_: rss (ambiguous on its own)
+
+**Feed aggregator**:
+The feed *reader* subsystem: ingests external feeds into D1, translates them with Workers AI, and serves them to the dashboard. Unrelated to the Site feed despite its `rss_`-prefixed tables.
+_Avoid_: rss feed, feed reader
+
+### Access
+
+**Protected route**:
+A route requiring an authenticated user (via Cloudflare Access) — some additionally accept an API token carrying the route's required scope.
+
+**API scope**:
+A permission string granted to an API token (e.g. `api.dlsite.read`, or `api.*` for all).

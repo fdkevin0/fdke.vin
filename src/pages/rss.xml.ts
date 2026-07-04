@@ -1,25 +1,9 @@
-import rss from "@astrojs/rss";
-import { getPostsByLang } from "@/data/post";
 import { getRequestSiteLang, hasExplicitSiteLang } from "@/lib/i18n";
-import { getPostPath } from "@/lib/post";
-import { siteConfig } from "@/site.config";
+import { buildBlogFeed } from "@/lib/rss";
 
 export const prerender = false;
 
 export const GET = async ({ url, locals }: { url: URL; locals: App.Locals }) => {
 	const blogLang = getRequestSiteLang(url, locals.siteDefaultLang);
-	const explicitLang = hasExplicitSiteLang(url);
-	const posts = await getPostsByLang(blogLang);
-
-	return rss({
-		title: `${siteConfig.title} (${blogLang})`,
-		description: siteConfig.description,
-		site: import.meta.env.SITE,
-		items: posts.map((post) => ({
-			title: post.data.title,
-			description: post.data.description,
-			pubDate: post.data.publishDate,
-			link: getPostPath(post, explicitLang),
-		})),
-	});
+	return buildBlogFeed(blogLang, hasExplicitSiteLang(url));
 };

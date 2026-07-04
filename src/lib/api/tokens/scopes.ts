@@ -24,19 +24,3 @@ export function hasRequiredScope(grantedScopes: string[], requiredScope: string)
 
 	return grantedScopes.includes(requiredScope);
 }
-
-export function getRequiredApiScope(pathname: string): ApiScope | null {
-	if (/^\/api\/ping\/?$/.test(pathname)) {
-		return "api.ping";
-	}
-
-	if (/^\/api\/dlsite(?:\/.*)?$/.test(pathname)) {
-		return "api.dlsite.read";
-	}
-
-	if (/^\/api\/exhentai(?:\/.*)?$/.test(pathname)) {
-		return "api.exhentai.read";
-	}
-
-	return null;
-}

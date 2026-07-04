@@ -33,10 +33,7 @@ export const POST: APIRoute = async ({ request }) => {
 		const { buffer, filename, summary } = convertCubeToNp3(contents, {
 			gamma: String(formData.get("gamma") || "auto") as "auto" | "srgb" | "gamma-2.2",
 			grayWeight: Number(formData.get("grayWeight") || "0.8"),
-			inputSpace: String(formData.get("inputSpace") || "auto") as
-				| "auto"
-				| "srgb"
-				| "nikon-srgb",
+			inputSpace: String(formData.get("inputSpace") || "auto") as "auto" | "srgb" | "nikon-srgb",
 			name: String(formData.get("name") || ""),
 		});
 

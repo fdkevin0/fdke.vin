@@ -1,4 +1,4 @@
-import { getCloudflareEnv } from "@/lib/cloudflare-runtime";
+import { requireCloudflareEnv } from "@/lib/cloudflare-runtime";
 
 export interface EmailMetadata {
 	name: string;
@@ -62,10 +62,5 @@ export async function getEmailContent(key: string): Promise<string | null> {
 }
 
 async function getEmailBucket(): Promise<R2Bucket> {
-	const runtimeEnv = await getCloudflareEnv<{ EMAIL_BUCKET?: R2Bucket }>();
-	if (!runtimeEnv.EMAIL_BUCKET) {
-		throw new Error("R2 bucket not configured");
-	}
-
-	return runtimeEnv.EMAIL_BUCKET;
+	return (await requireCloudflareEnv("EMAIL_BUCKET")).EMAIL_BUCKET;
 }

@@ -1,6 +1,5 @@
 import { CLOUDFLARE_POLICY_AUD, CLOUDFLARE_TEAM_DOMAIN } from "astro:env/server";
 import { defineMiddleware } from "astro:middleware";
-import { getRequiredApiScope } from "@/lib/api/tokens/scopes";
 import { verifyApiToken } from "@/lib/api/tokens/storage";
 import {
 	getLocalMockUser,
@@ -13,23 +12,7 @@ import {
 	getSiteLangOrDefault,
 	SITE_LANG_COOKIE_KEY,
 } from "@/lib/i18n";
-
-const PROTECTED_ROUTE_PATTERNS = [
-	/^\/auth\/?$/,
-	/^\/api\/tokens(?:\/.*)?$/,
-	/^\/api\/ping\/?$/,
-	/^\/api\/dlsite(?:\/.*)?$/,
-	/^\/api\/exhentai(?:\/.*)?$/,
-	/^\/api\/emails(?:\/.*)?$/,
-	/^\/api\/feed(?:\/.*)?$/,
-	/^\/dashboard(?:\/.*)?$/,
-	/^\/tools\/access\/?$/,
-	/^\/tools\/mail(?:\/.*)?$/,
-];
-
-function routeNeedsAuth(pathname: string): boolean {
-	return PROTECTED_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
-}
+import { getRequiredApiScope, routeNeedsAuth } from "@/lib/protected-routes";
 
 function createAuthRedirect(url: URL): Response {
 	const redirectTarget = `${url.pathname}${url.search}`;

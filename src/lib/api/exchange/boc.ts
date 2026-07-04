@@ -1,4 +1,4 @@
-import { getCloudflareEnv } from "@/lib/cloudflare-runtime";
+import { requireCloudflareEnv } from "@/lib/cloudflare-runtime";
 
 const DEFAULT_HISTORY_LIMIT = 30;
 
@@ -174,10 +174,5 @@ function mapRateRow(row: BocRateRowRecord): BocRateRow {
 }
 
 async function getDatabase(): Promise<D1Database> {
-	const runtimeEnv = await getCloudflareEnv<{ DATABASE?: D1Database }>();
-	if (!runtimeEnv.DATABASE) {
-		throw new Error("DATABASE is not configured");
-	}
-
-	return runtimeEnv.DATABASE;
+	return (await requireCloudflareEnv("DATABASE")).DATABASE;
 }
