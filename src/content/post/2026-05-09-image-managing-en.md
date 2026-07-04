@@ -1,4 +1,11 @@
-
+---
+title: Image Managing
+description: Image and RAW File Managing Notes
+draft: true
+lang: "en"
+tags: []
+publishDate: 2026-05-09T00:00:00Z
+---
 
 RAW managing:
 
