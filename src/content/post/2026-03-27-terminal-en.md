@@ -1,7 +1,7 @@
 ---
 title: Ghostty
 description: Ghostty Usage Note
-draft: true
+draft: false
 lang: "en"
 tags: []
 publishDate: 2026-03-28T00:00:00Z
@@ -27,6 +27,9 @@ theme = Apple System Colors
 font-thicken = true
 auto-update-channel = stable
 bold-is-bright = true
+cursor-style = bar
+shell-integration-features = ssh-terminfo,ssh-env
+window-save-state = always
 
 macos-auto-secure-input = true
 macos-secure-input-indication = true
