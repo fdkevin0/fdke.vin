@@ -9,52 +9,49 @@ import PageLayout from "@/layouts/Base.astro";
 			"Utilities including Cloudflare Access info, camera calculators, exchange rate monitors, and email routing.",
 	}}
 >
-	<section class="space-y-6">
-		<div class="space-y-3">
-			<h1 class="title text-2xl">Utilities</h1>
+	<section class="tool-workbench space-y-5">
+		<div class="tool-hero space-y-4 pt-8">
+			<p class="tool-kicker">Workbench</p>
+			<h1 class="tool-title">Utilities</h1>
+			<p class="tool-lede max-w-2xl">
+				Small, single-purpose instruments for private infrastructure, camera math, color conversion,
+				and market checks.
+			</p>
 		</div>
-		<ul class="space-y-4" role="list">
+		<ul class="grid gap-3 sm:grid-cols-2" role="list">
 			<li>
-				<a
-					href="/tools/access/"
-					class="block rounded border border-zinc-200 p-4 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
-				>
-					<h2 class="mb-1 text-lg font-semibold">Access</h2>
-					<p class="text-sm text-zinc-600 dark:text-zinc-400">Cloudflare Zero Trust.</p>
+				<a href="/tools/access/" class="tool-grid-card space-y-3">
+					<p class="tool-kicker">Identity</p>
+					<h2 class="text-lg font-semibold">Access</h2>
+					<p class="tool-lede">Inspect Cloudflare Zero Trust session and JWT claims.</p>
 				</a>
 			</li>
 			<li>
-				<a
-					href="/tools/mail/"
-					class="block rounded border border-zinc-200 p-4 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
-				>
-					<h2 class="mb-1 text-lg font-semibold">Email</h2>
-					<p class="text-sm text-zinc-600 dark:text-zinc-400">Cloudflare Email Routing.</p>
+				<a href="/tools/mail/" class="tool-grid-card space-y-3">
+					<p class="tool-kicker">Archive</p>
+					<h2 class="text-lg font-semibold">Email</h2>
+					<p class="tool-lede">Browse routed messages stored in R2.</p>
 				</a>
 			</li>
 			<li>
-				<a
-					href="/tools/camera/"
-					class="block rounded border border-zinc-200 p-4 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
-				>
-					<h2 class="mb-1 text-lg font-semibold">Camera</h2>
+				<a href="/tools/camera/" class="tool-grid-card space-y-3">
+					<p class="tool-kicker">Optics</p>
+					<h2 class="text-lg font-semibold">Camera</h2>
+					<p class="tool-lede">Calculate hyperfocal distance and focal length equivalence.</p>
 				</a>
 			</li>
 			<li>
-				<a
-					href="/tools/exchange/"
-					class="block rounded border border-zinc-200 p-4 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
-				>
-					<h2 class="mb-1 text-lg font-semibold">Exchange</h2>
+				<a href="/tools/exchange/" class="tool-grid-card space-y-3">
+					<p class="tool-kicker">Rates</p>
+					<h2 class="text-lg font-semibold">Exchange</h2>
+					<p class="tool-lede">Read fresh buy, sell, and middle rates.</p>
 				</a>
 			</li>
-			<li>
-				<a
-					href="/tools/lut-to-np3/"
-					class="block rounded border border-zinc-200 p-4 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
-				>
-					<h2 class="mb-1 text-lg font-semibold">LUT to NP3</h2>
-					<p class="text-sm text-zinc-600 dark:text-zinc-400">
+			<li class="sm:col-span-2">
+				<a href="/tools/lut-to-np3/" class="tool-grid-card space-y-3">
+					<p class="tool-kicker">Color</p>
+					<h2 class="text-lg font-semibold">LUT to NP3</h2>
+					<p class="tool-lede">
 						Approximate conversion for constrained display-referred 3D .cube LUTs.
 					</p>
 				</a>

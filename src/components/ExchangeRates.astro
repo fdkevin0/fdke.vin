@@ -3,32 +3,29 @@ const { defaultCurrency = "USD", limit = 12 } = Astro.props;
 ---
 
 <exchange-rates class="block" data-default-currency={defaultCurrency} data-limit={limit}>
-	<div class="overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-700">
-		<div
-			class="bg-gradient-to-br from-zinc-100 via-white to-zinc-50 px-5 py-6 sm:px-6 dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-900"
-		>
+	<div class="tool-panel overflow-hidden p-0">
+		<div class="px-5 py-6 sm:px-6">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div class="space-y-1">
-					<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
-						Exchange Rates · Live
-					</p>
-					<p class="title text-xl">FX Rates Board</p>
-					<p class="text-xs text-zinc-600 dark:text-zinc-300">
+					<p class="tool-kicker">Exchange Rates / Live</p>
+					<p class="text-xl font-semibold">FX Rates Board</p>
+					<p class="tool-lede text-xs">
 						Shows the latest {limit} quotes; default currency is {defaultCurrency}.
 					</p>
 				</div>
 				<div class="flex flex-wrap items-center gap-3 text-xs font-semibold">
-					<label class="flex items-center gap-2 text-zinc-600 dark:text-zinc-200">
+					<label class="flex items-center gap-2">
 						<span>Currency</span>
 						<select
-							class="bg-global-bg hover:border-accent focus:border-accent focus:ring-accent border border-zinc-300 px-3 py-2 text-sm font-semibold transition outline-none focus:ring-1 dark:border-zinc-700"
+							class="tool-select min-w-24 font-semibold"
+							autocomplete="off"
 							data-currency-select
 						>
 							<option value={defaultCurrency}>{defaultCurrency}</option>
 						</select>
 					</label>
 					<button
-						class="text-accent border-accent hover:bg-accent dark:hover:text-global-bg rounded-md border px-3 py-2 font-semibold transition hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+						class="tool-button disabled:cursor-not-allowed disabled:opacity-60"
 						data-refresh
 						type="button"
 					>
@@ -37,56 +34,43 @@ const { defaultCurrency = "USD", limit = 12 } = Astro.props;
 				</div>
 			</div>
 			<div class="mt-4 grid gap-3 sm:grid-cols-3">
-				<div
-					class="rounded-lg border border-zinc-200 bg-white/70 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-900/70"
-				>
-					<p class="text-[11px] tracking-[0.32em] text-zinc-500 uppercase dark:text-zinc-400">
-						Latest Mid
-					</p>
-					<p class="text-accent-2 dark:text-accent text-2xl font-semibold" data-highlight-mid>--</p>
-					<p class="text-xs text-zinc-500 dark:text-zinc-300" data-highlight-time>--</p>
-				</div>
-				<div
-					class="rounded-lg border border-zinc-200 bg-white/70 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-900/70"
-				>
-					<p class="text-[11px] tracking-[0.32em] text-zinc-500 uppercase dark:text-zinc-400">
-						Buy / Sell
-					</p>
-					<p class="text-accent-2 dark:text-accent text-xl font-semibold" data-highlight-buy-sell>
+				<div class="tool-status px-3 py-3">
+					<p class="tool-field-label">Latest Mid</p>
+					<p class="text-2xl font-semibold text-[var(--tool-teal)] tabular-nums" data-highlight-mid>
 						--
 					</p>
-					<p class="text-xs text-zinc-500 dark:text-zinc-300">Cash and spot included</p>
+					<p class="tool-lede text-xs" data-highlight-time>--</p>
 				</div>
-				<div
-					class="rounded-lg border border-zinc-200 bg-white/70 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-900/70"
-				>
-					<p class="text-[11px] tracking-[0.32em] text-zinc-500 uppercase dark:text-zinc-400">
-						Latest Change
+				<div class="tool-status px-3 py-3">
+					<p class="tool-field-label">Buy / Sell</p>
+					<p
+						class="text-xl font-semibold text-[var(--tool-teal)] tabular-nums"
+						data-highlight-buy-sell
+					>
+						--
 					</p>
+					<p class="tool-lede text-xs">Cash and spot included</p>
+				</div>
+				<div class="tool-status px-3 py-3">
+					<p class="tool-field-label">Latest Change</p>
 					<p
 						class="text-xl font-semibold text-emerald-600 dark:text-emerald-400"
 						data-highlight-change
 					>
 						--
 					</p>
-					<p class="text-xs text-zinc-500 dark:text-zinc-300" data-highlight-compare>
-						Waiting to load…
-					</p>
+					<p class="tool-lede text-xs" data-highlight-compare>Waiting to load…</p>
 				</div>
 			</div>
 		</div>
 		<div class="space-y-3 px-5 pt-3 pb-6 sm:px-6">
-			<div
-				class="rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
-				data-status
-				role="status"
-			>
+			<div class="tool-status px-3 py-2 text-sm" data-status aria-live="polite" role="status">
 				Loading supported currencies…
 			</div>
-			<div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
-				<table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+			<div class="overflow-x-auto rounded-lg border border-[var(--tool-line)]">
+				<table class="min-w-full divide-y divide-[var(--tool-line)]">
 					<thead
-						class="bg-zinc-100/80 text-xs tracking-wide text-zinc-600 uppercase dark:bg-zinc-900/70 dark:text-zinc-300"
+						class="bg-[color-mix(in_oklab,var(--tool-paper)_86%,var(--tool-line))] text-xs tracking-wide text-[var(--tool-muted)] uppercase"
 					>
 						<tr>
 							<th class="px-4 py-3 text-left font-semibold">Time</th>
@@ -97,7 +81,7 @@ const { defaultCurrency = "USD", limit = 12 } = Astro.props;
 							<th class="px-4 py-3 text-right font-semibold">Mid</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-zinc-200 text-sm dark:divide-zinc-800" data-table-body>
+					<tbody class="divide-y divide-[var(--tool-line)] text-sm" data-table-body>
 						<tr>
 							<td class="px-4 py-4 text-center text-zinc-500" colspan={6}>Loading…</td>
 						</tr>
@@ -105,7 +89,7 @@ const { defaultCurrency = "USD", limit = 12 } = Astro.props;
 				</table>
 			</div>
 			<div
-				class="flex flex-wrap items-center justify-between gap-3 text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-300"
+				class="flex flex-wrap items-center justify-between gap-3 text-[11px] tracking-[0.22em] text-[var(--tool-muted)] uppercase"
 			>
 				<p data-meta>Waiting…</p>
 				<p data-pagination>--</p>

@@ -42,14 +42,14 @@
 			tbody.innerHTML = "";
 
 			if (emails.length === 0) {
-				tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-zinc-600 dark:text-zinc-300 md:px-6">No emails found in R2 storage.</td></tr>`;
+				tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-[var(--tool-muted)] md:px-6">No emails found in R2 storage.</td></tr>`;
 				return;
 			}
 
 			emails.forEach((email) => {
 				const tr = document.createElement("tr");
 				tr.className =
-					"border-b border-zinc-200 last:border-0 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/60";
+					"border-b border-[var(--tool-line)] last:border-0 hover:bg-[color-mix(in_oklab,var(--tool-paper)_82%,var(--tool-line))]";
 
 				const dateDisplay =
 					email.date === "Unknown" || isNaN(new Date(email.date).getTime())
@@ -58,16 +58,16 @@
 
 				tr.innerHTML = `
 					<td class="px-4 py-4 align-top text-sm md:px-6">
-						<a href="/tools/mail/email/${encodeURIComponent(email.key)}" class="font-medium text-zinc-900 hover:underline dark:text-zinc-100">
+						<a href="/tools/mail/email/${encodeURIComponent(email.key)}" class="font-medium text-[var(--tool-ink)] break-words hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tool-teal)]">
 							${email.metadata?.name || email.key}
 						</a>
 					</td>
-					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${formatFileSize(email.size)}</td>
-					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${dateDisplay}</td>
-					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${email.metadata?.type || "unknown"}</td>
-					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${email.metadata?.from || "unknown"}</td>
-					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${email.metadata?.to || "unknown"}</td>
-					<td class="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-300 md:px-6">${email.metadata?.subject || "unknown"}</td>
+					<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] tabular-nums md:px-6">${formatFileSize(email.size)}</td>
+					<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] tabular-nums md:px-6">${dateDisplay}</td>
+					<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] md:px-6">${email.metadata?.type || "unknown"}</td>
+					<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] break-words md:px-6">${email.metadata?.from || "unknown"}</td>
+					<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] break-words md:px-6">${email.metadata?.to || "unknown"}</td>
+					<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] break-words md:px-6">${email.metadata?.subject || "unknown"}</td>
 				`;
 				tbody.appendChild(tr);
 			});
@@ -102,15 +102,10 @@
 <div class="w-full space-y-4">
 	<div class="space-y-1">
 		<h2 class="text-lg font-semibold">Emails</h2>
-		<p class="text-sm text-zinc-600 dark:text-zinc-300">
-			Recent messages available in the email bucket.
-		</p>
+		<p class="tool-lede">Recent messages available in the email bucket.</p>
 	</div>
-	<div
-		id="loading"
-		class="rounded border border-zinc-200 p-4 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
-	>
-		Loading emails...
+	<div id="loading" class="tool-status p-4 text-center text-sm" aria-live="polite" role="status">
+		Loading emails…
 	</div>
 	<div
 		id="error"
@@ -118,48 +113,48 @@
 		style="display: none"
 	>
 	</div>
-	<div class="overflow-x-auto rounded border border-zinc-200 dark:border-zinc-800">
+	<div class="overflow-x-auto rounded-lg border border-[var(--tool-line)]">
 		<table class="min-w-full border-collapse">
-			<thead class="bg-zinc-50 dark:bg-zinc-900/70">
+			<thead class="bg-[color-mix(in_oklab,var(--tool-paper)_86%,var(--tool-line))]">
 				<tr>
 					<th
-						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6"
 					>
 						Name
 					</th>
 					<th
-						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6"
 					>
 						Size
 					</th>
 					<th
-						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6"
 					>
 						Uploaded
 					</th>
 					<th
-						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6"
 					>
 						Type
 					</th>
 					<th
-						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6"
 					>
 						From
 					</th>
 					<th
-						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6"
 					>
 						To
 					</th>
 					<th
-						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase md:px-6 dark:text-zinc-400"
+						class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6"
 					>
 						Subject
 					</th>
 				</tr>
 			</thead>
-			<tbody class="bg-white dark:bg-transparent"></tbody>
+			<tbody></tbody>
 		</table>
 	</div>
 </div>

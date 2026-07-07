@@ -10,13 +10,13 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 			"Convert a constrained display-referred 3D .cube LUT into an approximate Nikon Flexible Color NP3 profile.",
 	}}
 >
-	<section class="space-y-6">
-		<div class="space-y-3">
-			<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
+	<section class="tool-workbench space-y-5">
+		<div class="tool-hero space-y-4 pt-8">
+			<p class="tool-kicker">
 				<a href="/tools/" class="hover:underline">Tools</a> / LUT to NP3
 			</p>
-			<h1 class="title text-2xl">LUT to NP3</h1>
-			<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+			<h1 class="tool-title">LUT to NP3</h1>
+			<p class="tool-lede max-w-2xl">
 				Convert a constrained 3D <code>.cube</code> LUT into an approximate Nikon Flexible Color
 				<code>.NP3</code>. This tool targets display-referred, sRGB-like LUTs and generates an
 				editable Nikon starting point rather than an exact equivalent.
@@ -25,36 +25,27 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 
 		<lut-to-np3-tool class="block">
 			<div class="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
-				<form
-					class="space-y-5 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
-					data-tool-form
-				>
+				<form class="tool-panel space-y-5" data-tool-form>
 					<div class="grid gap-4 sm:grid-cols-2">
 						<label class="space-y-2">
-							<span
-								class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
-							>
-								LUT file
-							</span>
+							<span class="tool-field-label">LUT File</span>
 							<input
-								class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+								class="tool-input"
 								accept=".cube"
+								autocomplete="off"
 								name="file"
 								required
 								type="file"
 							/>
 						</label>
 						<label class="space-y-2">
-							<span
-								class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
-							>
-								NP3 name
-							</span>
+							<span class="tool-field-label">NP3 Name</span>
 							<input
-								class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+								class="tool-input"
+								autocomplete="off"
 								maxlength="19"
 								name="name"
-								placeholder="ConvertedLUT"
+								placeholder="ConvertedLUT…"
 								type="text"
 							/>
 						</label>
@@ -62,15 +53,8 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 
 					<div class="grid gap-4 sm:grid-cols-2">
 						<label class="space-y-2">
-							<span
-								class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
-							>
-								Input space
-							</span>
-							<select
-								class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
-								name="inputSpace"
-							>
+							<span class="tool-field-label">Input Space</span>
+							<select class="tool-select" autocomplete="off" name="inputSpace">
 								<option value="auto">Auto detect</option>
 								{
 									Object.entries(supportedInputSpaceLabels).map(([value, label]) => (
@@ -80,15 +64,8 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 							</select>
 						</label>
 						<label class="space-y-2">
-							<span
-								class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
-							>
-								Gamma
-							</span>
-							<select
-								class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
-								name="gamma"
-							>
+							<span class="tool-field-label">Gamma</span>
+							<select class="tool-select" autocomplete="off" name="gamma">
 								<option value="auto">Auto detect</option>
 								{
 									Object.entries(supportedGammaLabels).map(([value, label]) => (
@@ -100,13 +77,10 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 					</div>
 
 					<label class="space-y-2">
-						<span
-							class="block text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400"
-						>
-							Gray-axis weighting
-						</span>
+						<span class="tool-field-label">Gray-Axis Weighting</span>
 						<input
-							class="w-full"
+							class="w-full accent-[var(--tool-green)]"
+							autocomplete="off"
 							max="1"
 							min="0"
 							name="grayWeight"
@@ -120,25 +94,19 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 						</p>
 					</label>
 
-					<div class="rounded-md border border-dashed border-zinc-300 p-3 text-xs leading-relaxed text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+					<div class="tool-status p-3 text-xs leading-relaxed">
 						<p class="font-semibold">First version constraints</p>
 						<p class="mt-2">
 							Supported inputs are display-referred 3D <code>.cube</code> LUTs with
-							<code>DOMAIN_MIN 0 0 0</code> and <code>DOMAIN_MAX 1 1 1</code>. Log, ACES,
-							HDR, and scene-referred LUTs are rejected.
+							<code>DOMAIN_MIN 0 0 0</code> and <code>DOMAIN_MAX 1 1 1</code>. Log, ACES, HDR, and
+							scene-referred LUTs are rejected.
 						</p>
 					</div>
 
 					<div class="flex flex-wrap gap-3">
+						<button class="tool-button" data-inspect type="button"> Inspect LUT </button>
 						<button
-							class="rounded-md border border-zinc-300 px-4 py-2 font-semibold transition hover:border-zinc-500 dark:border-zinc-700 dark:hover:border-zinc-500"
-							data-inspect
-							type="button"
-						>
-							Inspect LUT
-						</button>
-						<button
-							class="text-global-bg rounded-md border border-emerald-600 bg-emerald-500 px-4 py-2 font-semibold transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+							class="tool-button tool-button-primary disabled:cursor-not-allowed disabled:opacity-60"
 							data-convert
 							type="submit"
 						>
@@ -147,26 +115,16 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 					</div>
 				</form>
 
-				<div class="space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+				<div class="tool-panel space-y-4">
 					<div class="space-y-2">
-						<p class="text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
-							Inspection
-						</p>
+						<p class="tool-field-label">Inspection</p>
 						<div class="space-y-2 text-sm leading-relaxed" data-inspection-panel>
-							<p class="text-zinc-600 dark:text-zinc-300">
-								Upload a LUT and inspect its metadata before conversion.
-							</p>
+							<p class="tool-lede">Upload a LUT and inspect its metadata before conversion.</p>
 						</div>
 					</div>
 					<div class="space-y-2">
-						<p class="text-[11px] tracking-[0.28em] text-zinc-500 uppercase dark:text-zinc-400">
-							Status
-						</p>
-						<div
-							class="rounded-md border border-dashed border-zinc-300 p-3 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
-							data-status
-							role="status"
-						>
+						<p class="tool-field-label">Status</p>
+						<div class="tool-status p-3 text-sm" data-status aria-live="polite" role="status">
 							Waiting for input.
 						</div>
 					</div>
@@ -184,7 +142,11 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 			const status = this.querySelector("[data-status]");
 			const inspectionPanel = this.querySelector("[data-inspection-panel]");
 
-			if (!(form instanceof HTMLFormElement) || !(status instanceof HTMLElement) || !(inspectionPanel instanceof HTMLElement)) {
+			if (
+				!(form instanceof HTMLFormElement) ||
+				!(status instanceof HTMLElement) ||
+				!(inspectionPanel instanceof HTMLElement)
+			) {
 				return;
 			}
 
@@ -230,7 +192,9 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 					}
 				`;
 				if (nameInput instanceof HTMLInputElement && !nameInput.value && payload.title) {
-					nameInput.value = String(payload.title).replace(/[^A-Za-z0-9 _-]+/gu, "").slice(0, 19);
+					nameInput.value = String(payload.title)
+						.replace(/[^A-Za-z0-9 _-]+/gu, "")
+						.slice(0, 19);
 				}
 			};
 
