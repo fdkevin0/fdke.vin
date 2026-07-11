@@ -9,6 +9,7 @@ declare namespace Cloudflare {
 	interface Env {
 		EMAIL_BUCKET: R2Bucket;
 		RSS_BUCKET: R2Bucket;
+		AP_BUCKET: R2Bucket;
 		DATABASE: D1Database;
 		RSS_FETCH_QUEUE: Queue;
 		RSS_AI_QUEUE: Queue;
@@ -16,6 +17,9 @@ declare namespace Cloudflare {
 		ASSETS: Fetcher;
 		CLOUDFLARE_TEAM_DOMAIN: string;
 		CLOUDFLARE_POLICY_AUD: string;
+		TELEGRAM_ALLOWED_CHAT_ID: string;
+		TELEGRAM_BOT_TOKEN: string;
+		TELEGRAM_WEBHOOK_SECRET: string;
 		FEED_COORDINATOR: DurableObjectNamespace<import("./src/worker").FeedCoordinator>;
 	}
 }

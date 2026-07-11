@@ -1,14 +1,21 @@
 import type { ApEnv } from "@/lib/ap/runtime";
-import type { ApNoteRow, Note } from "@/lib/ap/types";
+import type {
+	ApNoteAttachmentRow,
+	ApNoteRow,
+	Note,
+	NoteAttachment,
+	NoteSource,
+} from "@/lib/ap/types";
 
 const NOTE_COLUMNS = "id, title, content, summary, published_at, updated_at, created_at, source";
+const ATTACHMENT_COLUMNS = "id, note_id, r2_key, url, media_type, name, width, height, position";
 
 let ensureSchemaPromise: Promise<void> | null = null;
 
 /**
- * Create the `ap_notes` table if it does not exist. Idempotent and cached per
- * isolate, mirroring the feed subsystem's `ensureFeedSchema`. The canonical
- * schema lives in `scripts/d1/activitypub.sql`.
+ * Create the `ap_notes` and `ap_note_attachments` tables if they do not exist.
+ * Idempotent and cached per isolate, mirroring the feed subsystem's
+ * `ensureFeedSchema`. The canonical schema lives in `scripts/d1/activitypub.sql`.
  */
 async function ensureNoteSchema(env: ApEnv): Promise<void> {
 	if (!ensureSchemaPromise) {
@@ -22,15 +29,53 @@ async function ensureNoteSchema(env: ApEnv): Promise<void> {
 					published_at TEXT NOT NULL,
 					updated_at TEXT NOT NULL,
 					created_at TEXT NOT NULL,
-					source TEXT NOT NULL DEFAULT 'migration'
+					source TEXT NOT NULL DEFAULT 'migration',
+					telegram_chat_id INTEGER,
+					telegram_message_id INTEGER
+				)`,
+			).run();
+			// Add the Telegram columns to pre-existing tables (issue AP-3). SQLite
+			// has no `ADD COLUMN IF NOT EXISTS`, so tolerate the duplicate-column
+			// error on databases already carrying them.
+			await addColumnIfMissing(env, "ap_notes", "telegram_chat_id INTEGER");
+			await addColumnIfMissing(env, "ap_notes", "telegram_message_id INTEGER");
+			await env.DATABASE.prepare(
+				"CREATE INDEX IF NOT EXISTS idx_ap_notes_published_at ON ap_notes(published_at)",
+			).run();
+			await env.DATABASE.prepare(
+				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_notes_telegram
+				 ON ap_notes(telegram_chat_id, telegram_message_id)
+				 WHERE telegram_chat_id IS NOT NULL`,
+			).run();
+			await env.DATABASE.prepare(
+				`CREATE TABLE IF NOT EXISTS ap_note_attachments (
+					id TEXT PRIMARY KEY,
+					note_id TEXT NOT NULL REFERENCES ap_notes(id) ON DELETE CASCADE,
+					r2_key TEXT NOT NULL,
+					url TEXT NOT NULL,
+					media_type TEXT NOT NULL,
+					name TEXT,
+					width INTEGER,
+					height INTEGER,
+					position INTEGER NOT NULL DEFAULT 0
 				)`,
 			).run();
 			await env.DATABASE.prepare(
-				"CREATE INDEX IF NOT EXISTS idx_ap_notes_published_at ON ap_notes(published_at)",
+				"CREATE INDEX IF NOT EXISTS idx_ap_note_attachments_note ON ap_note_attachments(note_id, position)",
 			).run();
 		})();
 	}
 	return ensureSchemaPromise;
+}
+
+async function addColumnIfMissing(env: ApEnv, table: string, columnDef: string): Promise<void> {
+	try {
+		await env.DATABASE.prepare(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`).run();
+	} catch (error) {
+		if (!/duplicate column name/i.test(error instanceof Error ? error.message : String(error))) {
+			throw error;
+		}
+	}
 }
 
 function mapNoteRow(row: ApNoteRow): Note {
@@ -117,4 +162,122 @@ export async function listNotesPage(
 		.bind(opts.limit, opts.offset)
 		.all<ApNoteRow>();
 	return (result.results ?? []).map(mapNoteRow);
+}
+
+/** A new Note authored from a channel post. */
+export interface InsertNoteInput {
+	id: string;
+	title: string | null;
+	content: string;
+	summary: string | null;
+	/** ISO 8601 timestamps. */
+	publishedAt: string;
+	updatedAt: string;
+	createdAt: string;
+	source: NoteSource;
+	telegramChatId: number | null;
+	telegramMessageId: number | null;
+}
+
+/** Insert a brand-new Note (fails on id conflict — callers pick a fresh ULID). */
+export async function insertNote(env: ApEnv, input: InsertNoteInput): Promise<void> {
+	await ensureNoteSchema(env);
+	await env.DATABASE.prepare(
+		`INSERT INTO ap_notes
+		 (id, title, content, summary, published_at, updated_at, created_at, source, telegram_chat_id, telegram_message_id)
+		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+	)
+		.bind(
+			input.id,
+			input.title,
+			input.content,
+			input.summary,
+			input.publishedAt,
+			input.updatedAt,
+			input.createdAt,
+			input.source,
+			input.telegramChatId,
+			input.telegramMessageId,
+		)
+		.run();
+}
+
+/** Update a Note's content/summary and its `updated_at` (channel-post edits). */
+export async function updateNoteContent(
+	env: ApEnv,
+	id: string,
+	fields: { content: string; summary: string | null; updatedAt: string },
+): Promise<void> {
+	await ensureNoteSchema(env);
+	await env.DATABASE.prepare(
+		"UPDATE ap_notes SET content = ?2, summary = ?3, updated_at = ?4 WHERE id = ?1",
+	)
+		.bind(id, fields.content, fields.summary, fields.updatedAt)
+		.run();
+}
+
+/** Find the Note id a Telegram (chat, message) pair authored, or null. */
+export async function findNoteIdByTelegramMessage(
+	env: ApEnv,
+	chatId: number,
+	messageId: number,
+): Promise<string | null> {
+	await ensureNoteSchema(env);
+	const row = await env.DATABASE.prepare(
+		"SELECT id FROM ap_notes WHERE telegram_chat_id = ?1 AND telegram_message_id = ?2",
+	)
+		.bind(chatId, messageId)
+		.first<{ id: string }>();
+	return row?.id ?? null;
+}
+
+/** An attachment to persist for a Note. */
+export interface InsertAttachmentInput {
+	id: string;
+	r2Key: string;
+	url: string;
+	mediaType: string;
+	name: string | null;
+	width: number | null;
+	height: number | null;
+}
+
+/**
+ * Replace all attachments of a Note with the given set (delete-then-insert),
+ * so re-processing an edited post is idempotent. Ordered by array position.
+ */
+export async function replaceNoteAttachments(
+	env: ApEnv,
+	noteId: string,
+	attachments: InsertAttachmentInput[],
+): Promise<void> {
+	await ensureNoteSchema(env);
+	const statements = [
+		env.DATABASE.prepare("DELETE FROM ap_note_attachments WHERE note_id = ?1").bind(noteId),
+		...attachments.map((a, position) =>
+			env.DATABASE.prepare(
+				`INSERT INTO ap_note_attachments (${ATTACHMENT_COLUMNS})
+				 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+			).bind(a.id, noteId, a.r2Key, a.url, a.mediaType, a.name, a.width, a.height, position),
+		),
+	];
+	await env.DATABASE.batch(statements);
+}
+
+/** List a Note's attachments in display order. */
+export async function listNoteAttachments(env: ApEnv, noteId: string): Promise<NoteAttachment[]> {
+	await ensureNoteSchema(env);
+	const result = await env.DATABASE.prepare(
+		`SELECT ${ATTACHMENT_COLUMNS} FROM ap_note_attachments WHERE note_id = ?1 ORDER BY position ASC`,
+	)
+		.bind(noteId)
+		.all<ApNoteAttachmentRow>();
+	return (result.results ?? []).map((row) => ({
+		id: row.id,
+		url: row.url,
+		mediaType: row.media_type,
+		name: row.name,
+		width: row.width,
+		height: row.height,
+	}));
 }

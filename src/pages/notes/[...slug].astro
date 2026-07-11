@@ -6,8 +6,8 @@ import { acceptsActivityPub } from "@/lib/ap/accept";
 import { renderNoteMarkdown } from "@/lib/ap/markdown";
 import { negotiateNoteActivity } from "@/lib/ap/negotiate";
 import { getApEnv } from "@/lib/ap/runtime";
-import { countNotes, getNoteById, listNotesPage } from "@/lib/ap/storage";
-import type { Note as NoteType } from "@/lib/ap/types";
+import { countNotes, getNoteById, listNoteAttachments, listNotesPage } from "@/lib/ap/storage";
+import type { NoteAttachment, Note as NoteType } from "@/lib/ap/types";
 import type { SiteMeta } from "@/types";
 
 export const prerender = false;
@@ -29,6 +29,7 @@ type DetailData = {
 	html: string;
 	meta: SiteMeta;
 	note: NoteType;
+	attachments: NoteAttachment[];
 	type: "detail";
 };
 
@@ -73,11 +74,14 @@ if (isListing) {
 		return Astro.rewrite("/404");
 	}
 
+	const attachments = await listNoteAttachments(env, note.id);
+
 	// ActivityPub content negotiation: AS2 clients get the Note object,
 	// browsers get the SSR HTML page at the same canonical URL.
 	const activity = await negotiateNoteActivity(note, {
 		accept: Astro.request.headers.get("accept"),
 		origin,
+		attachments,
 	});
 	if (activity) return activity;
 
@@ -90,6 +94,7 @@ if (isListing) {
 			title: note.title ?? "Note",
 		},
 		note,
+		attachments,
 		type: "detail",
 	};
 }
@@ -104,7 +109,7 @@ const meta = page.meta;
 		</PageLayout>
 	) : (
 		<PageLayout meta={meta}>
-			<Note as="h1" note={page.note} html={page.html} />
+			<Note as="h1" note={page.note} html={page.html} attachments={page.attachments} />
 		</PageLayout>
 	)
 }

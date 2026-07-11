@@ -1,7 +1,7 @@
 import { acceptsActivityPub } from "@/lib/ap/accept";
 import { renderNoteMarkdown } from "@/lib/ap/markdown";
 import { serializeNote } from "@/lib/ap/serialize";
-import type { Note } from "@/lib/ap/types";
+import type { Note, NoteAttachment } from "@/lib/ap/types";
 
 /**
  * ActivityPub content negotiation for a single Note URL.
@@ -14,12 +14,28 @@ import type { Note } from "@/lib/ap/types";
  */
 export async function negotiateNoteActivity(
 	note: Note,
-	options: { accept: string | null | undefined; origin: URL | string },
+	options: {
+		accept: string | null | undefined;
+		origin: URL | string;
+		attachments?: NoteAttachment[];
+	},
 ): Promise<Response | null> {
 	if (!acceptsActivityPub(options.accept)) return null;
 
 	const htmlContent = await renderNoteMarkdown(note.content);
-	const as2 = await serializeNote(note, { origin: options.origin, htmlContent });
+	const as2 = await serializeNote(note, {
+		origin: options.origin,
+		htmlContent,
+		...(options.attachments && options.attachments.length > 0
+			? {
+					attachments: options.attachments.map((a) => ({
+						url: a.url,
+						mediaType: a.mediaType,
+						...(a.name ? { name: a.name } : {}),
+					})),
+				}
+			: {}),
+	});
 
 	return new Response(JSON.stringify(as2, null, 2), {
 		headers: {

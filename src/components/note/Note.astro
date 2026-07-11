@@ -1,7 +1,7 @@
 ---
 import type { HTMLTag, Polymorphic } from "astro/types";
 import FormattedDate from "@/components/FormattedDate.astro";
-import type { Note } from "@/lib/ap/types";
+import type { Note, NoteAttachment } from "@/lib/ap/types";
 
 type Props<Tag extends HTMLTag> = Polymorphic<{ as: Tag }> & {
 	note: Note;
@@ -11,10 +11,12 @@ type Props<Tag extends HTMLTag> = Polymorphic<{ as: Tag }> & {
 	 * having the component depend on a markdown pipeline.
 	 */
 	html: string;
+	/** Media attachments (e.g. channel-post photos) rendered below the content. */
+	attachments?: NoteAttachment[] | undefined;
 	isPreview?: boolean | undefined;
 };
 
-const { as: Tag = "div", note, html, isPreview = false } = Astro.props;
+const { as: Tag = "div", note, html, attachments = [], isPreview = false } = Astro.props;
 ---
 
 <article
@@ -62,4 +64,21 @@ const { as: Tag = "div", note, html, isPreview = false } = Astro.props;
 		class:list={{ "line-clamp-6": isPreview }}
 		set:html={html}
 	/>
+	{
+		!isPreview && attachments.length > 0 && (
+			<div class="mt-4 flex flex-col gap-3">
+				{attachments.map((attachment: NoteAttachment) => (
+					<img
+						class="max-w-full rounded-md"
+						src={attachment.url}
+						alt={attachment.name ?? ""}
+						width={attachment.width ?? undefined}
+						height={attachment.height ?? undefined}
+						loading="lazy"
+						decoding="async"
+					/>
+				))}
+			</div>
+		)
+	}
 </article>

@@ -27,3 +27,36 @@ export interface ApNoteRow {
 	created_at: string;
 	source: NoteSource;
 }
+
+/**
+ * A media attachment stored on a Note (a channel-post photo saved to R2).
+ * Surfaced as an AS2 `Document` in the Note object and as an `<img>` on the
+ * SSR page.
+ */
+export interface NoteAttachment {
+	/** ULID identifying the attachment row. */
+	id: string;
+	/** Site-relative or absolute URL the media is served from. */
+	url: string;
+	mediaType: string;
+	/** Optional alt text / display name. */
+	name: string | null;
+	width: number | null;
+	height: number | null;
+}
+
+/** The `ap_note_attachments` D1 row shape. */
+export interface ApNoteAttachmentRow {
+	id: string;
+	note_id: string;
+	/** The R2 object key the media is stored under. */
+	r2_key: string;
+	/** URL the media is served from (`/api/ap/media/{r2_key}`). */
+	url: string;
+	media_type: string;
+	name: string | null;
+	width: number | null;
+	height: number | null;
+	/** Ordering within a Note's attachments (0-based). */
+	position: number;
+}
