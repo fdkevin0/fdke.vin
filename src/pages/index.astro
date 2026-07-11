@@ -1,10 +1,13 @@
 ---
-import { type CollectionEntry, getCollection } from "astro:content";
+import { type CollectionEntry } from "astro:content";
 import PostPreview from "@/components/blog/PostPreview.astro";
 import Note from "@/components/note/Note.astro";
 import SocialList from "@/components/SocialList.astro";
 import { getPostsByLang } from "@/data/post";
 import PageLayout from "@/layouts/Base.astro";
+import { renderNoteMarkdown } from "@/lib/ap/markdown";
+import { getApEnv } from "@/lib/ap/runtime";
+import { listNotesPage } from "@/lib/ap/storage";
 import {
 	getPostsPath,
 	getRequestSiteLang,
@@ -29,12 +32,13 @@ const latestPosts = allPostsByDate.slice(0, MAX_POSTS);
 const MAX_PINNED_POSTS = 3;
 const pinnedPosts = allPostsByDate.filter((p) => p.data.pinned).slice(0, MAX_PINNED_POSTS);
 
-// Notes
+// Notes — read newest-first from D1 (see ADR-0002: Notes are D1-backed objects).
 const MAX_NOTES = 5;
-const allNotes = await getCollection("note");
-const latestNotes = allNotes
-	.sort(collectionDateSort)
-	.slice(0, MAX_NOTES) as CollectionEntry<"note">[];
+const apEnv = await getApEnv();
+const noteRows = await listNotesPage(apEnv, { limit: MAX_NOTES, offset: 0 });
+const latestNotes = await Promise.all(
+	noteRows.map(async (note) => ({ note, html: await renderNoteMarkdown(note.content) })),
+);
 ---
 
 <PageLayout
@@ -103,9 +107,9 @@ const latestNotes = allNotes
 					<a href="/notes/">Notes</a>
 				</h2>
 				<ul class="space-y-6" role="list">
-					{latestNotes.map((note) => (
+					{latestNotes.map((item) => (
 						<li>
-							<Note note={note} as="h3" isPreview />
+							<Note note={item.note} html={item.html} as="h3" isPreview />
 						</li>
 					))}
 				</ul>

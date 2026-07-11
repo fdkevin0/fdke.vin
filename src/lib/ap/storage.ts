@@ -89,3 +89,32 @@ export async function listNotes(env: ApEnv): Promise<Note[]> {
 	).all<ApNoteRow>();
 	return (result.results ?? []).map(mapNoteRow);
 }
+
+/** Total number of Notes, for pagination metadata. */
+export async function countNotes(env: ApEnv): Promise<number> {
+	await ensureNoteSchema(env);
+	const row = await env.DATABASE.prepare("SELECT COUNT(*) AS total FROM ap_notes").first<{
+		total: number;
+	}>();
+	return row?.total ?? 0;
+}
+
+/**
+ * One page of Notes, newest-first. Mirrors the static `paginate()` shape the
+ * listing page used before the D1 switch: a `Page`-like record (without the
+ * `Page` type dependency) so on-demand rendering can compute prev/next URLs.
+ */
+export async function listNotesPage(
+	env: ApEnv,
+	opts: { limit: number; offset: number },
+): Promise<Note[]> {
+	await ensureNoteSchema(env);
+	const result = await env.DATABASE.prepare(
+		`SELECT ${NOTE_COLUMNS} FROM ap_notes
+		 ORDER BY published_at DESC, id DESC
+		 LIMIT ?1 OFFSET ?2`,
+	)
+		.bind(opts.limit, opts.offset)
+		.all<ApNoteRow>();
+	return (result.results ?? []).map(mapNoteRow);
+}

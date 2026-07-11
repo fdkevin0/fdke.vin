@@ -1,6 +1,7 @@
-import { getCollection } from "astro:content";
 import rss, { type RSSFeedItem } from "@astrojs/rss";
 import { getPostsByLang } from "@/data/post";
+import type { ApEnv } from "@/lib/ap/runtime";
+import { listNotes } from "@/lib/ap/storage";
 import type { SiteLang } from "@/lib/i18n";
 import { getPostPath } from "@/lib/post";
 import { siteConfig } from "@/site.config";
@@ -29,13 +30,13 @@ export async function buildBlogFeed(lang: SiteLang, explicit: boolean) {
 	);
 }
 
-export async function buildNotesFeed() {
-	const notes = await getCollection("note");
+export async function buildNotesFeed(env: ApEnv) {
+	const notes = await listNotes(env);
 	return buildSiteFeed(
 		siteConfig.title,
 		notes.map((note) => ({
-			title: note.data.title,
-			pubDate: note.data.publishDate,
+			title: note.title ?? `Note on ${note.publishDate.toLocaleDateString()}`,
+			pubDate: note.publishDate,
 			link: `notes/${note.id}/`,
 		})),
 	);
