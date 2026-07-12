@@ -1,4 +1,5 @@
 import type { ApEnv } from "@/lib/ap/runtime";
+import { sha256Hex } from "@/lib/crypto";
 
 /**
  * Proxy a remote actor's avatar through R2 (issue AP-7) so reply/like/announce
@@ -32,12 +33,6 @@ const EXT_BY_TYPE: Record<string, string> = {
 	"image/webp": "webp",
 	"image/avif": "avif",
 };
-
-async function sha256Hex(input: string): Promise<string> {
-	const bytes = new TextEncoder().encode(input);
-	const digest = await crypto.subtle.digest("SHA-256", bytes);
-	return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 /**
  * Store `sourceUrl` in R2 (if not already stored) and return its served
