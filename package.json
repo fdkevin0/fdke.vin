@@ -3,16 +3,16 @@
 	"type": "module",
 	"version": "6.11.0",
 	"scripts": {
-		"postinstall": "npm rebuild sharp --force",
-		"predev": "npm run icons:build",
+		"postinstall": "pnpm rebuild sharp",
+		"predev": "pnpm run icons:build",
 		"dev": "wrangler types && astro build && astro dev",
 		"types": "wrangler types",
 		"start": "astro dev",
-		"prebuild": "npm run icons:build",
+		"prebuild": "pnpm run icons:build",
 		"build": "astro build",
 		"postbuild": "pagefind --site dist",
 		"preview": "astro preview",
-		"precheck": "npm run icons:build",
+		"precheck": "pnpm run icons:build",
 		"check": "astro check && biome check",
 		"lint": "biome check --write",
 		"format": "prettier -w . --cache",
@@ -76,8 +76,5 @@
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.10",
 		"wrangler": "^4.110.0"
-	},
-	"overrides": {
-		"sharp": "^0.35.3"
 	}
 }
