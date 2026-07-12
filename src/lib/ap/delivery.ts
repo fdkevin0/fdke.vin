@@ -1,5 +1,6 @@
-import { type ActivityKind, activityForNote } from "@/lib/ap/activity";
+import { activityForNote, type DeliveryKind, deleteActivityForNote } from "@/lib/ap/activity";
 import { AP_ORIGIN, keyId } from "@/lib/ap/config";
+import { recordDeliveryPending, recordDeliveryResult } from "@/lib/ap/deliveries";
 import { listDeliveryInboxes } from "@/lib/ap/followers";
 import { loadActorKeyPair } from "@/lib/ap/keys";
 import { renderNoteMarkdown } from "@/lib/ap/markdown";
@@ -7,6 +8,7 @@ import type { ApEnv } from "@/lib/ap/runtime";
 import { signRequest } from "@/lib/ap/signature";
 import { getNoteById, listNoteAttachments } from "@/lib/ap/storage";
 import type { ApDeliveryMessage } from "@/lib/ap/types";
+import { getErrorMessage } from "@/lib/api/http";
 
 /**
  * Deliver a signed AS2 activity to a single remote inbox.
@@ -52,10 +54,18 @@ export async function postSignedActivity(
  */
 export async function enqueueNoteDelivery(
 	env: ApEnv,
-	options: { kind: ActivityKind; noteId: string },
+	options: { kind: DeliveryKind; noteId: string },
 ): Promise<void> {
 	const inboxes = await listDeliveryInboxes(env);
 	if (inboxes.length === 0) return;
+
+	// Mark each target pending before enqueueing so the dashboard shows in-flight
+	// deliveries even before the queue drains (issue AP-8).
+	await Promise.all(
+		inboxes.map((inboxUrl) =>
+			recordDeliveryPending(env, { noteId: options.noteId, inboxUrl, kind: options.kind }),
+		),
+	);
 
 	await env.AP_DELIVERY_QUEUE.sendBatch(
 		inboxes.map((inboxUrl) => ({
@@ -77,21 +87,58 @@ export async function processDeliveryMessage(
 	env: ApEnv,
 	message: ApDeliveryMessage,
 ): Promise<void> {
+	const activity = await buildDeliveryActivity(env, message);
+	// A missing Note on a Create/Update (deleted before delivery) is a no-op.
+	if (!activity) return;
+
+	try {
+		await postSignedActivity(env, {
+			inboxUrl: message.inboxUrl,
+			activity,
+			origin: AP_ORIGIN,
+		});
+		await recordDeliveryResult(env, {
+			noteId: message.noteId,
+			inboxUrl: message.inboxUrl,
+			kind: message.kind,
+			ok: true,
+		});
+	} catch (error) {
+		// Record the failure for the dashboard, then rethrow so the queue retries.
+		await recordDeliveryResult(env, {
+			noteId: message.noteId,
+			inboxUrl: message.inboxUrl,
+			kind: message.kind,
+			ok: false,
+			error: getErrorMessage(error, "delivery failed"),
+		});
+		throw error;
+	}
+}
+
+/**
+ * Build the AS2 activity for a delivery message: a `Delete(Tombstone)` (which
+ * needs only the Note id — the row is gone by delivery time), or a `Create`/
+ * `Update` rebuilt from the stored Note (`null` if that Note no longer exists).
+ */
+async function buildDeliveryActivity(
+	env: ApEnv,
+	message: ApDeliveryMessage,
+): Promise<Record<string, unknown> | null> {
+	if (message.kind === "Delete") {
+		return deleteActivityForNote(message.noteId, { origin: AP_ORIGIN });
+	}
+
 	const note = await getNoteById(env, message.noteId);
-	if (!note) return;
+	if (!note) return null;
 
 	const [htmlContent, attachments] = await Promise.all([
 		renderNoteMarkdown(note.content),
 		listNoteAttachments(env, note.id),
 	]);
-	const activity = await activityForNote(message.kind, note, {
+	return activityForNote(message.kind, note, {
 		origin: AP_ORIGIN,
 		htmlContent,
 		attachments,
-	});
-	await postSignedActivity(env, {
-		inboxUrl: message.inboxUrl,
-		activity,
-		origin: AP_ORIGIN,
 	});
 }

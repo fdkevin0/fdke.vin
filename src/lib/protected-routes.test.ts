@@ -12,8 +12,13 @@ describe("routeNeedsAuth", () => {
 			"/api/exhentai/bar",
 			"/api/emails",
 			"/api/feed/items",
+			"/api/ap/notes",
+			"/api/ap/notes/01ABC",
+			"/api/ap/blocklist",
+			"/api/ap/interactions/01ABC",
 			"/dashboard",
 			"/dashboard/feeds",
+			"/dashboard/notes",
 			"/tools/access",
 			"/tools/mail/inbox",
 		]) {
@@ -22,7 +27,15 @@ describe("routeNeedsAuth", () => {
 	});
 
 	it("leaves public routes open", () => {
-		for (const pathname of ["/", "/posts/terminal/", "/rss.xml", "/tools", "/tools/camera"]) {
+		for (const pathname of [
+			"/",
+			"/posts/terminal/",
+			"/rss.xml",
+			"/tools",
+			"/tools/camera",
+			"/api/ap/media/avatars/abc.jpg",
+			"/notes/01ABC/",
+		]) {
 			expect(routeNeedsAuth(pathname), pathname).toBe(false);
 		}
 	});

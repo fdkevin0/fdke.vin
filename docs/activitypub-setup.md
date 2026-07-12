@@ -30,7 +30,9 @@ npx wrangler r2 bucket create ap-storage
 npx wrangler d1 execute DATABASE --remote --file scripts/d1/activitypub.sql
 ```
 
-`ap_notes`, `ap_note_attachments`, and `ap_followers` all live in the `DATABASE`
+`ap_notes`, `ap_note_attachments`, `ap_followers`, `ap_interactions` (inbound
+replies/likes/announces, AP-7), `ap_blocklist` (dropped domains, AP-7/AP-8), and
+`ap_note_deliveries` (per-inbox delivery status, AP-8) all live in the `DATABASE`
 D1 binding. Note migration (AP-1) is separate — see `scripts/d1/migrate-notes.mjs`.
 
 ---
@@ -152,6 +154,32 @@ Watch it happen live with `npx wrangler tail`:
 - `[queue:ap-delivery-queue]` — one delivery per deduped follower inbox; failures
   retry with backoff.
 - inbox — HTTP-Signature verification result (forged/unsigned → 401).
+
+---
+
+## 7. Inbound interactions & moderation (AP-7 / AP-8)
+
+Once followed, replies, likes, and boosts flow back to the site:
+
+- The inbox accepts signature-verified reply `Create(Note)` (in-reply-to one of
+  our Notes), `Like`, `Announce`, and their `Undo`/`Delete`; anything else is
+  acknowledged and dropped. Activities from a blocklisted domain are dropped
+  before any store write.
+- Replies render as a sanitized thread (`rehype-sanitize`) under the Note; likes
+  and boosts render as counts. Remote avatars are proxied through R2
+  (`avatars/{sha256}.{ext}`) and served from `/api/ap/media/…` — never hotlinked.
+- The author moderates from **`/dashboard/notes`** (Access-protected):
+  - **Notes** list shows each Note's delivery status (delivered/pending/failed
+    per follower inbox) and interaction counts.
+  - **Delete & tombstone** removes a Note from the site and enqueues a signed
+    `Delete(Tombstone)` to followers via `ap-delivery-queue` — closing the loop
+    Telegram channel deletes can't (they aren't delivered as webhooks).
+  - **Domain blocklist** add/remove is enforced live at the inbox.
+  - **Replies** can be hidden (stop rendering) or removed per Note.
+
+Verify: reply to / like / boost a Note from Mastodon → it surfaces under the Note
+within seconds. Delete the Note from the dashboard → a following Mastodon account
+shows it tombstoned.
 
 ---
 

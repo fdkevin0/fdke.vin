@@ -1,0 +1,98 @@
+---
+import FormattedDate from "@/components/FormattedDate.astro";
+import type { Interaction, InteractionCounts } from "@/lib/ap/types";
+
+/**
+ * Federation activity under a Note (issue AP-7): like/boost counts and the
+ * sanitized reply thread. Reply `content` is pre-sanitized at ingest time by
+ * `sanitizeRemoteHtml`, and avatars are proxied through R2 — nothing here is
+ * hotlinked or unsanitized.
+ */
+type Props = {
+	counts: InteractionCounts;
+	replies: Interaction[];
+};
+
+const { counts, replies } = Astro.props;
+
+const hasReactions = counts.likes > 0 || counts.announces > 0;
+
+function initial(reply: Interaction): string {
+	const source = reply.actorName ?? reply.actorHandle ?? reply.actorId;
+	return source.replace(/^@/, "").charAt(0).toUpperCase() || "?";
+}
+---
+
+{
+	(hasReactions || replies.length > 0) && (
+		<section class="mt-10 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+			<div class="flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-300">
+				<h2 class="text-xs tracking-[0.2em] text-zinc-500 uppercase dark:text-zinc-400">
+					Fediverse
+				</h2>
+				{counts.announces > 0 && <span title="Boosts">🔁 {counts.announces}</span>}
+				{counts.likes > 0 && <span title="Likes">❤️ {counts.likes}</span>}
+				{replies.length > 0 && <span title="Replies">💬 {replies.length}</span>}
+			</div>
+
+			{replies.length > 0 && (
+				<ol class="mt-6 space-y-5">
+					{replies.map((reply) => (
+						<li class="flex gap-3">
+							{reply.actorAvatarUrl ? (
+								<img
+									class="h-9 w-9 shrink-0 rounded-full bg-zinc-100 object-cover dark:bg-zinc-800"
+									src={reply.actorAvatarUrl}
+									alt=""
+									width={36}
+									height={36}
+									loading="lazy"
+									decoding="async"
+								/>
+							) : (
+								<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+									{initial(reply)}
+								</span>
+							)}
+							<div class="min-w-0 flex-1">
+								<div class="flex flex-wrap items-baseline gap-x-2 text-sm">
+									{reply.url ? (
+										<a
+											href={reply.url}
+											target="_blank"
+											rel="noopener noreferrer nofollow"
+											class="font-medium text-zinc-900 hover:underline dark:text-zinc-100"
+										>
+											{reply.actorName ?? reply.actorHandle ?? "Someone"}
+										</a>
+									) : (
+										<span class="font-medium text-zinc-900 dark:text-zinc-100">
+											{reply.actorName ?? reply.actorHandle ?? "Someone"}
+										</span>
+									)}
+									{reply.actorHandle && (
+										<span class="truncate text-zinc-500 dark:text-zinc-400">
+											{reply.actorHandle}
+										</span>
+									)}
+									{(reply.publishedAt || reply.createdAt) && (
+										<span class="text-zinc-400 dark:text-zinc-500">
+											<FormattedDate
+												date={new Date(reply.publishedAt ?? reply.createdAt)}
+												dateTimeOptions={{ year: "numeric", month: "short", day: "numeric" }}
+											/>
+										</span>
+									)}
+								</div>
+								<div
+									class="prose prose-sm prose-cactus mt-1 max-w-none [&>p:last-of-type]:mb-0"
+									set:html={reply.content ?? ""}
+								/>
+							</div>
+						</li>
+					))}
+				</ol>
+			)}
+		</section>
+	)
+}

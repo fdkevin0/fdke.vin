@@ -1,13 +1,20 @@
 ---
 import Note from "@/components/note/Note.astro";
+import NoteInteractions from "@/components/note/NoteInteractions.astro";
 import NotesListing from "@/components/note/NotesListing.astro";
 import PageLayout from "@/layouts/Base.astro";
 import { acceptsActivityPub } from "@/lib/ap/accept";
+import { countInteractionsForNote, listRepliesForNote } from "@/lib/ap/interactions";
 import { renderNoteMarkdown } from "@/lib/ap/markdown";
 import { negotiateNoteActivity } from "@/lib/ap/negotiate";
 import { getApEnv } from "@/lib/ap/runtime";
 import { countNotes, getNoteById, listNoteAttachments, listNotesPage } from "@/lib/ap/storage";
-import type { NoteAttachment, Note as NoteType } from "@/lib/ap/types";
+import type {
+	Interaction,
+	InteractionCounts,
+	NoteAttachment,
+	Note as NoteType,
+} from "@/lib/ap/types";
 import type { SiteMeta } from "@/types";
 
 export const prerender = false;
@@ -30,6 +37,8 @@ type DetailData = {
 	meta: SiteMeta;
 	note: NoteType;
 	attachments: NoteAttachment[];
+	replies: Interaction[];
+	counts: InteractionCounts;
 	type: "detail";
 };
 
@@ -85,7 +94,11 @@ if (isListing) {
 	});
 	if (activity) return activity;
 
-	const html = await renderNoteMarkdown(note.content);
+	const [html, replies, counts] = await Promise.all([
+		renderNoteMarkdown(note.content),
+		listRepliesForNote(env, note.id),
+		countInteractionsForNote(env, note.id),
+	]);
 	page = {
 		html,
 		meta: {
@@ -95,6 +108,8 @@ if (isListing) {
 		},
 		note,
 		attachments,
+		replies,
+		counts,
 		type: "detail",
 	};
 }
@@ -110,6 +125,7 @@ const meta = page.meta;
 	) : (
 		<PageLayout meta={meta}>
 			<Note as="h1" note={page.note} html={page.html} attachments={page.attachments} />
+			<NoteInteractions counts={page.counts} replies={page.replies} />
 		</PageLayout>
 	)
 }

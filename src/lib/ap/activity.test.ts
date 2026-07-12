@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityForNote } from "@/lib/ap/activity";
+import { activityForNote, deleteActivityForNote } from "@/lib/ap/activity";
 import type { Note } from "@/lib/ap/types";
 
 const ORIGIN = "https://fdke.vin";
@@ -63,5 +63,19 @@ describe("activityForNote", () => {
 		const att = object.attachment as Record<string, unknown>;
 		expect(att.type).toBe("Document");
 		expect(att.url).toBe("https://fdke.vin/media/a.jpg");
+	});
+});
+
+describe("deleteActivityForNote", () => {
+	it("builds a Delete(Tombstone) addressed to Public + followers from just the id", async () => {
+		const act = await deleteActivityForNote("01KM1P8N00SAED8ZJQHD5ZW8D6", { origin: ORIGIN });
+		expect(act.type).toBe("Delete");
+		expect(act.actor).toBe("https://fdke.vin/actor");
+		expect(act.id).toBe("https://fdke.vin/notes/01KM1P8N00SAED8ZJQHD5ZW8D6/#delete");
+		expect(act.to).toBe("as:Public");
+		expect(act.cc).toBe("https://fdke.vin/followers");
+		const object = act.object as Record<string, unknown>;
+		expect(object.type).toBe("Tombstone");
+		expect(object.id).toBe("https://fdke.vin/notes/01KM1P8N00SAED8ZJQHD5ZW8D6/");
 	});
 });

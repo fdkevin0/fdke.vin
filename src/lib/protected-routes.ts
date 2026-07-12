@@ -12,6 +12,11 @@ const PROTECTED_ROUTES: { pattern: RegExp; scope?: ApiScope }[] = [
 	{ pattern: /^\/api\/exhentai(?:\/.*)?$/, scope: "api.exhentai.read" },
 	{ pattern: /^\/api\/emails(?:\/.*)?$/ },
 	{ pattern: /^\/api\/feed(?:\/.*)?$/ },
+	// ActivityPub moderation APIs (issue AP-8). `/api/ap/media` stays public so
+	// proxied avatars/attachments can be served without auth.
+	{ pattern: /^\/api\/ap\/notes(?:\/.*)?$/ },
+	{ pattern: /^\/api\/ap\/blocklist(?:\/.*)?$/ },
+	{ pattern: /^\/api\/ap\/interactions(?:\/.*)?$/ },
 	{ pattern: /^\/dashboard(?:\/.*)?$/ },
 	{ pattern: /^\/tools\/access\/?$/ },
 	{ pattern: /^\/tools\/mail(?:\/.*)?$/ },

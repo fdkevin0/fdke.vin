@@ -1,0 +1,355 @@
+---
+import Layout from "@/layouts/Base.astro";
+
+export const prerender = false;
+
+const user = Astro.locals.user;
+---
+
+<Layout
+	meta={{
+		title: "Dashboard Notes",
+		description: "Moderate federation: Note delivery status, blocklist, and replies.",
+	}}
+>
+	<section class="space-y-6">
+		<div class="space-y-3">
+			<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
+				<a href="/dashboard" class="hover:underline">Dashboard</a> / Notes
+			</p>
+			<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+				<div class="space-y-2">
+					<h1 class="title text-2xl">Dashboard Notes</h1>
+					<p id="follower-count" class="text-sm text-zinc-600 dark:text-zinc-300"></p>
+				</div>
+				{
+					user && (
+						<div class="rounded border border-zinc-200 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+							Signed in as{" "}
+							<span class="font-medium text-zinc-900 dark:text-zinc-100">{user.email}</span>
+						</div>
+					)
+				}
+			</div>
+		</div>
+
+		<div id="notes-feedback" class="hidden rounded border px-3 py-2 text-sm"></div>
+
+		<section class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
+			<div class="flex items-center justify-between">
+				<h2 class="text-lg font-semibold">Notes</h2>
+				<button
+					id="refresh-notes"
+					type="button"
+					class="rounded border border-zinc-300 px-3 py-2 text-xs tracking-[0.18em] uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+				>
+					Refresh
+				</button>
+			</div>
+			<div
+				id="notes-empty"
+				class="mt-4 rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+			>
+				No notes yet.
+			</div>
+			<div id="notes-list" class="mt-4 space-y-3"></div>
+		</section>
+
+		<section class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
+			<h2 class="text-lg font-semibold">Domain blocklist</h2>
+			<p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+				Inbound activities from these domains are dropped at the inbox.
+			</p>
+			<form id="blocklist-form" class="mt-4 flex flex-wrap gap-2">
+				<input
+					id="blocklist-domain"
+					name="domain"
+					required
+					placeholder="spam.example"
+					class="flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+				/>
+				<input
+					id="blocklist-reason"
+					name="reason"
+					placeholder="reason (optional)"
+					class="flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+				/>
+				<button
+					type="submit"
+					class="rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+				>
+					Block
+				</button>
+			</form>
+			<div
+				id="blocklist-empty"
+				class="mt-4 rounded border border-dashed border-zinc-200 p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+			>
+				No blocked domains.
+			</div>
+			<div id="blocklist-list" class="mt-4 space-y-2"></div>
+		</section>
+	</section>
+
+	<script is:inline>
+		const feedback = document.getElementById("notes-feedback");
+		const notesList = document.getElementById("notes-list");
+		const notesEmpty = document.getElementById("notes-empty");
+		const followerCount = document.getElementById("follower-count");
+		const blocklistList = document.getElementById("blocklist-list");
+		const blocklistEmpty = document.getElementById("blocklist-empty");
+		const blocklistForm = document.getElementById("blocklist-form");
+
+		function setFeedback(message, tone = "success") {
+			if (!feedback) return;
+			feedback.textContent = message;
+			feedback.className = `rounded border px-3 py-2 text-sm ${
+				tone === "error"
+					? "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"
+					: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300"
+			}`;
+			feedback.classList.remove("hidden");
+		}
+
+		function escapeHtml(value) {
+			return String(value ?? "")
+				.replaceAll("&", "&amp;")
+				.replaceAll("<", "&lt;")
+				.replaceAll(">", "&gt;")
+				.replaceAll('"', "&quot;");
+		}
+
+		function formatDate(value) {
+			if (!value) return "-";
+			const date = new Date(value);
+			return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+		}
+
+		function badge(text, tone) {
+			const tones = {
+				gray: "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300",
+				green: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+				amber: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+				red: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+			};
+			return `<span class="rounded px-2 py-1 text-[11px] ${tones[tone] || tones.gray}">${escapeHtml(text)}</span>`;
+		}
+
+		function deliveryBadges(delivery) {
+			if (!delivery || delivery.total === 0) return badge("Not delivered", "gray");
+			const parts = [];
+			if (delivery.delivered > 0) parts.push(badge(`Delivered ${delivery.delivered}`, "green"));
+			if (delivery.pending > 0) parts.push(badge(`Pending ${delivery.pending}`, "amber"));
+			if (delivery.failed > 0) parts.push(badge(`Failed ${delivery.failed}`, "red"));
+			return parts.join(" ");
+		}
+
+		function noteTitle(note) {
+			if (note.title) return escapeHtml(note.title);
+			const preview = note.preview ? note.preview.trim() : "";
+			return escapeHtml(preview || `Note ${note.id}`);
+		}
+
+		function renderNotes(notes) {
+			if (!notesList || !notesEmpty) return;
+			notesEmpty.style.display = notes.length ? "none" : "block";
+			notesList.innerHTML = notes
+				.map(
+					(
+						note,
+					) => `<details class="rounded border border-zinc-200 dark:border-zinc-800" data-note-id="${escapeHtml(note.id)}">
+						<summary class="flex cursor-pointer list-none flex-col gap-2 p-4 lg:flex-row lg:items-start lg:justify-between">
+							<div class="space-y-2">
+								<div class="flex flex-wrap items-center gap-2">
+									<a href="/notes/${escapeHtml(note.id)}/" target="_blank" rel="noopener" class="text-base font-semibold text-zinc-900 underline decoration-zinc-300 underline-offset-4 dark:text-zinc-100">${noteTitle(note)}</a>
+									${badge(note.source, "gray")}
+								</div>
+								<div class="flex flex-wrap items-center gap-2">
+									${deliveryBadges(note.delivery)}
+									${badge(`💬 ${note.counts.replies}`, "gray")}
+									${badge(`❤️ ${note.counts.likes}`, "gray")}
+									${badge(`🔁 ${note.counts.announces}`, "gray")}
+								</div>
+								<div class="text-xs text-zinc-500 dark:text-zinc-400">Published ${escapeHtml(formatDate(note.publishDate))}</div>
+							</div>
+							<div class="shrink-0 text-xs tracking-[0.18em] text-zinc-500 uppercase dark:text-zinc-400">Manage</div>
+						</summary>
+						<div class="border-t border-zinc-200 p-4 dark:border-zinc-800">
+							<div class="flex flex-wrap gap-2">
+								<button type="button" data-action="delete-note" data-id="${escapeHtml(note.id)}" class="rounded border border-red-300 px-4 py-2 text-xs uppercase text-red-700 transition hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20">Delete &amp; tombstone</button>
+								<button type="button" data-action="load-interactions" data-id="${escapeHtml(note.id)}" class="rounded border border-zinc-300 px-4 py-2 text-xs uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">Load replies</button>
+							</div>
+							<div class="mt-4 space-y-2" data-interactions-for="${escapeHtml(note.id)}"></div>
+						</div>
+					</details>`,
+				)
+				.join("");
+		}
+
+		function renderInteractions(container, interactions) {
+			const replies = interactions.filter((i) => i.kind === "reply");
+			if (replies.length === 0) {
+				container.innerHTML = `<p class="text-sm text-zinc-500 dark:text-zinc-400">No replies.</p>`;
+				return;
+			}
+			container.innerHTML = replies
+				.map(
+					(
+						reply,
+					) => `<div class="rounded border border-zinc-200 p-3 text-sm dark:border-zinc-800 ${reply.hidden ? "opacity-60" : ""}">
+						<div class="mb-1 flex flex-wrap items-center gap-2">
+							<span class="font-medium text-zinc-900 dark:text-zinc-100">${escapeHtml(reply.actorName || reply.actorHandle || reply.actorId)}</span>
+							${reply.actorHandle ? `<span class="text-zinc-500 dark:text-zinc-400">${escapeHtml(reply.actorHandle)}</span>` : ""}
+							${reply.hidden ? badge("Hidden", "amber") : ""}
+						</div>
+						<div class="prose prose-sm prose-cactus max-w-none [&>p:last-of-type]:mb-0">${reply.content || ""}</div>
+						<div class="mt-2 flex flex-wrap gap-2">
+							<button type="button" data-action="${reply.hidden ? "show" : "hide"}-interaction" data-id="${escapeHtml(reply.id)}" class="rounded border border-zinc-300 px-3 py-1 text-xs uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">${reply.hidden ? "Unhide" : "Hide"}</button>
+							<button type="button" data-action="delete-interaction" data-id="${escapeHtml(reply.id)}" class="rounded border border-red-300 px-3 py-1 text-xs uppercase text-red-700 transition hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20">Remove</button>
+						</div>
+					</div>`,
+				)
+				.join("");
+		}
+
+		async function loadInteractions(noteId) {
+			const container = notesList?.querySelector(`[data-interactions-for="${CSS.escape(noteId)}"]`);
+			if (!container) return;
+			container.innerHTML = `<p class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>`;
+			const res = await fetch(`/api/ap/notes/${encodeURIComponent(noteId)}/interactions`);
+			const data = await res.json();
+			if (!res.ok) {
+				container.innerHTML = `<p class="text-sm text-red-600">${escapeHtml(data.error || "Failed to load")}</p>`;
+				return;
+			}
+			renderInteractions(container, data.interactions || []);
+		}
+
+		function renderBlocklist(domains) {
+			if (!blocklistList || !blocklistEmpty) return;
+			blocklistEmpty.style.display = domains.length ? "none" : "block";
+			blocklistList.innerHTML = domains
+				.map(
+					(
+						entry,
+					) => `<div class="flex items-center justify-between gap-3 rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+						<div>
+							<span class="font-medium text-zinc-900 dark:text-zinc-100">${escapeHtml(entry.domain)}</span>
+							${entry.reason ? `<span class="ml-2 text-zinc-500 dark:text-zinc-400">${escapeHtml(entry.reason)}</span>` : ""}
+						</div>
+						<button type="button" data-action="unblock" data-domain="${escapeHtml(entry.domain)}" class="rounded border border-zinc-300 px-3 py-1 text-xs uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">Remove</button>
+					</div>`,
+				)
+				.join("");
+		}
+
+		async function loadAll() {
+			const [notesRes, blocklistRes] = await Promise.all([
+				fetch("/api/ap/notes"),
+				fetch("/api/ap/blocklist"),
+			]);
+			const [notesData, blocklistData] = await Promise.all([notesRes.json(), blocklistRes.json()]);
+			if (!notesRes.ok) throw new Error(notesData.error || "Failed to load notes");
+			if (!blocklistRes.ok) throw new Error(blocklistData.error || "Failed to load blocklist");
+			if (followerCount) {
+				followerCount.textContent = `${notesData.followerCount} follower${notesData.followerCount === 1 ? "" : "s"}`;
+			}
+			renderNotes(notesData.notes || []);
+			renderBlocklist(blocklistData.domains || []);
+		}
+
+		notesList?.addEventListener("click", async (event) => {
+			const target = event.target;
+			if (!(target instanceof HTMLButtonElement)) return;
+			const { action, id } = target.dataset;
+			if (!action) return;
+
+			try {
+				if (action === "delete-note" && id) {
+					if (!window.confirm("Delete this note and federate a tombstone to followers?")) return;
+					const res = await fetch(`/api/ap/notes/${encodeURIComponent(id)}`, { method: "DELETE" });
+					const data = await res.json();
+					if (!res.ok) throw new Error(data.error || "Failed to delete note");
+					setFeedback("Note deleted and tombstone queued to followers.");
+					await loadAll();
+				} else if (action === "load-interactions" && id) {
+					await loadInteractions(id);
+				} else if ((action === "hide-interaction" || action === "show-interaction") && id) {
+					const hidden = action === "hide-interaction";
+					const res = await fetch(`/api/ap/interactions/${encodeURIComponent(id)}`, {
+						method: "PATCH",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ hidden }),
+					});
+					const data = await res.json();
+					if (!res.ok) throw new Error(data.error || "Failed to update reply");
+					setFeedback(hidden ? "Reply hidden." : "Reply shown.");
+					const noteId = target.closest("[data-note-id]")?.dataset.noteId;
+					if (noteId) await loadInteractions(noteId);
+				} else if (action === "delete-interaction" && id) {
+					const res = await fetch(`/api/ap/interactions/${encodeURIComponent(id)}`, {
+						method: "DELETE",
+					});
+					const data = await res.json();
+					if (!res.ok) throw new Error(data.error || "Failed to remove reply");
+					setFeedback("Reply removed.");
+					const noteId = target.closest("[data-note-id]")?.dataset.noteId;
+					if (noteId) await loadInteractions(noteId);
+				}
+			} catch (error) {
+				setFeedback(error instanceof Error ? error.message : "Action failed", "error");
+			}
+		});
+
+		blocklistList?.addEventListener("click", async (event) => {
+			const target = event.target;
+			if (!(target instanceof HTMLButtonElement)) return;
+			if (target.dataset.action !== "unblock" || !target.dataset.domain) return;
+			try {
+				const res = await fetch(`/api/ap/blocklist/${encodeURIComponent(target.dataset.domain)}`, {
+					method: "DELETE",
+				});
+				const data = await res.json();
+				if (!res.ok) throw new Error(data.error || "Failed to unblock domain");
+				setFeedback("Domain removed from blocklist.");
+				await loadAll();
+			} catch (error) {
+				setFeedback(error instanceof Error ? error.message : "Action failed", "error");
+			}
+		});
+
+		blocklistForm?.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			const form = event.currentTarget;
+			if (!(form instanceof HTMLFormElement)) return;
+			const data = new FormData(form);
+			try {
+				const res = await fetch("/api/ap/blocklist", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						domain: String(data.get("domain") || "").trim(),
+						reason: String(data.get("reason") || "").trim() || null,
+					}),
+				});
+				const payload = await res.json();
+				if (!res.ok) throw new Error(payload.error || "Failed to block domain");
+				form.reset();
+				setFeedback(`Blocked ${payload.domain}.`);
+				await loadAll();
+			} catch (error) {
+				setFeedback(error instanceof Error ? error.message : "Action failed", "error");
+			}
+		});
+
+		document.getElementById("refresh-notes")?.addEventListener("click", () => {
+			loadAll()
+				.then(() => setFeedback("Refreshed."))
+				.catch((error) => setFeedback(error.message, "error"));
+		});
+
+		loadAll().catch((error) => {
+			setFeedback(error instanceof Error ? error.message : "Failed to load", "error");
+		});
+	</script>
+</Layout>

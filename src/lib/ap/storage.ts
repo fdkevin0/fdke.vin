@@ -231,6 +231,21 @@ export async function findNoteIdByTelegramMessage(
 	return row?.id ?? null;
 }
 
+/**
+ * Delete a Note and its attachment rows (issue AP-8). Returns whether a Note was
+ * removed. Federation of the `Delete(Tombstone)` and cleanup of interactions are
+ * the caller's responsibility (the dashboard delete endpoint). Attachments are
+ * deleted explicitly rather than relying on the FK cascade, which D1 leaves off.
+ */
+export async function deleteNote(env: ApEnv, id: string): Promise<boolean> {
+	await ensureNoteSchema(env);
+	const [, result] = await env.DATABASE.batch([
+		env.DATABASE.prepare("DELETE FROM ap_note_attachments WHERE note_id = ?1").bind(id),
+		env.DATABASE.prepare("DELETE FROM ap_notes WHERE id = ?1").bind(id),
+	]);
+	return (result?.meta?.changes ?? 0) > 0;
+}
+
 /** An attachment to persist for a Note. */
 export interface InsertAttachmentInput {
 	id: string;

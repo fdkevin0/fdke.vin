@@ -79,8 +79,12 @@ A remote reaction to a Note ingested via the inbox — a reply (`Create(Note)` i
 _Avoid_: comment, reaction, engagement
 
 **Delivery**:
-Signing an outbound Activity and POSTing it to each Follower's (deduped shared) inbox via `ap-delivery-queue`, with retry/backoff. Deliveries only ever originate from live authoring — backfilled Notes are not delivered.
+Signing an outbound Activity and POSTing it to each Follower's (deduped shared) inbox via `ap-delivery-queue`, with retry/backoff. Deliveries only ever originate from live authoring — backfilled Notes are not delivered. Per-inbox delivery status (`pending`/`delivered`/`failed`) is tracked in `ap_note_deliveries` and aggregated into a Note's dashboard status.
 _Avoid_: fan-out (that's the mechanism), push, broadcast
+
+**Blocklist**:
+The set of remote domains (`ap_blocklist`) whose inbound Activities the inbox drops before any store write. Managed from the dashboard; enforced by matching the actor URI's host.
+_Avoid_: banlist, denylist, mute
 
 ### Access
 

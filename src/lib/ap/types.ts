@@ -51,11 +51,43 @@ export interface NoteAttachment {
  * enqueued per deduped inbox when a Note is authored/edited in Telegram.
  */
 export interface ApDeliveryMessage {
-	kind: "Create" | "Update";
+	kind: "Create" | "Update" | "Delete";
 	/** The Note whose activity to deliver. */
 	noteId: string;
 	/** The (shared or personal) follower inbox to POST to. */
 	inboxUrl: string;
+}
+
+/** The kind of a remote {@link Interaction} with one of our Notes. */
+export type InteractionKind = "reply" | "like" | "announce";
+
+/**
+ * A remote reaction to a Note (see CONTEXT.md "Interaction"), ingested via the
+ * inbox. A `reply` carries sanitized HTML `content`; a `like`/`announce` renders
+ * only as a count. `hidden` is set when the author moderates a stored reply.
+ */
+export interface Interaction {
+	id: string;
+	kind: InteractionKind;
+	actorId: string;
+	actorName: string | null;
+	actorHandle: string | null;
+	/** Proxied avatar URL (`/api/ap/media/...`), never a hotlink. */
+	actorAvatarUrl: string | null;
+	objectId: string | null;
+	/** Reply: sanitized HTML. `null` for like/announce. */
+	content: string | null;
+	url: string | null;
+	publishedAt: string | null;
+	createdAt: string;
+	hidden: boolean;
+}
+
+/** Reply/like/announce counts for a Note, for the SSR page and dashboard. */
+export interface InteractionCounts {
+	replies: number;
+	likes: number;
+	announces: number;
 }
 
 /** The `ap_note_attachments` D1 row shape. */

@@ -1,4 +1,4 @@
-import { Create, PUBLIC_COLLECTION, Update } from "@fedify/fedify/vocab";
+import { Create, Delete, PUBLIC_COLLECTION, Tombstone, Update } from "@fedify/fedify/vocab";
 import { Temporal } from "@js-temporal/polyfill";
 import { actorUri, followersUri } from "@/lib/ap/config";
 import { buildNoteObject, type NoteAttachment } from "@/lib/ap/serialize";
@@ -15,6 +15,9 @@ import type { Note } from "@/lib/ap/types";
 
 /** Which activity to build around a Note. */
 export type ActivityKind = "Create" | "Update";
+
+/** The full set of activities the delivery queue carries about a Note. */
+export type DeliveryKind = ActivityKind | "Delete";
 
 export interface ActivityForNoteOptions {
 	/** Site origin used to build absolute ids, e.g. `https://fdke.vin`. */
@@ -80,4 +83,29 @@ export function buildActivityForNote(
 				published: Temporal.Instant.from(note.updatedDate.toISOString()),
 				...shared,
 			});
+}
+
+/**
+ * Build a `Delete(Tombstone)` for a Note the author removed (issue AP-8),
+ * addressed to Public + followers so remote servers tombstone their copy.
+ *
+ * Unlike Create/Update this needs only the Note id (the row is already gone from
+ * D1 by delivery time), so it takes the id and origin rather than a {@link Note}.
+ * The activity id is stable (`{noteUrl}#delete`).
+ */
+export async function deleteActivityForNote(
+	noteId: string,
+	options: { origin: URL | string },
+): Promise<Record<string, unknown>> {
+	const base = new URL(String(options.origin));
+	const noteUrl = new URL(`/notes/${noteId}/`, base);
+	const activity = new Delete({
+		id: new URL("#delete", noteUrl),
+		actor: actorUri(options.origin),
+		object: new Tombstone({ id: noteUrl }),
+		tos: [PUBLIC_COLLECTION],
+		ccs: [followersUri(options.origin)],
+	});
+	const json = await activity.toJsonLd();
+	return json as Record<string, unknown>;
 }
