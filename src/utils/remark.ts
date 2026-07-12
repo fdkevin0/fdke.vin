@@ -1,9 +1,9 @@
 import { h as _h, type Properties } from "hastscript";
-import type { Node, Paragraph as P } from "mdast";
+import type { Paragraph as P } from "mdast";
 import type { Directives } from "mdast-util-directive";
 
 /** Checks if a node is a directive. */
-export function isNodeDirective(node: Node): node is Directives {
+export function isNodeDirective(node: { type: string }): node is Directives {
 	return (
 		node.type === "containerDirective" ||
 		node.type === "leafDirective" ||
