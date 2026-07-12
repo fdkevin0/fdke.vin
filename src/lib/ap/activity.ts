@@ -1,7 +1,7 @@
 import { Create, Delete, PUBLIC_COLLECTION, Tombstone, Update } from "@fedify/fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
 import { actorUri, followersUri } from "@/lib/ap/config";
 import { buildNoteObject, type NoteAttachment } from "@/lib/ap/serialize";
+import { toInstant } from "@/lib/ap/temporal";
 import type { Note } from "@/lib/ap/types";
 
 /**
@@ -75,12 +75,12 @@ export function buildActivityForNote(
 	return kind === "Create"
 		? new Create({
 				id: new URL("#create", noteUrl),
-				published: Temporal.Instant.from(note.publishDate.toISOString()),
+				published: toInstant(note.publishDate.toISOString()),
 				...shared,
 			})
 		: new Update({
 				id: new URL(`#updates/${note.updatedDate.toISOString()}`, noteUrl),
-				published: Temporal.Instant.from(note.updatedDate.toISOString()),
+				published: toInstant(note.updatedDate.toISOString()),
 				...shared,
 			});
 }

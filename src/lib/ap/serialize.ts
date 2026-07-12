@@ -1,5 +1,5 @@
 import { Note as As2Note, Document, PUBLIC_COLLECTION, Source } from "@fedify/fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
+import { toInstant } from "@/lib/ap/temporal";
 import type { Note } from "@/lib/ap/types";
 
 /**
@@ -91,8 +91,8 @@ export function buildNoteObject(note: Note, options: SerializeNoteOptions): As2N
 		tos: [PUBLIC_COLLECTION],
 		ccs: [followers],
 		content: options.htmlContent,
-		published: Temporal.Instant.from(note.publishDate.toISOString()),
-		updated: Temporal.Instant.from(note.updatedDate.toISOString()),
+		published: toInstant(note.publishDate.toISOString()),
+		updated: toInstant(note.updatedDate.toISOString()),
 		source: new Source({ content: note.content, mediaType: "text/markdown" }),
 	};
 	if (note.summary) values.summary = note.summary;

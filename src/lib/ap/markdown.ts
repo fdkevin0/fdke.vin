@@ -1,4 +1,4 @@
-import { createMarkdownProcessor, type MarkdownProcessor } from "@astrojs/markdown-remark";
+import { createMarkdownProcessor, type MarkdownRenderer } from "@astrojs/markdown-remark";
 import rehypeExternalLinks from "rehype-external-links";
 
 /**
@@ -12,17 +12,15 @@ import rehypeExternalLinks from "rehype-external-links";
  * free Worker bundle can spare. The processor is created once per isolate and
  * reused, matching the feed subsystem's `ensureFeedSchema` caching convention.
  */
-let processorPromise: Promise<MarkdownProcessor> | null = null;
+let processorPromise: Promise<MarkdownRenderer> | null = null;
 
-function getProcessor(): Promise<MarkdownProcessor> {
-	if (!processorPromise) {
-		processorPromise = createMarkdownProcessor({
-			gfm: true,
-			smartypants: true,
-			syntaxHighlight: false,
-			rehypePlugins: [[rehypeExternalLinks, { rel: ["noreferrer", "noopener"], target: "_blank" }]],
-		});
-	}
+function getProcessor(): Promise<MarkdownRenderer> {
+	processorPromise ??= createMarkdownProcessor({
+		gfm: true,
+		smartypants: true,
+		syntaxHighlight: false,
+		rehypePlugins: [[rehypeExternalLinks, { rel: ["noreferrer", "noopener"], target: "_blank" }]],
+	});
 	return processorPromise;
 }
 
