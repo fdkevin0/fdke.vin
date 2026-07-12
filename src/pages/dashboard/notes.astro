@@ -33,7 +33,13 @@ const user = Astro.locals.user;
 			</div>
 		</div>
 
-		<div id="notes-feedback" class="hidden rounded border px-3 py-2 text-sm"></div>
+		<div
+			id="notes-feedback"
+			role="status"
+			aria-live="polite"
+			class="hidden rounded border px-3 py-2 text-sm"
+		>
+		</div>
 
 		<section class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
 			<div class="flex items-center justify-between">
@@ -65,13 +71,20 @@ const user = Astro.locals.user;
 					id="blocklist-domain"
 					name="domain"
 					required
+					aria-label="Domain to block"
 					placeholder="spam.example"
+					autocomplete="off"
+					autocapitalize="none"
+					autocorrect="off"
+					spellcheck="false"
 					class="flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
 				/>
 				<input
 					id="blocklist-reason"
 					name="reason"
+					aria-label="Reason (optional)"
 					placeholder="reason (optional)"
+					autocomplete="off"
 					class="flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
 				/>
 				<button
@@ -136,7 +149,7 @@ const user = Astro.locals.user;
 		}
 
 		function deliveryBadges(delivery) {
-			if (!delivery || delivery.total === 0) return badge("Not delivered", "gray");
+			if (!delivery || delivery.total === 0) return badge("Not federated", "gray");
 			const parts = [];
 			if (delivery.delivered > 0) parts.push(badge(`Delivered ${delivery.delivered}`, "green"));
 			if (delivery.pending > 0) parts.push(badge(`Pending ${delivery.pending}`, "amber"));
@@ -144,10 +157,33 @@ const user = Astro.locals.user;
 			return parts.join(" ");
 		}
 
+		function federationSummary(notes, followers) {
+			const followerLabel = `${followers} follower${followers === 1 ? "" : "s"}`;
+			if (notes.length === 0) return followerLabel;
+			let delivered = 0;
+			let failing = 0;
+			for (const note of notes) {
+				const d = note.delivery;
+				if (!d || d.total === 0) continue;
+				if (d.failed > 0) failing += 1;
+				else if (d.pending === 0) delivered += 1;
+			}
+			const parts = [
+				`${notes.length} note${notes.length === 1 ? "" : "s"}`,
+				`${delivered} fully delivered`,
+			];
+			if (failing > 0) parts.push(`${failing} with failures`);
+			parts.push(followerLabel);
+			return parts.join(" · ");
+		}
+
 		function noteTitle(note) {
 			if (note.title) return escapeHtml(note.title);
 			const preview = note.preview ? note.preview.trim() : "";
-			return escapeHtml(preview || `Note ${note.id}`);
+			if (!preview) return escapeHtml(`Note ${note.id}`);
+			// Cap the preview fallback so a long note doesn't render as a heavy,
+			// multi-line bold heading and break the one-row-per-note scan.
+			return escapeHtml(preview.length > 72 ? `${preview.slice(0, 72)}…` : preview);
 		}
 
 		function renderNotes(notes) {
@@ -166,9 +202,11 @@ const user = Astro.locals.user;
 								</div>
 								<div class="flex flex-wrap items-center gap-2">
 									${deliveryBadges(note.delivery)}
-									${badge(`💬 ${note.counts.replies}`, "gray")}
-									${badge(`❤️ ${note.counts.likes}`, "gray")}
-									${badge(`🔁 ${note.counts.announces}`, "gray")}
+								</div>
+								<div class="flex flex-wrap items-center gap-3 text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+									<span>💬 ${note.counts.replies} replies</span>
+									<span>❤️ ${note.counts.likes} likes</span>
+									<span>🔁 ${note.counts.announces} boosts</span>
 								</div>
 								<div class="text-xs text-zinc-500 dark:text-zinc-400">Published ${escapeHtml(formatDate(note.publishDate))}</div>
 							</div>
@@ -176,7 +214,7 @@ const user = Astro.locals.user;
 						</summary>
 						<div class="border-t border-zinc-200 p-4 dark:border-zinc-800">
 							<div class="flex flex-wrap gap-2">
-								<button type="button" data-action="delete-note" data-id="${escapeHtml(note.id)}" class="rounded border border-red-300 px-4 py-2 text-xs uppercase text-red-700 transition hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20">Delete &amp; tombstone</button>
+								<button type="button" data-action="delete-note" data-id="${escapeHtml(note.id)}" class="rounded border border-red-300 px-4 py-2 text-xs uppercase text-red-700 transition hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20">Delete note</button>
 								<button type="button" data-action="load-interactions" data-id="${escapeHtml(note.id)}" class="rounded border border-zinc-300 px-4 py-2 text-xs uppercase transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">Load replies</button>
 							</div>
 							<div class="mt-4 space-y-2" data-interactions-for="${escapeHtml(note.id)}"></div>
@@ -251,10 +289,11 @@ const user = Astro.locals.user;
 			const [notesData, blocklistData] = await Promise.all([notesRes.json(), blocklistRes.json()]);
 			if (!notesRes.ok) throw new Error(notesData.error || "Failed to load notes");
 			if (!blocklistRes.ok) throw new Error(blocklistData.error || "Failed to load blocklist");
+			const notes = notesData.notes || [];
 			if (followerCount) {
-				followerCount.textContent = `${notesData.followerCount} follower${notesData.followerCount === 1 ? "" : "s"}`;
+				followerCount.textContent = federationSummary(notes, notesData.followerCount);
 			}
-			renderNotes(notesData.notes || []);
+			renderNotes(notes);
 			renderBlocklist(blocklistData.domains || []);
 		}
 
@@ -287,6 +326,7 @@ const user = Astro.locals.user;
 					const noteId = target.closest("[data-note-id]")?.dataset.noteId;
 					if (noteId) await loadInteractions(noteId);
 				} else if (action === "delete-interaction" && id) {
+					if (!window.confirm("Permanently remove this reply?")) return;
 					const res = await fetch(`/api/ap/interactions/${encodeURIComponent(id)}`, {
 						method: "DELETE",
 					});
