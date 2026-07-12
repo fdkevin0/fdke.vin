@@ -36,3 +36,13 @@ CREATE TABLE IF NOT EXISTS ap_note_attachments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ap_note_attachments_note ON ap_note_attachments(note_id, position);
+
+-- Followers (see CONTEXT.md "Follower" and issue AP-5): remote actors that sent
+-- an accepted Follow. Delivery fans out to shared_inbox_url where present
+-- (deduped across a server), otherwise inbox_url.
+CREATE TABLE IF NOT EXISTS ap_followers (
+	actor_id TEXT PRIMARY KEY,       -- remote actor URI
+	inbox_url TEXT NOT NULL,         -- the follower's personal inbox
+	shared_inbox_url TEXT,           -- endpoints.sharedInbox, if advertised
+	created_at TEXT NOT NULL         -- ISO 8601
+);

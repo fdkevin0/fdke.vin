@@ -19,8 +19,8 @@ export interface NoteAttachment {
 	url: URL | string;
 	/** IANA media type, e.g. `image/jpeg`. */
 	mediaType: string;
-	/** Optional display name / alt text. */
-	name?: string;
+	/** Optional display name / alt text (`null`/absent means none). */
+	name?: string | null;
 }
 
 export interface SerializeNoteOptions {
@@ -57,6 +57,18 @@ export async function serializeNote(
 	note: Note,
 	options: SerializeNoteOptions,
 ): Promise<Record<string, unknown>> {
+	const object = buildNoteObject(note, options);
+	const json = await object.toJsonLd();
+	return json as Record<string, unknown>;
+}
+
+/**
+ * Build the Fedify AS2 `Note` vocab object for a D1 Note (the object
+ * {@link serializeNote} compacts to JSON, and that {@link ./activity} nests
+ * inside a `Create`/`Update`). Kept separate so activity envelopes can embed the
+ * live object rather than re-parsing compacted JSON.
+ */
+export function buildNoteObject(note: Note, options: SerializeNoteOptions): As2Note {
 	const base = options.origin instanceof URL ? options.origin : new URL(options.origin);
 	const id = new URL(`/notes/${note.id}/`, base);
 	const actorId = options.actorId ? toUrl(options.actorId, base) : new URL("/actor", base);
@@ -69,7 +81,7 @@ export async function serializeNote(
 			mediaType: a.mediaType,
 			url: toUrl(a.url, base),
 		};
-		if (a.name !== undefined) values.name = a.name;
+		if (a.name != null) values.name = a.name;
 		return new Document(values);
 	});
 
@@ -86,7 +98,5 @@ export async function serializeNote(
 	if (note.summary) values.summary = note.summary;
 	if (attachments.length > 0) values.attachments = attachments;
 
-	const object = new As2Note(values);
-	const json = await object.toJsonLd();
-	return json as Record<string, unknown>;
+	return new As2Note(values);
 }

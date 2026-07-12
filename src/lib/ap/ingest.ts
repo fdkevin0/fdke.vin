@@ -1,3 +1,4 @@
+import { enqueueNoteDelivery } from "@/lib/ap/delivery";
 import type { ApEnv } from "@/lib/ap/runtime";
 import {
 	findNoteIdByTelegramMessage,
@@ -54,6 +55,7 @@ export async function applyChannelUpdate(
 			updatedAt,
 		});
 		await storePhotoAttachment(env, existingId, result.photo);
+		await enqueueNoteDelivery(env, { kind: "Update", noteId: existingId });
 		return { action: "updated", noteId: existingId };
 	}
 
@@ -71,6 +73,7 @@ export async function applyChannelUpdate(
 		telegramMessageId: result.messageId,
 	});
 	await storePhotoAttachment(env, noteId, result.photo);
+	await enqueueNoteDelivery(env, { kind: "Create", noteId });
 	return { action: "created", noteId };
 }
 

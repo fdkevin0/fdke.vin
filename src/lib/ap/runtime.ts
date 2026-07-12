@@ -12,5 +12,5 @@ export async function getApEnv(): Promise<ApEnv> {
  * bot token used to fetch and store channel-post photos.
  */
 export async function getApIngestEnv(): Promise<ApEnv> {
-	return requireCloudflareEnv("DATABASE", "AP_BUCKET", "TELEGRAM_BOT_TOKEN");
+	return requireCloudflareEnv("DATABASE", "AP_BUCKET", "TELEGRAM_BOT_TOKEN", "AP_DELIVERY_QUEUE");
 }

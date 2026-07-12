@@ -67,6 +67,10 @@
 			{
 				"binding": "RSS_AI_QUEUE",
 				"queue": "rss-ai-queue"
+			},
+			{
+				"binding": "AP_DELIVERY_QUEUE",
+				"queue": "ap-delivery-queue"
 			}
 		],
 		"consumers": [
@@ -79,6 +83,12 @@
 			{
 				"queue": "rss-ai-queue",
 				"max_batch_size": 5,
+				"max_batch_timeout": 5,
+				"max_retries": 5
+			},
+			{
+				"queue": "ap-delivery-queue",
+				"max_batch_size": 10,
 				"max_batch_timeout": 5,
 				"max_retries": 5
 			}

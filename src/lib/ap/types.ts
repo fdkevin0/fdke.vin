@@ -45,6 +45,19 @@ export interface NoteAttachment {
 	height: number | null;
 }
 
+/**
+ * A unit of {@link Delivery} work on `ap-delivery-queue`: sign one Note's
+ * Create/Update activity and POST it to one follower inbox. One message is
+ * enqueued per deduped inbox when a Note is authored/edited in Telegram.
+ */
+export interface ApDeliveryMessage {
+	kind: "Create" | "Update";
+	/** The Note whose activity to deliver. */
+	noteId: string;
+	/** The (shared or personal) follower inbox to POST to. */
+	inboxUrl: string;
+}
+
 /** The `ap_note_attachments` D1 row shape. */
 export interface ApNoteAttachmentRow {
 	id: string;
