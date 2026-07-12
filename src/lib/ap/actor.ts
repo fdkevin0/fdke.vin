@@ -1,4 +1,4 @@
-import { Application, CryptographicKey, Endpoints } from "@fedify/fedify/vocab";
+import { Application, CryptographicKey, Endpoints, Image } from "@fedify/fedify/vocab";
 import {
 	AP_DOMAIN,
 	AP_USERNAME,
@@ -79,6 +79,17 @@ export async function buildActor(options: {
 		outbox: outboxUri(options.origin),
 		followers: followersUri(options.origin),
 		following: followingUri(options.origin),
+		// Profile avatar (`icon`) and header banner (`image`) remote servers show
+		// on the actor. Served as static assets from `public/`; the 512×512 PWA
+		// icon doubles as the avatar and the OG social card as the banner.
+		icon: new Image({
+			url: new URL("/icons/icon-512.png", actor),
+			mediaType: "image/png",
+		}),
+		image: new Image({
+			url: new URL("/social-card.png", actor),
+			mediaType: "image/png",
+		}),
 		endpoints: new Endpoints({ sharedInbox: inboxUri(options.origin) }),
 		publicKey: new CryptographicKey({
 			id: keyId(options.origin),

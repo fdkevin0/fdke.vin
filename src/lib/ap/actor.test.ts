@@ -44,6 +44,15 @@ describe("buildActor", () => {
 		expect(doc.followers).toBe("https://fdke.vin/followers");
 	});
 
+	it("publishes an avatar icon and header image", async () => {
+		const doc = await buildActor({ origin: ORIGIN, publicKey });
+		const icon = doc.icon as Record<string, unknown>;
+		expect(icon.type).toBe("Image");
+		expect(icon.url).toBe("https://fdke.vin/icons/icon-512.png");
+		const image = doc.image as Record<string, unknown>;
+		expect(image.url).toBe("https://fdke.vin/social-card.png");
+	});
+
 	it("advertises a shared inbox endpoint", async () => {
 		const doc = await buildActor({ origin: ORIGIN, publicKey });
 		const endpoints = doc.endpoints as Record<string, unknown>;
