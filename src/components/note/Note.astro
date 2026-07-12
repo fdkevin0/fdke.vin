@@ -1,15 +1,22 @@
 ---
-import { type CollectionEntry, render } from "astro:content";
 import type { HTMLTag, Polymorphic } from "astro/types";
 import FormattedDate from "@/components/FormattedDate.astro";
+import type { Note, NoteAttachment } from "@/lib/ap/types";
 
 type Props<Tag extends HTMLTag> = Polymorphic<{ as: Tag }> & {
-	note: CollectionEntry<"note">;
+	note: Note;
+	/**
+	 * Pre-rendered HTML for the note's `content` (markdown → HTML). The SSR
+	 * pages render the markdown once and pass the HTML here rather than
+	 * having the component depend on a markdown pipeline.
+	 */
+	html: string;
+	/** Media attachments (e.g. channel-post photos) rendered below the content. */
+	attachments?: NoteAttachment[] | undefined;
 	isPreview?: boolean | undefined;
 };
 
-const { as: Tag = "div", note, isPreview = false } = Astro.props;
-const { Content } = await render(note);
+const { as: Tag = "div", note, html, attachments = [], isPreview = false } = Astro.props;
 ---
 
 <article
@@ -19,11 +26,26 @@ const { Content } = await render(note);
 	<Tag class="title" class:list={{ "text-base": isPreview }}>
 		{
 			isPreview ? (
-				<a class="cactus-link" href={`/notes/${note.id}/`}>
-					{note.data.title}
-				</a>
+				note.title ? (
+					<a class="cactus-link" href={`/notes/${note.id}/`}>
+						{note.title}
+					</a>
+				) : (
+					<a class="cactus-link" href={`/notes/${note.id}/`}>
+						<FormattedDate
+							dateTimeOptions={{
+								hour: "2-digit",
+								minute: "2-digit",
+								year: "2-digit",
+								month: "2-digit",
+								day: "2-digit",
+							}}
+							date={note.publishDate}
+						/>
+					</a>
+				)
 			) : (
-				<>{note.data.title}</>
+				<>{note.title}</>
 			)
 		}
 	</Tag>
@@ -35,12 +57,28 @@ const { Content } = await render(note);
 			month: "2-digit",
 			day: "2-digit",
 		}}
-		date={note.data.publishDate}
+		date={note.publishDate}
 	/>
 	<div
 		class="prose prose-sm prose-cactus mt-4 max-w-none [&>p:last-of-type]:mb-0"
 		class:list={{ "line-clamp-6": isPreview }}
-	>
-		<Content />
-	</div>
+		set:html={html}
+	/>
+	{
+		!isPreview && attachments.length > 0 && (
+			<div class="mt-4 flex flex-col gap-3">
+				{attachments.map((attachment: NoteAttachment) => (
+					<img
+						class="max-w-full rounded-md"
+						src={attachment.url}
+						alt={attachment.name ?? ""}
+						width={attachment.width ?? undefined}
+						height={attachment.height ?? undefined}
+						loading="lazy"
+						decoding="async"
+					/>
+				))}
+			</div>
+		)
+	}
 </article>

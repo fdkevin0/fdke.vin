@@ -1,30 +1,115 @@
 ---
-import { getCollection } from "astro:content";
-import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
 import Note from "@/components/note/Note.astro";
+import NotesListing from "@/components/note/NotesListing.astro";
 import PageLayout from "@/layouts/Base.astro";
+import { acceptsActivityPub } from "@/lib/ap/accept";
+import { renderNoteMarkdown } from "@/lib/ap/markdown";
+import { negotiateNoteActivity } from "@/lib/ap/negotiate";
+import { getApEnv } from "@/lib/ap/runtime";
+import { countNotes, getNoteById, listNoteAttachments, listNotesPage } from "@/lib/ap/storage";
+import type { NoteAttachment, Note as NoteType } from "@/lib/ap/types";
+import type { SiteMeta } from "@/types";
 
-// if you're using an adaptor in SSR mode, getStaticPaths wont work -> https://docs.astro.build/en/guides/routing/#modifying-the-slug-example-for-ssr
-export const getStaticPaths = (async () => {
-	const allNotes = await getCollection("note");
-	return allNotes.map((note) => ({
-		params: { slug: note.id },
-		props: { note },
-	}));
-}) satisfies GetStaticPaths;
+export const prerender = false;
 
-export type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const slugParam = Astro.params.slug;
+const isListing = slugParam === undefined || /^\d+$/.test(slugParam ?? "");
 
-const { note } = Astro.props;
+const origin = import.meta.env.SITE;
+const env = await getApEnv();
 
-const meta = {
-	description:
-		note.data.description ||
-		`Read about my note posted on: ${note.data.publishDate.toLocaleDateString()}`,
-	title: note.data.title,
+type ListingData = {
+	items: { note: NoteType; html: string }[];
+	meta: SiteMeta;
+	page: number;
+	totalPages: number;
+	type: "listing";
 };
+type DetailData = {
+	html: string;
+	meta: SiteMeta;
+	note: NoteType;
+	attachments: NoteAttachment[];
+	type: "detail";
+};
+
+let page: ListingData | DetailData;
+
+if (isListing) {
+	const MAX_NOTES_PER_PAGE = 10;
+	const pageNumber = slugParam ? Number.parseInt(slugParam, 10) : 1;
+	const total = await countNotes(env);
+	const totalPages = Math.max(1, Math.ceil(total / MAX_NOTES_PER_PAGE));
+
+	if (pageNumber < 1 || pageNumber > totalPages) {
+		return Astro.rewrite("/404");
+	}
+
+	const offset = (pageNumber - 1) * MAX_NOTES_PER_PAGE;
+	const notes = await listNotesPage(env, { limit: MAX_NOTES_PER_PAGE, offset });
+	const items = await Promise.all(
+		notes.map(async (note) => ({ note, html: await renderNoteMarkdown(note.content) })),
+	);
+	page = {
+		items,
+		meta: { description: "Read my collection of notes", title: "Notes" },
+		page: pageNumber,
+		totalPages,
+		type: "listing",
+	};
+} else {
+	const note = await getNoteById(env, slugParam as string);
+
+	if (!note) {
+		// AS2 fetchers get a bare 404 (they act on the status, not an HTML body);
+		// browsers get the styled 404 page. `X-Astro-Reroute: no` opts out of
+		// Astro's default "render the /404 page for any null-body 404 response",
+		// which would otherwise swap our empty body for the styled HTML page.
+		if (acceptsActivityPub(Astro.request.headers.get("accept"))) {
+			return new Response(null, {
+				status: 404,
+				headers: { Vary: "Accept", "X-Astro-Reroute": "no" },
+			});
+		}
+		return Astro.rewrite("/404");
+	}
+
+	const attachments = await listNoteAttachments(env, note.id);
+
+	// ActivityPub content negotiation: AS2 clients get the Note object,
+	// browsers get the SSR HTML page at the same canonical URL.
+	const activity = await negotiateNoteActivity(note, {
+		accept: Astro.request.headers.get("accept"),
+		origin,
+		attachments,
+	});
+	if (activity) return activity;
+
+	const html = await renderNoteMarkdown(note.content);
+	page = {
+		html,
+		meta: {
+			description:
+				note.summary || `Read my note posted on: ${note.publishDate.toLocaleDateString()}`,
+			title: note.title ?? "Note",
+		},
+		note,
+		attachments,
+		type: "detail",
+	};
+}
+
+const meta = page.meta;
 ---
 
-<PageLayout meta={meta}>
-	<Note as="h1" note={note} />
-</PageLayout>
+{
+	page.type === "listing" ? (
+		<PageLayout meta={meta}>
+			<NotesListing items={page.items} page={page.page} totalPages={page.totalPages} />
+		</PageLayout>
+	) : (
+		<PageLayout meta={meta}>
+			<Note as="h1" note={page.note} html={page.html} attachments={page.attachments} />
+		</PageLayout>
+	)
+}

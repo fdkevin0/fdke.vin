@@ -92,7 +92,30 @@ export default defineConfig({
 
 	vite: {
 		optimizeDeps: {
-			exclude: ["@resvg/resvg-wasm"],
+			// Fedify's vocab/runtime graph is heavy and trips esbuild's dep
+			// scanner during `astro check`/dev. The Cloudflare build bundles it
+			// via Rollup instead, so skip esbuild pre-bundling for these.
+			exclude: [
+				"@resvg/resvg-wasm",
+				"@fedify/fedify",
+				"@fedify/vocab",
+				"@fedify/vocab-runtime",
+				"@fedify/webfinger",
+				"@fedify/uri-template",
+				"@js-temporal/polyfill",
+				"@logtape/logtape",
+				"@opentelemetry/api",
+				"@opentelemetry/core",
+				"@opentelemetry/sdk-metrics",
+				"@opentelemetry/sdk-trace-base",
+				"@opentelemetry/semantic-conventions",
+				"byte-encodings",
+				"es-toolkit",
+				"json-canon",
+				"jsonld",
+				"structured-field-values",
+				"urlpattern-polyfill",
+			],
 		},
 		resolve: {
 			alias: {

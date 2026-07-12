@@ -1,0 +1,60 @@
+---
+import type { HTMLTag } from "astro/types";
+import { Icon } from "astro-icon/components";
+import Note from "@/components/note/Note.astro";
+import Pagination from "@/components/Paginator.astro";
+import type { Note as NoteType } from "@/lib/ap/types";
+
+interface NoteItem {
+	note: NoteType;
+	html: string;
+}
+
+type Props = {
+	items: NoteItem[];
+	/** 1-based page number. */
+	page: number;
+	totalPages: number;
+	/** Heading tag for each note preview title; defaults to `h2`. */
+	heading?: HTMLTag;
+};
+
+const { items, page, totalPages, heading = "h2" } = Astro.props;
+
+/**
+ * Notes listing prev/next URLs. The listing route (`src/pages/notes/[...slug].astro`)
+ * treats a numeric page segment as pagination and a ULID as a note detail, so
+ * page N links to `/notes/{n}/` and page 1 links to `/notes/`.
+ */
+const notesUrl = (n: number) => (n <= 1 ? "/notes/" : `/notes/${n}/`);
+
+const prevUrl = page > 1 ? notesUrl(page - 1) : undefined;
+const nextUrl = page < totalPages ? notesUrl(page + 1) : undefined;
+---
+
+<section>
+	<h1 class="title mb-12 flex items-center gap-3">
+		Notes
+		<a class="text-accent" href="/notes/rss.xml" target="_blank">
+			<span class="sr-only">RSS feed</span>
+			<Icon aria-hidden="true" class="h-6 w-6" focusable="false" name="mdi:rss" />
+		</a>
+	</h1>
+	{
+		items.length > 0 ? (
+			<ul class="mt-6 space-y-8 text-start">
+				{items.map((item) => (
+					<li>
+						<Note note={item.note} html={item.html} as={heading} isPreview />
+					</li>
+				))}
+			</ul>
+		) : (
+			<p class="text-sm text-zinc-600 dark:text-zinc-300">No notes published yet.</p>
+		)
+	}
+	<Pagination
+		{...(prevUrl ? { prevUrl: { text: "← Previous Page", url: prevUrl } } : {})}
+		{...(nextUrl ? { nextUrl: { text: "Next Page →", url: nextUrl } } : {})}
+	/>
+</section>

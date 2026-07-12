@@ -30,6 +30,11 @@
 			"binding": "RSS_BUCKET",
 			"bucket_name": "rss-feed-storage",
 			"preview_bucket_name": "rss-feed-storage"
+		},
+		{
+			"binding": "AP_BUCKET",
+			"bucket_name": "ap-storage",
+			"preview_bucket_name": "ap-storage"
 		}
 	],
 	"d1_databases": [
@@ -62,6 +67,10 @@
 			{
 				"binding": "RSS_AI_QUEUE",
 				"queue": "rss-ai-queue"
+			},
+			{
+				"binding": "AP_DELIVERY_QUEUE",
+				"queue": "ap-delivery-queue"
 			}
 		],
 		"consumers": [
@@ -76,6 +85,12 @@
 				"max_batch_size": 5,
 				"max_batch_timeout": 5,
 				"max_retries": 5
+			},
+			{
+				"queue": "ap-delivery-queue",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 5
 			}
 		]
 	},
@@ -85,6 +100,7 @@
 	},
 	"vars": {
 		"CLOUDFLARE_TEAM_DOMAIN": "https://fdkevin.cloudflareaccess.com",
-		"CLOUDFLARE_POLICY_AUD": "7d8a99d0b638544b0ff6ae86332addf618e9e3e19e82ea470985b8dc6e629f69,b07ea8fc3d88e34abdcf2fbd9bb86037f5f67c64479b68e392646a6f01f3753b" // comma-separated for multiple audiences
+		"CLOUDFLARE_POLICY_AUD": "7d8a99d0b638544b0ff6ae86332addf618e9e3e19e82ea470985b8dc6e629f69,b07ea8fc3d88e34abdcf2fbd9bb86037f5f67c64479b68e392646a6f01f3753b", // comma-separated for multiple audiences
+		"TELEGRAM_ALLOWED_CHAT_ID": "-1004325134604" // the author's channel/chat id. TELEGRAM_BOT_TOKEN + TELEGRAM_WEBHOOK_SECRET are secrets (wrangler secret put)
 	}
 }

@@ -1,6 +1,11 @@
 ---
 import PageLayout from "@/layouts/Base.astro";
 
+// Server-rendered so SSR routes can `Astro.rewrite("/404")` to it — rewriting
+// to a prerendered route is a runtime error. Astro's renderPage forces the
+// response status to 404 for the `/404` route, so no explicit status is needed.
+export const prerender = false;
+
 const meta = {
 	description: "This page does not exist on fdke.vin.",
 	title: "Page Not Found",

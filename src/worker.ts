@@ -1,5 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import { handle } from "@astrojs/cloudflare/handler";
+import { AP_DELIVERY_QUEUE_NAME } from "@/lib/ap/config";
+import { processDeliveryMessage } from "@/lib/ap/delivery";
+import type { ApDeliveryMessage } from "@/lib/ap/types";
 import { getErrorMessage } from "@/lib/api/http";
 import { processAiMessage } from "@/lib/feed/ai";
 import { completeRunFeed, recoverTimedOutRun, startRun } from "@/lib/feed/coordinator";
@@ -58,6 +61,8 @@ export default {
 				} else if (batch.queue === RSS_AI_QUEUE_NAME) {
 					const body = message.body as FeedAiMessage;
 					await processAiMessage(env, body.itemId);
+				} else if (batch.queue === AP_DELIVERY_QUEUE_NAME) {
+					await processDeliveryMessage(env, message.body as ApDeliveryMessage);
 				}
 				message.ack();
 			} catch (error) {
