@@ -44,15 +44,15 @@ const latestNotes = await Promise.all(
 <PageLayout
 	meta={{
 		blogLanguage: blogLang,
-	blogLanguageOptions: getSiteLanguageOptions(
-		Object.fromEntries(
-			SITE_LANGS.map((lang) => [lang, { href: getSiteUrlWithLang(Astro.url, lang, true) }]),
-		),
-	).map((option) => ({
-		href: option.href,
-		label: option.meta.label,
-		lang: option.lang,
-	})),
+		blogLanguageOptions: getSiteLanguageOptions(
+			Object.fromEntries(
+				SITE_LANGS.map((lang) => [lang, { href: getSiteUrlWithLang(Astro.url, lang, true) }]),
+			),
+		).map((option) => ({
+			href: option.href,
+			label: option.meta.label,
+			lang: option.lang,
+		})),
 		title: "Home",
 	}}
 >

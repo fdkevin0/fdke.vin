@@ -63,10 +63,10 @@ const alternates = SITE_LANGS.flatMap((lang) => {
 			<Masthead content={post} explicitLanguage={explicitLang} readingTime={readingTime} />
 		</div>
 		<div class="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
-			{(supportedTranslations.length > 1 || headings.length > 0) && (
-				<aside class="lg:sticky lg:top-12 lg:order-2 lg:-me-32 lg:basis-64">
-					{
-						supportedTranslations.length > 1 && (
+			{
+				(supportedTranslations.length > 1 || headings.length > 0) && (
+					<aside class="lg:sticky lg:top-12 lg:order-2 lg:-me-32 lg:basis-64">
+						{supportedTranslations.length > 1 && (
 							<nav class="mb-6" aria-label="Post language">
 								<h2 class="title mb-3 text-lg">Language</h2>
 								<ul class="flex flex-wrap gap-2">
@@ -87,11 +87,11 @@ const alternates = SITE_LANGS.flatMap((lang) => {
 									))}
 								</ul>
 							</nav>
-						)
-					}
-					{!!headings.length && <TOC headings={headings} />}
-				</aside>
-			)}
+						)}
+						{!!headings.length && <TOC headings={headings} />}
+					</aside>
+				)
+			}
 			<div
 				class="prose prose-sm prose-headings:font-semibold prose-headings:text-accent-2 prose-headings:before:absolute prose-headings:before:-ms-4 prose-headings:before:text-gray-600 prose-headings:hover:before:text-accent sm:prose-headings:before:content-['#'] sm:prose-th:before:content-none"
 			>

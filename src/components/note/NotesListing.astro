@@ -54,7 +54,7 @@ const nextUrl = page < totalPages ? notesUrl(page + 1) : undefined;
 		)
 	}
 	<Pagination
-		{...(prevUrl ? { prevUrl: { text: "← Previous Page", url: prevUrl } } : {})}
-		{...(nextUrl ? { nextUrl: { text: "Next Page →", url: nextUrl } } : {})}
+		{...prevUrl ? { prevUrl: { text: "← Previous Page", url: prevUrl } } : {}}
+		{...nextUrl ? { nextUrl: { text: "Next Page →", url: nextUrl } } : {}}
 	/>
 </section>

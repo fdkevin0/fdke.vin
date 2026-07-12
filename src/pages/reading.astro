@@ -124,7 +124,8 @@ const initialDisplayMode = siteLang === "en" ? "translated" : "original";
 		<p
 			id="reading-mode-hint"
 			class="bg-global-text/5 rounded-md px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300"
-		></p>
+		>
+		</p>
 
 		<div id="reading-feedback" class="hidden rounded-md px-4 py-3 text-sm"></div>
 
@@ -249,13 +250,16 @@ const initialDisplayMode = siteLang === "en" ? "translated" : "original";
 		function formatPublishedAt(value) {
 			if (!value) return copy.noDate;
 
-			return new Intl.DateTimeFormat(siteLang === "zh" ? "zh-CN" : siteLang === "ja" ? "ja-JP" : "en-GB", {
-				day: "2-digit",
-				month: "2-digit",
-				year: "2-digit",
-				hour: "2-digit",
-				minute: "2-digit",
-			}).format(new Date(value));
+			return new Intl.DateTimeFormat(
+				siteLang === "zh" ? "zh-CN" : siteLang === "ja" ? "ja-JP" : "en-GB",
+				{
+					day: "2-digit",
+					month: "2-digit",
+					year: "2-digit",
+					hour: "2-digit",
+					minute: "2-digit",
+				},
+			).format(new Date(value));
 		}
 
 		function renderTabs(items) {
