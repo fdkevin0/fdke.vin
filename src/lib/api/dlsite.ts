@@ -1,37 +1,48 @@
-type DlsiteLocale = "ja_JP" | "zh_CN" | "zh_TW" | "en_US";
+import { z } from "zod";
 
-interface DlsiteEdition {
-	lang: string;
-}
+type DlsiteLocale = "ja_JP" | "zh_CN" | "zh_TW" | "en_US";
 
 interface DlsiteCreator {
 	name: string;
 }
 
-interface DlsiteProductInfo {
-	workno: string;
-	work_name: string;
-	maker_id: string;
-	maker_name: string;
-	maker_name_en: string;
-	series_id: string;
-	series_name: string;
-	age_category: number;
-	age_category_string: string;
-	regist_date: string;
-	update_date: string;
-	genres: Array<{ name: string }>;
-	editions: DlsiteEdition[] | Record<string, DlsiteEdition>;
-	creaters: {
-		created_by: DlsiteCreator[];
-		scenario_by: DlsiteCreator[];
-		illust_by: DlsiteCreator[];
-		voice_by: DlsiteCreator[];
-	};
-	image_main: {
-		url?: string | null;
-	};
-}
+const dlsiteEditionSchema = z.object({ lang: z.string() });
+const dlsiteCreatorSchema = z.object({ name: z.string() });
+
+/**
+ * DLsite's `product.json` carries far more than we read, and individual works
+ * omit fields (no series, no voice cast, …). Validate the identity fields,
+ * default everything else so a sparse work degrades gracefully instead of
+ * crashing the later `.map`/iteration, and let `z.object` drop unknown keys.
+ */
+const dlsiteProductInfoSchema = z.object({
+	workno: z.string(),
+	work_name: z.string(),
+	maker_id: z.string().default(""),
+	maker_name: z.string().default(""),
+	maker_name_en: z.string().default(""),
+	series_id: z.string().default(""),
+	series_name: z.string().default(""),
+	age_category: z.number().default(0),
+	age_category_string: z.string().default(""),
+	regist_date: z.string().default(""),
+	update_date: z.string().default(""),
+	genres: z.array(z.object({ name: z.string() })).default([]),
+	editions: z
+		.union([z.array(dlsiteEditionSchema), z.record(z.string(), dlsiteEditionSchema)])
+		.default([]),
+	creaters: z
+		.object({
+			created_by: z.array(dlsiteCreatorSchema).default([]),
+			scenario_by: z.array(dlsiteCreatorSchema).default([]),
+			illust_by: z.array(dlsiteCreatorSchema).default([]),
+			voice_by: z.array(dlsiteCreatorSchema).default([]),
+		})
+		.default({ created_by: [], scenario_by: [], illust_by: [], voice_by: [] }),
+	image_main: z.object({ url: z.string().nullish() }).default({}),
+});
+
+type DlsiteProductInfo = z.output<typeof dlsiteProductInfoSchema>;
 
 export interface DlsiteWorkInfo {
 	workno: string;
@@ -159,14 +170,12 @@ class DLsiteClient {
 			throw new Error(`DLsite API request failed with status ${response.status}`);
 		}
 
-		const data = (await response.json()) as DlsiteProductInfo[];
-		if (!data.length) {
-			throw new Error("DLsite API returned empty data");
-		}
-
-		const [firstProduct] = data;
+		const data = z
+			.array(dlsiteProductInfoSchema)
+			.safeParse(await response.json().catch(() => null));
+		const firstProduct = data.success ? data.data[0] : undefined;
 		if (!firstProduct) {
-			throw new Error("DLsite API returned empty data");
+			throw new Error("DLsite API returned empty or malformed data");
 		}
 
 		return firstProduct;

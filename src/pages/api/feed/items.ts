@@ -1,10 +1,18 @@
 export const prerender = false;
 
 import type { APIRoute } from "astro";
+import { z } from "zod";
 import { getErrorMessage, jsonError, jsonNoStore, logApiError } from "@/lib/api/http";
 import { requireAccessUser } from "@/lib/api/tokens/request";
 import { getFeedEnv } from "@/lib/feed/runtime";
 import { listRecentFeedItems } from "@/lib/feed/storage";
+
+const feedItemsQuerySchema = z.object({
+	limit: z.coerce
+		.number()
+		.catch(50)
+		.transform((value) => Math.min(Math.max(value, 1), 100)),
+});
 
 export const GET: APIRoute = async ({ locals, url }) => {
 	const user = requireAccessUser(locals.user);
@@ -13,8 +21,7 @@ export const GET: APIRoute = async ({ locals, url }) => {
 	}
 
 	try {
-		const limitValue = Number(url.searchParams.get("limit") || 50);
-		const limit = Number.isFinite(limitValue) ? Math.min(Math.max(limitValue, 1), 100) : 50;
+		const { limit } = feedItemsQuerySchema.parse({ limit: url.searchParams.get("limit") || 50 });
 		const env = await getFeedEnv();
 		const items = await listRecentFeedItems(env, limit);
 		return jsonNoStore({ items });

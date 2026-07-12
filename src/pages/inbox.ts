@@ -1,10 +1,24 @@
 export const prerender = false;
 
 import type { APIRoute } from "astro";
+import { z } from "zod";
 import { type InboundActivity, processInboxActivity } from "@/lib/ap/inbox";
 import { getApEnv } from "@/lib/ap/runtime";
 import { verifySignature } from "@/lib/ap/signature";
-import { getErrorMessage, logApiError } from "@/lib/api/http";
+import { getErrorMessage, logApiError, readJson } from "@/lib/api/http";
+
+const referenceableSchema = z.union([
+	z.string(),
+	z.looseObject({ id: z.string().optional(), type: z.string().optional() }),
+	z.null(),
+]);
+
+const inboundActivitySchema: z.ZodType<InboundActivity> = z.looseObject({
+	id: z.string().optional(),
+	type: z.string().optional(),
+	actor: referenceableSchema.optional(),
+	object: referenceableSchema.optional(),
+});
 
 /**
  * The actor's ActivityPub inbox (issue AP-5).
@@ -31,12 +45,8 @@ export const POST: APIRoute = async ({ request, url }) => {
 		return new Response("Invalid HTTP Signature", { status: 401 });
 	}
 
-	let activity: InboundActivity;
-	try {
-		activity = (await request.json()) as InboundActivity;
-	} catch {
-		return new Response("Invalid JSON body", { status: 400 });
-	}
+	const activity = await readJson(request, inboundActivitySchema);
+	if (activity instanceof Response) return activity;
 
 	try {
 		const env = await getApEnv();

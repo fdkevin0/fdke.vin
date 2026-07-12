@@ -1,6 +1,25 @@
 import { WEBMENTION_API_KEY } from "astro:env/server";
 import * as fs from "node:fs";
+import { z } from "zod";
 import type { WebmentionsCache, WebmentionsChildren, WebmentionsFeed } from "@/types";
+
+/**
+ * Guard the fields the merge/filter logic dereferences (`wm-id` keys the merge
+ * map; `wm-property`/`wm-target`/`content.text` drive filtering). `looseObject`
+ * preserves the remaining fields (author, photo, url, …) that templates render.
+ */
+const webmentionChildSchema = z.looseObject({
+	"wm-id": z.number(),
+	"wm-property": z.string(),
+	"wm-target": z.string(),
+	content: z.looseObject({ text: z.string().optional() }).nullish(),
+});
+
+const webmentionsFeedSchema = z.object({
+	children: z.array(webmentionChildSchema).default([]),
+	name: z.string().default(""),
+	type: z.string().default(""),
+});
 
 const DOMAIN = import.meta.env.SITE;
 const CACHE_DIR = ".data";
@@ -10,7 +29,10 @@ const validWebmentionTypes = ["like-of", "mention-of", "in-reply-to"];
 const hostName = new URL(DOMAIN).hostname;
 
 // Calls webmention.io api.
-async function fetchWebmentions(timeFrom: string | null, perPage = 1000) {
+async function fetchWebmentions(
+	timeFrom: string | null,
+	perPage = 1000,
+): Promise<WebmentionsFeed | null> {
 	if (!DOMAIN) {
 		console.warn("No domain specified. Please set in astro.config.ts");
 		return null;
@@ -28,8 +50,12 @@ async function fetchWebmentions(timeFrom: string | null, perPage = 1000) {
 	const res = await fetch(url);
 
 	if (res.ok) {
-		const data = (await res.json()) as WebmentionsFeed;
-		return data;
+		const parsed = webmentionsFeedSchema.safeParse(await res.json().catch(() => null));
+		if (!parsed.success) {
+			console.warn("Unexpected webmention.io response shape; skipping this fetch");
+			return null;
+		}
+		return parsed.data as unknown as WebmentionsFeed;
 	}
 
 	return null;

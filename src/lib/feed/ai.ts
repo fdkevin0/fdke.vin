@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { FeedEnv } from "@/lib/feed/runtime";
 import {
 	getFeedItemForAi,
@@ -133,37 +134,24 @@ async function translateContent(
 	};
 }
 
-function parseAiTranslationResponse(raw: string): {
-	language: string;
-	title_en: string;
-	summary_en: string;
-} {
-	let parsed: unknown;
+/** The model's JSON must satisfy FEED_TRANSLATION_RESPONSE_SCHEMA — enforce it at runtime. */
+const aiTranslationResponseSchema = z.object({
+	language: z.string(),
+	title_en: z.string(),
+	summary_en: z.string(),
+});
+
+function parseAiTranslationResponse(raw: string): z.output<typeof aiTranslationResponseSchema> {
+	let json: unknown;
 	try {
-		parsed = JSON.parse(raw.trim());
+		json = JSON.parse(raw.trim());
 	} catch {
 		throw new Error("AI response was not valid JSON");
 	}
 
-	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-		throw new Error("AI response was not a JSON object");
+	const result = aiTranslationResponseSchema.safeParse(json);
+	if (!result.success) {
+		throw new Error("AI response did not match the expected translation shape");
 	}
-
-	const candidate = parsed as Record<string, unknown>;
-	const language = typeof candidate.language === "string" ? candidate.language : undefined;
-	const titleEn = candidate.title_en;
-	const summaryEn = candidate.summary_en;
-
-	if (language === undefined) {
-		throw new Error("AI response did not include a valid language field");
-	}
-	if (typeof titleEn !== "string" || typeof summaryEn !== "string") {
-		throw new Error("AI response did not include required translation fields");
-	}
-
-	return {
-		language,
-		title_en: titleEn,
-		summary_en: summaryEn,
-	};
+	return result.data;
 }

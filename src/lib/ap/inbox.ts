@@ -42,10 +42,10 @@ export interface InboundObject {
 
 /** The minimal inbound Activity shape we read. */
 export interface InboundActivity {
-	id?: string;
-	type?: string;
-	actor?: Referenceable;
-	object?: Referenceable | InboundObject;
+	id?: string | undefined;
+	type?: string | undefined;
+	actor?: Referenceable | undefined;
+	object?: Referenceable | InboundObject | undefined;
 }
 
 /** What an inbound Activity asks us to do. */

@@ -1,20 +1,13 @@
+import { z } from "zod";
+
 export const API_SCOPES = ["api.ping", "api.dlsite.read", "api.exhentai.read", "api.*"] as const;
 
-export type ApiScope = (typeof API_SCOPES)[number];
+export const apiScopeSchema = z.enum(API_SCOPES);
+
+export type ApiScope = z.infer<typeof apiScopeSchema>;
 
 export function isApiScope(value: string): value is ApiScope {
 	return API_SCOPES.includes(value as ApiScope);
-}
-
-export function parseApiScopes(input: unknown): ApiScope[] {
-	if (!Array.isArray(input)) {
-		return [];
-	}
-
-	const scopes = input.filter(
-		(value): value is ApiScope => typeof value === "string" && isApiScope(value),
-	);
-	return Array.from(new Set(scopes));
 }
 
 export function hasRequiredScope(grantedScopes: string[], requiredScope: string): boolean {

@@ -3,8 +3,9 @@ export const prerender = false;
 import type { APIRoute } from "astro";
 import { applyChannelUpdate } from "@/lib/ap/ingest";
 import { getApIngestEnv } from "@/lib/ap/runtime";
-import { parseChannelUpdate, type TelegramUpdate } from "@/lib/ap/telegram";
-import { getErrorMessage, jsonError, jsonNoStore, logApiError } from "@/lib/api/http";
+import { parseChannelUpdate, telegramUpdateSchema } from "@/lib/ap/telegram";
+import { getErrorMessage, jsonError, jsonNoStore, logApiError, readJson } from "@/lib/api/http";
+import { timingSafeEqual } from "@/lib/crypto";
 
 /** Telegram sets this header to the secret token registered with `setWebhook`. */
 const SECRET_HEADER = "x-telegram-bot-api-secret-token";
@@ -30,7 +31,11 @@ export const POST: APIRoute = async ({ request }) => {
 
 	// Secret-token gate: reject anything not carrying the registered token.
 	const provided = request.headers.get(SECRET_HEADER);
-	if (!env.TELEGRAM_WEBHOOK_SECRET || provided !== env.TELEGRAM_WEBHOOK_SECRET) {
+	if (
+		!env.TELEGRAM_WEBHOOK_SECRET ||
+		!provided ||
+		!(await timingSafeEqual(provided, env.TELEGRAM_WEBHOOK_SECRET))
+	) {
 		return jsonError(401, "Unauthorized");
 	}
 
@@ -40,12 +45,8 @@ export const POST: APIRoute = async ({ request }) => {
 		return jsonError(500, "Telegram allowlist is not configured");
 	}
 
-	let update: TelegramUpdate;
-	try {
-		update = (await request.json()) as TelegramUpdate;
-	} catch {
-		return jsonError(400, "Invalid JSON body");
-	}
+	const update = await readJson(request, telegramUpdateSchema);
+	if (update instanceof Response) return update;
 
 	try {
 		const result = parseChannelUpdate(update, { allowedChatId });

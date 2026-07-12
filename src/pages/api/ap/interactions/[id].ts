@@ -1,10 +1,11 @@
 export const prerender = false;
 
 import type { APIRoute } from "astro";
+import { z } from "zod";
 import { deleteInteraction, setInteractionHidden } from "@/lib/ap/interactions";
 import { getApEnv } from "@/lib/ap/runtime";
-import { getErrorMessage, jsonError, jsonNoStore, logApiError } from "@/lib/api/http";
-import { readJson, requireAccessUser } from "@/lib/api/tokens/request";
+import { getErrorMessage, jsonError, jsonNoStore, logApiError, readJson } from "@/lib/api/http";
+import { requireAccessUser } from "@/lib/api/tokens/request";
 
 /**
  * Hide or unhide a stored reply (issue AP-8) so it stops/starts rendering under
@@ -18,8 +19,11 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
 	if (!id) return jsonError(400, "Interaction id is required");
 
 	try {
-		const body = await readJson<{ hidden?: boolean }>(request);
-		if (typeof body.hidden !== "boolean") return jsonError(400, "`hidden` must be a boolean");
+		const body = await readJson(
+			request,
+			z.object({ hidden: z.boolean("`hidden` must be a boolean") }),
+		);
+		if (body instanceof Response) return body;
 
 		const env = await getApEnv();
 		const ok = await setInteractionHidden(env, id, body.hidden);

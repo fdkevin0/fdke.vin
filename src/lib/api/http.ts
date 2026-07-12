@@ -1,3 +1,5 @@
+import type { z } from "zod";
+
 const NO_STORE_HEADERS = {
 	"Cache-Control": "no-store",
 };
@@ -24,6 +26,20 @@ export function jsonNoStore(data: unknown, init?: ResponseInit): Response {
 
 export function jsonError(status: number, error: string): Response {
 	return jsonNoStore({ error }, { status });
+}
+
+/** Parse and validate a JSON request body at the HTTP boundary. */
+export async function readJson<T extends z.ZodType>(
+	request: Request,
+	schema: T,
+): Promise<z.output<T> | Response> {
+	try {
+		const result = schema.safeParse(await request.json());
+		if (result.success) return result.data;
+		return jsonError(400, result.error.issues[0]?.message ?? "Invalid JSON body");
+	} catch {
+		return jsonError(400, "Invalid JSON body");
+	}
 }
 
 export function text(body: BodyInit | null, init?: ResponseInit): Response {

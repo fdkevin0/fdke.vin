@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * Pure parsing of Telegram channel updates into Note inputs.
  *
@@ -16,9 +18,9 @@ export interface TelegramMessageEntity {
 	offset: number;
 	length: number;
 	/** Present on `text_link` entities. */
-	url?: string;
+	url?: string | undefined;
 	/** Present on `pre` entities. */
-	language?: string;
+	language?: string | undefined;
 }
 
 /** A Telegram [PhotoSize](https://core.telegram.org/bots/api#photosize). */
@@ -27,7 +29,7 @@ export interface TelegramPhotoSize {
 	file_unique_id: string;
 	width: number;
 	height: number;
-	file_size?: number;
+	file_size?: number | undefined;
 }
 
 /** The subset of a Telegram [Message](https://core.telegram.org/bots/api#message) we read. */
@@ -36,23 +38,57 @@ export interface TelegramMessage {
 	/** Unix time (seconds) the message was sent. */
 	date: number;
 	/** Unix time (seconds) the message was last edited. */
-	edit_date?: number;
-	chat: { id: number; type: string; title?: string };
-	text?: string;
-	entities?: TelegramMessageEntity[];
-	caption?: string;
-	caption_entities?: TelegramMessageEntity[];
+	edit_date?: number | undefined;
+	chat: { id: number; type: string; title?: string | undefined };
+	text?: string | undefined;
+	entities?: TelegramMessageEntity[] | undefined;
+	caption?: string | undefined;
+	caption_entities?: TelegramMessageEntity[] | undefined;
 	/** Available photo sizes, smallest to largest. */
-	photo?: TelegramPhotoSize[];
+	photo?: TelegramPhotoSize[] | undefined;
 }
 
 /** A Telegram [Update](https://core.telegram.org/bots/api#update); only channel fields matter here. */
 export interface TelegramUpdate {
 	update_id: number;
-	channel_post?: TelegramMessage;
-	edited_channel_post?: TelegramMessage;
+	channel_post?: TelegramMessage | undefined;
+	edited_channel_post?: TelegramMessage | undefined;
 	[key: string]: unknown;
 }
+
+const telegramMessageEntitySchema = z.looseObject({
+	type: z.string(),
+	offset: z.number().int(),
+	length: z.number().int(),
+	url: z.string().optional(),
+	language: z.string().optional(),
+});
+
+const telegramPhotoSizeSchema = z.looseObject({
+	file_id: z.string(),
+	file_unique_id: z.string(),
+	width: z.number(),
+	height: z.number(),
+	file_size: z.number().optional(),
+});
+
+const telegramMessageSchema = z.looseObject({
+	message_id: z.number().int(),
+	date: z.number(),
+	edit_date: z.number().optional(),
+	chat: z.looseObject({ id: z.number(), type: z.string(), title: z.string().optional() }),
+	text: z.string().optional(),
+	entities: z.array(telegramMessageEntitySchema).optional(),
+	caption: z.string().optional(),
+	caption_entities: z.array(telegramMessageEntitySchema).optional(),
+	photo: z.array(telegramPhotoSizeSchema).optional(),
+});
+
+export const telegramUpdateSchema: z.ZodType<TelegramUpdate> = z.looseObject({
+	update_id: z.number().int(),
+	channel_post: telegramMessageSchema.optional(),
+	edited_channel_post: telegramMessageSchema.optional(),
+});
 
 /** Config gating which channel may author Notes. */
 export interface ChannelUpdateConfig {

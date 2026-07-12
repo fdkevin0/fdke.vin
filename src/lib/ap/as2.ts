@@ -7,7 +7,7 @@
 /** An AS2 value that may be a bare URI string or an object carrying `id`/`type`. */
 export type Referenceable =
 	| string
-	| { id?: string; type?: string; [key: string]: unknown }
+	| { id?: string | undefined; type?: string | undefined; [key: string]: unknown }
 	| null
 	| undefined;
 

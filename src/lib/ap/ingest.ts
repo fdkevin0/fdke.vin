@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { enqueueNoteDelivery } from "@/lib/ap/delivery";
 import type { ApEnv } from "@/lib/ap/runtime";
 import {
@@ -106,6 +107,12 @@ async function storePhotoAttachment(
 	await replaceNoteAttachments(env, noteId, [attachment]);
 }
 
+/** The subset of Telegram's `getFile` response this pipeline reads. */
+const getFileResponseSchema = z.object({
+	ok: z.boolean(),
+	result: z.object({ file_path: z.string().optional() }).optional(),
+});
+
 /**
  * Download a Telegram file's bytes via the Bot API: resolve its `file_path`
  * with `getFile`, then fetch it from the file endpoint.
@@ -117,9 +124,9 @@ async function downloadTelegramFile(token: string, fileId: string): Promise<Arra
 	if (!meta.ok) {
 		throw new Error(`Telegram getFile failed: ${meta.status} ${await meta.text()}`);
 	}
-	const body = (await meta.json()) as { ok: boolean; result?: { file_path?: string } };
-	const filePath = body.result?.file_path;
-	if (!body.ok || !filePath) {
+	const body = getFileResponseSchema.safeParse(await meta.json().catch(() => null));
+	const filePath = body.success ? body.data.result?.file_path : undefined;
+	if (!body.success || !body.data.ok || !filePath) {
 		throw new Error(`Telegram getFile returned no file_path for ${fileId}`);
 	}
 

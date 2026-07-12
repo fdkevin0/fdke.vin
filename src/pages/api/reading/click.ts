@@ -1,17 +1,19 @@
 export const prerender = false;
 
 import type { APIRoute } from "astro";
-import { getErrorMessage, jsonError, jsonNoStore, logApiError } from "@/lib/api/http";
+import { z } from "zod";
+import { getErrorMessage, jsonError, jsonNoStore, logApiError, readJson } from "@/lib/api/http";
 import { getFeedEnv } from "@/lib/feed/runtime";
 import { extendFeedItemVisibility } from "@/lib/feed/storage";
 
 export const POST: APIRoute = async ({ request }) => {
 	try {
-		const body = (await request.json()) as { itemId?: string };
-		const itemId = body.itemId?.trim();
-		if (!itemId) {
-			return jsonError(400, "Missing itemId");
-		}
+		const body = await readJson(
+			request,
+			z.object({ itemId: z.string("Missing itemId").trim().min(1, "Missing itemId") }),
+		);
+		if (body instanceof Response) return body;
+		const { itemId } = body;
 
 		const visibleUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 		const env = await getFeedEnv();
