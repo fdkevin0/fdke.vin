@@ -8,7 +8,8 @@ import type {
 } from "@/lib/ap/types";
 
 const NOTE_COLUMNS = "id, title, content, summary, published_at, updated_at, created_at, source";
-const ATTACHMENT_COLUMNS = "id, note_id, r2_key, url, media_type, name, width, height, position";
+const ATTACHMENT_COLUMNS =
+	"id, note_id, r2_key, url, media_type, name, width, height, position, telegram_message_id";
 
 let ensureSchemaPromise: Promise<void> | null = null;
 
@@ -34,11 +35,12 @@ async function ensureNoteSchema(env: ApEnv): Promise<void> {
 					telegram_message_id INTEGER
 				)`,
 			).run();
-			// Add the Telegram columns to pre-existing tables (issue AP-3). SQLite
-			// has no `ADD COLUMN IF NOT EXISTS`, so tolerate the duplicate-column
-			// error on databases already carrying them.
+			// Add the Telegram columns to pre-existing tables (issue AP-3, AP-11).
+			// SQLite has no `ADD COLUMN IF NOT EXISTS`, so tolerate the
+			// duplicate-column error on databases already carrying them.
 			await addColumnIfMissing(env, "ap_notes", "telegram_chat_id INTEGER");
 			await addColumnIfMissing(env, "ap_notes", "telegram_message_id INTEGER");
+			await addColumnIfMissing(env, "ap_notes", "telegram_media_group_id TEXT");
 			await env.DATABASE.prepare(
 				"CREATE INDEX IF NOT EXISTS idx_ap_notes_published_at ON ap_notes(published_at)",
 			).run();
@@ -46,6 +48,11 @@ async function ensureNoteSchema(env: ApEnv): Promise<void> {
 				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_notes_telegram
 				 ON ap_notes(telegram_chat_id, telegram_message_id)
 				 WHERE telegram_chat_id IS NOT NULL`,
+			).run();
+			await env.DATABASE.prepare(
+				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_notes_telegram_group
+				 ON ap_notes(telegram_chat_id, telegram_media_group_id)
+				 WHERE telegram_media_group_id IS NOT NULL`,
 			).run();
 			await env.DATABASE.prepare(
 				`CREATE TABLE IF NOT EXISTS ap_note_attachments (
@@ -57,11 +64,27 @@ async function ensureNoteSchema(env: ApEnv): Promise<void> {
 					name TEXT,
 					width INTEGER,
 					height INTEGER,
-					position INTEGER NOT NULL DEFAULT 0
+					position INTEGER NOT NULL DEFAULT 0,
+					telegram_message_id INTEGER
 				)`,
 			).run();
+			await addColumnIfMissing(env, "ap_note_attachments", "telegram_message_id INTEGER");
 			await env.DATABASE.prepare(
 				"CREATE INDEX IF NOT EXISTS idx_ap_note_attachments_note ON ap_note_attachments(note_id, position)",
+			).run();
+			// One row per (Note, R2 object), so re-appending the same photo (a
+			// retried finalize, a redelivered straggler) is a no-op (issue AP-11).
+			await env.DATABASE.prepare(
+				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_note_attachments_r2key
+				 ON ap_note_attachments(note_id, r2_key)`,
+			).run();
+			// One attachment per (Note, authoring Album message), so editing a
+			// photo within an already-finalized Album replaces it in place
+			// instead of appending a duplicate (issue AP-11).
+			await env.DATABASE.prepare(
+				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_note_attachments_message
+				 ON ap_note_attachments(note_id, telegram_message_id)
+				 WHERE telegram_message_id IS NOT NULL`,
 			).run();
 		})();
 	}
@@ -177,6 +200,8 @@ export interface InsertNoteInput {
 	source: NoteSource;
 	telegramChatId: number | null;
 	telegramMessageId: number | null;
+	/** The Album's `media_group_id`, for a Note finalized from an Album (issue AP-11). */
+	telegramMediaGroupId: string | null;
 }
 
 /** Insert a brand-new Note (fails on id conflict — callers pick a fresh ULID). */
@@ -184,8 +209,8 @@ export async function insertNote(env: ApEnv, input: InsertNoteInput): Promise<vo
 	await ensureNoteSchema(env);
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_notes
-		 (id, title, content, summary, published_at, updated_at, created_at, source, telegram_chat_id, telegram_message_id)
-		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+		 (id, title, content, summary, published_at, updated_at, created_at, source, telegram_chat_id, telegram_message_id, telegram_media_group_id)
+		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
 	)
 		.bind(
 			input.id,
@@ -198,6 +223,7 @@ export async function insertNote(env: ApEnv, input: InsertNoteInput): Promise<vo
 			input.source,
 			input.telegramChatId,
 			input.telegramMessageId,
+			input.telegramMediaGroupId,
 		)
 		.run();
 }
@@ -227,6 +253,26 @@ export async function findNoteIdByTelegramMessage(
 		"SELECT id FROM ap_notes WHERE telegram_chat_id = ?1 AND telegram_message_id = ?2",
 	)
 		.bind(chatId, messageId)
+		.first<{ id: string }>();
+	return row?.id ?? null;
+}
+
+/**
+ * Find the Note id an Album (chat, media_group_id) pair finalized into, or
+ * null. The linkage a straggler photo or a consolidated Album edit resolves
+ * against (issue AP-11), mirroring {@link findNoteIdByTelegramMessage} for
+ * single-message Notes.
+ */
+export async function findNoteIdByTelegramMediaGroup(
+	env: ApEnv,
+	chatId: number,
+	groupId: string,
+): Promise<string | null> {
+	await ensureNoteSchema(env);
+	const row = await env.DATABASE.prepare(
+		"SELECT id FROM ap_notes WHERE telegram_chat_id = ?1 AND telegram_media_group_id = ?2",
+	)
+		.bind(chatId, groupId)
 		.first<{ id: string }>();
 	return row?.id ?? null;
 }
@@ -272,11 +318,53 @@ export async function replaceNoteAttachments(
 		...attachments.map((a, position) =>
 			env.DATABASE.prepare(
 				`INSERT INTO ap_note_attachments (${ATTACHMENT_COLUMNS})
-				 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+				 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, NULL)`,
 			).bind(a.id, noteId, a.r2Key, a.url, a.mediaType, a.name, a.width, a.height, position),
 		),
 	];
 	await env.DATABASE.batch(statements);
+}
+
+/**
+ * Upsert one Album photo attachment, keyed by the Telegram message that
+ * authored it (issue AP-11). A never-before-seen message id appends a new
+ * attachment (a straggler); a message id already on the Note replaces that
+ * attachment's photo in place (editing a photo within an already-finalized
+ * Album) rather than appending a duplicate. Idempotent under the unique
+ * `(note_id, telegram_message_id)` index — a retried finalize re-upserting
+ * the same photo is a no-op change.
+ */
+export async function upsertNoteAttachmentByMessage(
+	env: ApEnv,
+	noteId: string,
+	telegramMessageId: number,
+	attachment: InsertAttachmentInput,
+): Promise<void> {
+	await ensureNoteSchema(env);
+	await env.DATABASE.prepare(
+		`INSERT INTO ap_note_attachments (${ATTACHMENT_COLUMNS})
+		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8,
+		   (SELECT COALESCE(MAX(position) + 1, 0) FROM ap_note_attachments WHERE note_id = ?2), ?9)
+		 ON CONFLICT(note_id, telegram_message_id) DO UPDATE SET
+		   r2_key = excluded.r2_key,
+		   url = excluded.url,
+		   media_type = excluded.media_type,
+		   name = excluded.name,
+		   width = excluded.width,
+		   height = excluded.height`,
+	)
+		.bind(
+			attachment.id,
+			noteId,
+			attachment.r2Key,
+			attachment.url,
+			attachment.mediaType,
+			attachment.name,
+			attachment.width,
+			attachment.height,
+			telegramMessageId,
+		)
+		.run();
 }
 
 /** List a Note's attachments in display order. */

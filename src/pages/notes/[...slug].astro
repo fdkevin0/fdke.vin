@@ -1,10 +1,15 @@
 ---
+import FediverseBlock from "@/components/note/FediverseBlock.astro";
 import Note from "@/components/note/Note.astro";
 import NoteInteractions from "@/components/note/NoteInteractions.astro";
 import NotesListing from "@/components/note/NotesListing.astro";
 import PageLayout from "@/layouts/Base.astro";
 import { acceptsActivityPub } from "@/lib/ap/accept";
-import { countInteractionsForNote, listRepliesForNote } from "@/lib/ap/interactions";
+import {
+	countInteractionsForNote,
+	interactionCountsForNotes,
+	listRepliesForNote,
+} from "@/lib/ap/interactions";
 import { renderNoteMarkdown } from "@/lib/ap/markdown";
 import { negotiateNoteActivity } from "@/lib/ap/negotiate";
 import { getApEnv } from "@/lib/ap/runtime";
@@ -26,7 +31,7 @@ const origin = import.meta.env.SITE;
 const env = await getApEnv();
 
 type ListingData = {
-	items: { note: NoteType; html: string }[];
+	items: { note: NoteType; html: string; counts: InteractionCounts }[];
 	meta: SiteMeta;
 	page: number;
 	totalPages: number;
@@ -56,8 +61,17 @@ if (isListing) {
 
 	const offset = (pageNumber - 1) * MAX_NOTES_PER_PAGE;
 	const notes = await listNotesPage(env, { limit: MAX_NOTES_PER_PAGE, offset });
+	const counts = await interactionCountsForNotes(
+		env,
+		notes.map((note) => note.id),
+	);
+	const emptyCounts: InteractionCounts = { replies: 0, likes: 0, announces: 0 };
 	const items = await Promise.all(
-		notes.map(async (note) => ({ note, html: await renderNoteMarkdown(note.content) })),
+		notes.map(async (note) => ({
+			note,
+			html: await renderNoteMarkdown(note.content),
+			counts: counts.get(note.id) ?? emptyCounts,
+		})),
 	);
 	page = {
 		items,
@@ -125,6 +139,7 @@ const meta = page.meta;
 	) : (
 		<PageLayout meta={meta}>
 			<Note as="h1" note={page.note} html={page.html} attachments={page.attachments} />
+			<FediverseBlock note={page.note} />
 			<NoteInteractions counts={page.counts} replies={page.replies} />
 		</PageLayout>
 	)

@@ -62,6 +62,18 @@ _Avoid_: user, account, profile
 A Note serialized as ActivityStreams 2.0 JSON. The same `/notes/{id}/` URL returns HTML to browsers and the Note object to requests sending `Accept: application/activity+json` (content negotiation). Its `id` is the Note id URL.
 _Avoid_: as2 note, json note
 
+**Album**:
+A multi-photo Telegram channel post, delivered to the webhook as one message per photo sharing a `media_group_id`. Buffers as a Pending album and finalizes into a single Note carrying every photo as an attachment, delivered as one `Create`/`Update`.
+_Avoid_: gallery, media group
+
+**Pending album**:
+The buffered, not-yet-finalized state of an Album — one D1 row per arrived photo (`ap_pending_album_photos`), written durably before the webhook responds 200. Deleted once its Album finalizes.
+_Avoid_: draft, buffer (ambiguous alone)
+
+**Finalization**:
+The debounced step — a ~3s-quiet-period check re-enqueued on the delivery queue after every Album photo arrival — that assembles a Pending album's rows into one Note and delivers it. A message arriving after finalization (a straggler) attaches to the existing Note with a follow-up `Update` instead of re-finalizing.
+_Avoid_: publish, flush
+
 **Activity**:
 A `Create`, `Update`, or `Delete` the Actor emits about a Note (post → `Create`, channel edit → `Update`, dashboard removal → `Delete(Tombstone)`). Inbound Activities the inbox accepts additionally include `Follow`/`Undo`, `Like`, and `Announce`.
 _Avoid_: event, message

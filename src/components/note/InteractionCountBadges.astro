@@ -1,0 +1,18 @@
+---
+import type { InteractionCounts } from "@/lib/ap/types";
+
+/**
+ * The reply/like/boost emoji-count spans shared by the Note detail page's
+ * Fediverse section (`NoteInteractions.astro`) and the `/notes` listing
+ * cards (`Note.astro` preview mode) — each kind renders only when non-zero.
+ */
+type Props = {
+	counts: InteractionCounts;
+};
+
+const { counts } = Astro.props;
+---
+
+{counts.announces > 0 && <span title="Boosts">🔁 {counts.announces}</span>}
+{counts.likes > 0 && <span title="Likes">❤️ {counts.likes}</span>}
+{counts.replies > 0 && <span title="Replies">💬 {counts.replies}</span>}

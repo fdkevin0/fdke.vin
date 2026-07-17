@@ -106,6 +106,26 @@ describe("serializeNote", () => {
 		expect(att.url).toBe("https://fdke.vin/media/photo.jpg");
 	});
 
+	it("serializes multiple attachments as one Document each (Album Notes, issue AP-11)", async () => {
+		const out = await serializeNote(note(), {
+			origin: ORIGIN,
+			htmlContent: "<p>hi</p>",
+			attachments: [
+				attachment({ url: "https://fdke.vin/media/1.jpg" }),
+				attachment({ url: "https://fdke.vin/media/2.jpg" }),
+				attachment({ url: "https://fdke.vin/media/3.jpg" }),
+			],
+		});
+		const attachments = out.attachment as Record<string, unknown>[];
+		expect(attachments).toHaveLength(3);
+		expect(attachments.every((a) => a.type === "Document")).toBe(true);
+		expect(attachments.map((a) => a.url)).toEqual([
+			"https://fdke.vin/media/1.jpg",
+			"https://fdke.vin/media/2.jpg",
+			"https://fdke.vin/media/3.jpg",
+		]);
+	});
+
 	it("tolerates an origin with a trailing slash", async () => {
 		const out = await serializeNote(note(), {
 			origin: "https://fdke.vin/",

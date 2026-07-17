@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS ap_notes (
 	created_at TEXT NOT NULL,        -- ISO 8601
 	source TEXT NOT NULL DEFAULT 'migration',  -- 'migration' | 'telegram' | 'dashboard'
 	telegram_chat_id INTEGER,        -- authoring Telegram channel/chat id (NULL for non-Telegram)
-	telegram_message_id INTEGER      -- authoring Telegram message id; edits look up the Note by (chat, message)
+	telegram_message_id INTEGER,     -- authoring Telegram message id; edits look up the Note by (chat, message)
+	telegram_media_group_id TEXT     -- authoring Album's media_group_id (NULL for non-Album Notes)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ap_notes_published_at ON ap_notes(published_at);
@@ -20,6 +21,38 @@ CREATE INDEX IF NOT EXISTS idx_ap_notes_published_at ON ap_notes(published_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_notes_telegram
 	ON ap_notes(telegram_chat_id, telegram_message_id)
 	WHERE telegram_chat_id IS NOT NULL;
+
+-- One Note per Album, so a straggler photo or an edit finalizes into the same Note.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_notes_telegram_group
+	ON ap_notes(telegram_chat_id, telegram_media_group_id)
+	WHERE telegram_media_group_id IS NOT NULL;
+
+-- Pending albums (see CONTEXT.md "Pending album" and issue AP-11): one row per
+-- photo of a not-yet-finalized Album, written durably before the webhook
+-- responds 200. Finalization assembles a group's rows into one Note (deleting
+-- the rows), so a group's presence here is exactly its "not yet finalized"
+-- state. Idempotent under Telegram's at-least-once delivery via the unique
+-- (chat, message) index — a redelivered album message is a no-op insert.
+CREATE TABLE IF NOT EXISTS ap_pending_album_photos (
+	id TEXT PRIMARY KEY,             -- ULID; this row's id
+	group_id TEXT NOT NULL,          -- Telegram media_group_id
+	chat_id INTEGER NOT NULL,        -- Telegram channel/chat id
+	message_id INTEGER NOT NULL,     -- Telegram message id of this photo
+	file_id TEXT NOT NULL,           -- Telegram file id (resolved to bytes at finalization)
+	file_unique_id TEXT NOT NULL,
+	media_type TEXT NOT NULL,        -- IANA media type, e.g. image/jpeg
+	width INTEGER NOT NULL,
+	height INTEGER NOT NULL,
+	content TEXT NOT NULL DEFAULT '', -- markdown from this message's caption; '' if it carried none
+	publish_date TEXT NOT NULL,      -- ISO 8601, from this message's Telegram date
+	arrived_at TEXT NOT NULL         -- ISO 8601, ingest time (the debounce clock)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_pending_album_photos_message
+	ON ap_pending_album_photos(chat_id, message_id);
+
+CREATE INDEX IF NOT EXISTS idx_ap_pending_album_photos_group
+	ON ap_pending_album_photos(chat_id, group_id);
 
 -- Media attachments on a Note (channel-post photos stored to R2).
 -- Rendered as <img> on the SSR page and serialized as AS2 `Document` objects.
@@ -32,10 +65,23 @@ CREATE TABLE IF NOT EXISTS ap_note_attachments (
 	name TEXT,                       -- optional alt text / display name
 	width INTEGER,
 	height INTEGER,
-	position INTEGER NOT NULL DEFAULT 0  -- ordering within a Note
+	position INTEGER NOT NULL DEFAULT 0,  -- ordering within a Note
+	telegram_message_id INTEGER      -- authoring Album message (NULL for non-Album attachments)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ap_note_attachments_note ON ap_note_attachments(note_id, position);
+
+-- One row per (Note, R2 object), so re-appending the same photo (a retried
+-- Album finalize, a redelivered straggler) is a no-op.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_note_attachments_r2key
+	ON ap_note_attachments(note_id, r2_key);
+
+-- One attachment per (Note, authoring Album message), so editing a photo
+-- within an already-finalized Album replaces it in place instead of
+-- appending a duplicate.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_note_attachments_message
+	ON ap_note_attachments(note_id, telegram_message_id)
+	WHERE telegram_message_id IS NOT NULL;
 
 -- Followers (see CONTEXT.md "Follower" and issue AP-5): remote actors that sent
 -- an accepted Follow. Delivery fans out to shared_inbox_url where present

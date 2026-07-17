@@ -1,4 +1,5 @@
 import { activityForNote, type DeliveryKind, deleteActivityForNote } from "@/lib/ap/activity";
+import { ALBUM_DEBOUNCE_MS } from "@/lib/ap/album";
 import { AP_ORIGIN, keyId } from "@/lib/ap/config";
 import { recordDeliveryPending, recordDeliveryResult } from "@/lib/ap/deliveries";
 import { listDeliveryInboxes } from "@/lib/ap/followers";
@@ -7,7 +8,7 @@ import { renderNoteMarkdown } from "@/lib/ap/markdown";
 import type { ApEnv } from "@/lib/ap/runtime";
 import { signRequest } from "@/lib/ap/signature";
 import { getNoteById, listNoteAttachments } from "@/lib/ap/storage";
-import type { ApDeliveryMessage } from "@/lib/ap/types";
+import type { AlbumFinalizeMessage, ApDeliveryMessage } from "@/lib/ap/types";
 import { getErrorMessage } from "@/lib/api/http";
 
 /**
@@ -75,6 +76,26 @@ export async function enqueueNoteDelivery(
 				inboxUrl,
 			} satisfies ApDeliveryMessage,
 		})),
+	);
+}
+
+/**
+ * Enqueue a debounced finalization check for a Pending album (issue AP-11),
+ * delayed by the same quiet period {@link decideAlbumFinalization} checks
+ * against. Called on every arriving Album photo; whichever check lands after
+ * the group's last arrival is the one that finalizes.
+ */
+export async function enqueueAlbumFinalizeCheck(
+	env: ApEnv,
+	options: { chatId: number; groupId: string },
+): Promise<void> {
+	await env.AP_DELIVERY_QUEUE.send(
+		{
+			kind: "AlbumFinalize",
+			chatId: options.chatId,
+			groupId: options.groupId,
+		} satisfies AlbumFinalizeMessage,
+		{ delaySeconds: Math.ceil(ALBUM_DEBOUNCE_MS / 1000) },
 	);
 }
 

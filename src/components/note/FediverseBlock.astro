@@ -1,0 +1,81 @@
+---
+import { Icon } from "astro-icon/components";
+import { AP_DOMAIN, AP_ORIGIN, AP_USERNAME } from "@/lib/ap/config";
+import type { Note } from "@/lib/ap/types";
+
+/**
+ * Small, unobtrusive Fediverse block on a Note detail page (issue AP-11): the
+ * canonical permalink and the Actor handle, each with a copy-to-clipboard
+ * control so a Fediverse user can paste either into their own instance's
+ * search to boost/reply/follow natively. No navigation, no share-intent flow.
+ */
+type Props = {
+	note: Note;
+};
+
+const { note } = Astro.props;
+
+const permalink = new URL(`/notes/${note.id}/`, AP_ORIGIN).toString();
+const handle = `@${AP_USERNAME}@${AP_DOMAIN}`;
+---
+
+<section
+	data-fediverse-copy-root
+	class="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-zinc-200 pt-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+>
+	<h2 class="text-xs tracking-[0.2em] text-zinc-500 uppercase dark:text-zinc-400">Fediverse</h2>
+	<button
+		type="button"
+		data-fediverse-copy-button
+		data-copy-value={permalink}
+		data-copy-label="Copy link"
+		class="inline-flex items-center gap-1.5 hover:text-accent"
+	>
+		<Icon aria-hidden="true" class="h-4 w-4" focusable="false" name="mdi:content-copy" />
+		Copy link
+	</button>
+	<button
+		type="button"
+		data-fediverse-copy-button
+		data-copy-value={handle}
+		data-copy-label={handle}
+		class="inline-flex items-center gap-1.5 hover:text-accent"
+	>
+		<Icon aria-hidden="true" class="h-4 w-4" focusable="false" name="mdi:content-copy" />
+		{handle}
+	</button>
+</section>
+
+<script>
+	// Distinct data-attribute names from CodePanel.astro's copy-to-clipboard
+	// script (data-code-copy-root / data-copy-button): that script binds only
+	// a single button per root, so sharing its markers would silently drop
+	// this block's second button if both ever render on the same page.
+	for (const root of document.querySelectorAll("[data-fediverse-copy-root]")) {
+		if (!(root instanceof HTMLElement) || root.dataset.copyBound === "true") continue;
+		root.dataset.copyBound = "true";
+
+		for (const button of root.querySelectorAll("[data-fediverse-copy-button]")) {
+			if (!(button instanceof HTMLButtonElement)) continue;
+			const idleLabel = button.dataset.copyLabel || button.textContent || "Copy";
+
+			button.addEventListener("click", async () => {
+				const value = button.dataset.copyValue || "";
+				if (!value) return;
+
+				try {
+					await navigator.clipboard.writeText(value);
+					button.textContent = "Copied";
+					window.setTimeout(() => {
+						button.textContent = idleLabel;
+					}, 1500);
+				} catch {
+					button.textContent = "Failed";
+					window.setTimeout(() => {
+						button.textContent = idleLabel;
+					}, 1500);
+				}
+			});
+		}
+	}
+</script>

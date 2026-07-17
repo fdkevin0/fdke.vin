@@ -1,7 +1,8 @@
 ---
 import type { HTMLTag, Polymorphic } from "astro/types";
 import FormattedDate from "@/components/FormattedDate.astro";
-import type { Note, NoteAttachment } from "@/lib/ap/types";
+import InteractionCountBadges from "@/components/note/InteractionCountBadges.astro";
+import type { InteractionCounts, Note, NoteAttachment } from "@/lib/ap/types";
 
 type Props<Tag extends HTMLTag> = Polymorphic<{ as: Tag }> & {
 	note: Note;
@@ -13,10 +14,13 @@ type Props<Tag extends HTMLTag> = Polymorphic<{ as: Tag }> & {
 	html: string;
 	/** Media attachments (e.g. channel-post photos) rendered below the content. */
 	attachments?: NoteAttachment[] | undefined;
+	/** Reply/like/boost counts; rendered on preview cards only when non-zero. */
+	counts?: InteractionCounts | undefined;
 	isPreview?: boolean | undefined;
 };
 
-const { as: Tag = "div", note, html, attachments = [], isPreview = false } = Astro.props;
+const { as: Tag = "div", note, html, attachments = [], counts, isPreview = false } = Astro.props;
+const hasCounts = counts && (counts.replies > 0 || counts.likes > 0 || counts.announces > 0);
 ---
 
 <article
@@ -78,6 +82,13 @@ const { as: Tag = "div", note, html, attachments = [], isPreview = false } = Ast
 						decoding="async"
 					/>
 				))}
+			</div>
+		)
+	}
+	{
+		isPreview && hasCounts && counts && (
+			<div class="mt-2 flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+				<InteractionCountBadges counts={counts} />
 			</div>
 		)
 	}

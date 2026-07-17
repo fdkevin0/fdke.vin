@@ -58,6 +58,22 @@ export interface ApDeliveryMessage {
 	inboxUrl: string;
 }
 
+/**
+ * A debounced check of whether a Pending album (issue AP-11) should finalize,
+ * carried on `ap-delivery-queue` alongside {@link ApDeliveryMessage} and
+ * distinguished by `kind`. Enqueued with a delay on every Album photo arrival;
+ * on consumption the group finalizes if quiet, or the check is a no-op
+ * otherwise (see CONTEXT.md "Finalization").
+ */
+export interface AlbumFinalizeMessage {
+	kind: "AlbumFinalize";
+	chatId: number;
+	groupId: string;
+}
+
+/** The union of message kinds carried on `ap-delivery-queue`. */
+export type ApQueueMessage = ApDeliveryMessage | AlbumFinalizeMessage;
+
 /** The kind of a remote {@link Interaction} with one of our Notes. */
 export type InteractionKind = "reply" | "like" | "announce";
 

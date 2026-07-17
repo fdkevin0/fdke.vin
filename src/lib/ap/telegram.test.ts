@@ -101,6 +101,28 @@ describe("parseChannelUpdate", () => {
 		expect(result.photo?.fileId).toBe("f");
 	});
 
+	it("surfaces media_group_id on an album message", () => {
+		const update: TelegramUpdate = {
+			update_id: 9,
+			channel_post: channelPost({
+				text: undefined,
+				caption: "A gallery",
+				media_group_id: "12345",
+				photo: [{ file_id: "f", file_unique_id: "u", width: 100, height: 100 }],
+			}),
+		};
+		const result = parseChannelUpdate(update, CONFIG);
+		if (result.kind !== "create") throw new Error("expected create");
+		expect(result.mediaGroupId).toBe("12345");
+	});
+
+	it("leaves mediaGroupId undefined for a non-album post", () => {
+		const update: TelegramUpdate = { update_id: 10, channel_post: channelPost() };
+		const result = parseChannelUpdate(update, CONFIG);
+		if (result.kind !== "create") throw new Error("expected create");
+		expect(result.mediaGroupId).toBeUndefined();
+	});
+
 	it("converts entity formatting in the text to markdown content", () => {
 		const update: TelegramUpdate = {
 			update_id: 8,

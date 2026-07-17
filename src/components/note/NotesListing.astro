@@ -3,11 +3,12 @@ import type { HTMLTag } from "astro/types";
 import { Icon } from "astro-icon/components";
 import Note from "@/components/note/Note.astro";
 import Pagination from "@/components/Paginator.astro";
-import type { Note as NoteType } from "@/lib/ap/types";
+import type { InteractionCounts, Note as NoteType } from "@/lib/ap/types";
 
 interface NoteItem {
 	note: NoteType;
 	html: string;
+	counts: InteractionCounts;
 }
 
 type Props = {
@@ -45,7 +46,7 @@ const nextUrl = page < totalPages ? notesUrl(page + 1) : undefined;
 			<ul class="mt-6 space-y-8 text-start">
 				{items.map((item) => (
 					<li>
-						<Note note={item.note} html={item.html} as={heading} isPreview />
+						<Note note={item.note} html={item.html} counts={item.counts} as={heading} isPreview />
 					</li>
 				))}
 			</ul>

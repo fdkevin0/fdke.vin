@@ -46,6 +46,8 @@ export interface TelegramMessage {
 	caption_entities?: TelegramMessageEntity[] | undefined;
 	/** Available photo sizes, smallest to largest. */
 	photo?: TelegramPhotoSize[] | undefined;
+	/** Shared by every message of an Album (a multi-photo post); absent otherwise. */
+	media_group_id?: string | undefined;
 }
 
 /** A Telegram [Update](https://core.telegram.org/bots/api#update); only channel fields matter here. */
@@ -82,6 +84,7 @@ const telegramMessageSchema = z.looseObject({
 	caption: z.string().optional(),
 	caption_entities: z.array(telegramMessageEntitySchema).optional(),
 	photo: z.array(telegramPhotoSizeSchema).optional(),
+	media_group_id: z.string().optional(),
 });
 
 export const telegramUpdateSchema: z.ZodType<TelegramUpdate> = z.looseObject({
@@ -115,6 +118,12 @@ export interface ParsedNoteInput {
 	publishDate: Date;
 	/** The largest attached photo, if any. */
 	photo?: ParsedPhoto;
+	/**
+	 * The Telegram `media_group_id` shared by every message of an Album this
+	 * post belongs to. Absent for a single-photo or text-only post, which keeps
+	 * the immediate create/update path unchanged.
+	 */
+	mediaGroupId?: string;
 }
 
 /** Outcome of parsing an update: author a Note, edit one, or ignore the update. */
@@ -159,6 +168,7 @@ export function parseChannelUpdate(
 		publishDate: new Date(message.date * 1000),
 	};
 	if (photo) input.photo = photo;
+	if (message.media_group_id) input.mediaGroupId = message.media_group_id;
 
 	return { kind, ...input };
 }

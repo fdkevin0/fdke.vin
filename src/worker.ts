@@ -3,7 +3,8 @@ import { handle } from "@astrojs/cloudflare/handler";
 import { z } from "zod";
 import { AP_DELIVERY_QUEUE_NAME } from "@/lib/ap/config";
 import { processDeliveryMessage } from "@/lib/ap/delivery";
-import type { ApDeliveryMessage } from "@/lib/ap/types";
+import { processAlbumFinalizeMessage } from "@/lib/ap/ingest";
+import type { ApQueueMessage } from "@/lib/ap/types";
 import { getErrorMessage } from "@/lib/api/http";
 import { processAiMessage } from "@/lib/feed/ai";
 import { completeRunFeed, recoverTimedOutRun, startRun } from "@/lib/feed/coordinator";
@@ -69,7 +70,12 @@ export default {
 					const body = message.body as FeedAiMessage;
 					await processAiMessage(env, body.itemId);
 				} else if (batch.queue === AP_DELIVERY_QUEUE_NAME) {
-					await processDeliveryMessage(env, message.body as ApDeliveryMessage);
+					const body = message.body as ApQueueMessage;
+					if (body.kind === "AlbumFinalize") {
+						await processAlbumFinalizeMessage(env, body);
+					} else {
+						await processDeliveryMessage(env, body);
+					}
 				}
 				message.ack();
 			} catch (error) {
