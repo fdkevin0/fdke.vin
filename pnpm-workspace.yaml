@@ -7,3 +7,5 @@ allowBuilds:
 
 overrides:
   sharp: ^0.35.3
+  "@opentelemetry/core": ^2.8.0
+  cookie: ^0.7.0
