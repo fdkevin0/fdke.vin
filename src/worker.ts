@@ -5,6 +5,7 @@ import { AP_DELIVERY_QUEUE_NAME } from "@/lib/ap/config";
 import { processDeliveryMessage } from "@/lib/ap/delivery";
 import { processAlbumFinalizeMessage } from "@/lib/ap/ingest";
 import type { ApQueueMessage } from "@/lib/ap/types";
+import { BOC_POLL_CRON, pollBocRates } from "@/lib/api/exchange/poll";
 import { getErrorMessage } from "@/lib/api/http";
 import { processAiMessage } from "@/lib/feed/ai";
 import { completeRunFeed, recoverTimedOutRun, startRun } from "@/lib/feed/coordinator";
@@ -53,7 +54,14 @@ export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		return handle(request, env, ctx);
 	},
-	async scheduled(_controller, env, _ctx): Promise<void> {
+	async scheduled(controller, env, _ctx): Promise<void> {
+		// Two crons share this handler; `controller.cron` is the expression that fired.
+		if (controller.cron === BOC_POLL_CRON) {
+			const result = await pollBocRates(env);
+			console.log(`[cron:boc] fetched ${result.fetched} rates, inserted ${result.inserted}`);
+			return;
+		}
+
 		const stub = env.FEED_COORDINATOR.get(env.FEED_COORDINATOR.idFromName(FEED_COORDINATOR_NAME));
 		await stub.fetch("https://feed-coordinator.internal/runs/start", {
 			method: "POST",

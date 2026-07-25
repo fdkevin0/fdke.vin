@@ -18,6 +18,14 @@ _Avoid_: status, toot, microblog post
 The opaque, time-sortable ULID that is a Note's canonical identity and its `/notes/{id}/` URL segment. Also the AS2 object id. Replaces the old markdown slug — Notes no longer have hand-authored slugs.
 _Avoid_: slug (that was the old markdown identity), snowflake
 
+**Note authoring**:
+Accepting a new or genuinely edited Telegram channel post as a Note change. A new post originates a `Create`, an edit originates an `Update`, and an exact redelivery causes no change.
+_Avoid_: ingestion (also describes inbound federation), publishing (conflates persistence with Delivery)
+
+**Note lifecycle**:
+The Note changes that can originate outbound Activities: Note authoring, Album Finalization, and dashboard deletion. Deletion originates a `Delete(Tombstone)` from the Note's identity even though the Note no longer exists afterward.
+_Avoid_: CRUD (does not express Activity origination), publishing (conflates persistence with Delivery)
+
 **Post grammar**:
 The `{date}-{slug}-{lang}` filename convention every Post file must follow (e.g. `2026-03-27-terminal-en`). The single source of a Post's identity: publish date, Post slug, and SiteLang.
 _Avoid_: naming convention, filename format
@@ -50,6 +58,26 @@ _Avoid_: rss (ambiguous on its own)
 The feed _reader_ subsystem: ingests external feeds into D1, translates them with Workers AI, and serves them to the dashboard. Unrelated to the Site feed despite its `rss_`-prefixed tables.
 _Avoid_: rss feed, feed reader
 
+### Exchange rates
+
+The site records Bank of China exchange rates and serves them at `/tools/exchange` (`src/lib/api/exchange`, D1 `boc_rate_history`, the `*/2` cron). See `docs/adr/0003`.
+
+**Publication**:
+One currency's rates as Bank of China published them at a given moment — the seven-cell row on the BOC page, keyed by `(currency, pub_time)`. Re-reading the same Publication is a no-op, which is what makes polling faster than BOC publishes safe.
+_Avoid_: quote, tick, snapshot
+
+**Rate poll**:
+One cron run: fetch the BOC published-rates page, parse every Publication on it, and append the ones not already stored. Does not compare, notify, or prune.
+_Avoid_: scrape, sync, fetch (too general — the poll is the whole fetch-parse-append step)
+
+**Rate metric**:
+Which of a Publication's five numbers is meant: `buying_rate`, `cash_buying_rate`, `selling_rate`, `cash_selling_rate`, or `middle_rate`. A cell BOC leaves blank is stored as `NULL`, not `0`.
+_Avoid_: price, value, column
+
+**Rate history**:
+The accumulated Publications in `boc_rate_history` — append-only, never pruned or rolled up. Read by `/api/exchange/rates` and `/api/exchange/currencies`.
+_Avoid_: time series, archive
+
 ### Federation
 
 The site federates its Notes over **ActivityPub** as a single actor. All terms below scope to that subsystem (`src/lib/ap`, D1 `ap_*` tables, `ap-delivery-queue`).
@@ -76,6 +104,8 @@ _Avoid_: publish, flush
 
 **Activity**:
 A `Create`, `Update`, or `Delete` the Actor emits about a Note (post → `Create`, channel edit → `Update`, dashboard removal → `Delete(Tombstone)`). Inbound Activities the inbox accepts additionally include `Follow`/`Undo`, `Like`, and `Announce`.
+An exact redelivery of a Telegram channel update emits no Activity; only a genuine edit emits an `Update`.
+A genuine edit changes the canonical Note state; changes to Telegram transport metadata alone do not originate an Activity.
 _Avoid_: event, message
 
 **Inbox / Outbox**:
@@ -92,6 +122,7 @@ _Avoid_: comment, reaction, engagement
 
 **Delivery**:
 Signing an outbound Activity and POSTing it to each Follower's (deduped shared) inbox via `ap-delivery-queue`, with retry/backoff. Deliveries only ever originate from live authoring — backfilled Notes are not delivered. Per-inbox delivery status (`pending`/`delivered`/`failed`) is tracked in `ap_note_deliveries` and aggregated into a Note's dashboard status.
+The target Followers are those present when the Activity originates; a Follower added later does not receive an earlier Activity.
 _Avoid_: fan-out (that's the mechanism), push, broadcast
 
 **Blocklist**:
