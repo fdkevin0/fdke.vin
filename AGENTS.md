@@ -62,7 +62,8 @@ Retrieve API references and limits from:
 
 ## Testing & Quality
 
-- There is no automated test suite yet; run `pnpm run check`, `pnpm run build && pnpm run postbuild`, and `pnpm run preview` before opening a PR.
+- `pnpm test` runs the Vitest suite (`src/**/*.test.ts`). It is a plain node run with no Workers runtime, so code that needs a binding or a Workers global is tested through a seam that takes the dependency as an argument — see `src/lib/api/exchange/` and the shared D1 stand-in in `src/lib/testing/fake-d1.ts`.
+- Also run `pnpm run check`, `pnpm run build && pnpm run postbuild`, and `pnpm run preview` before opening a PR.
 - Manually verify new content renders with the expected frontmatter and that Pagefind still indexes posts/notes after changes.
 - When adding new utility logic, include inline docs or a temporary reproduction page under `src/pages/dev/` (remove before merging) to demonstrate behavior.
 - Before creating a commit, run `pnpm run lint` and `pnpm exec prettier . --write` so the pre-commit hook's check-only formatting validation passes.
@@ -80,7 +81,7 @@ Retrieve API references and limits from:
 - PRs should include a brief summary, linked issue (if any), local test commands run, and screenshots or gifs for visual changes/OG-image updates.
 - Before creating a commit, run `pnpm run lint` and `pnpm exec prettier . --write`, then re-stage any modified files.
 - Ensure `pnpm run check` passes and note the Pagefind rebuild in validation steps when content or search logic changes.
-- Before creating a commit, always run `pnpm run build` and `pnpm astro check`, and fix any failures first.
+- Before creating a commit, always run `pnpm test`, `pnpm run build`, and `pnpm astro check`, and fix any failures first.
 - **Do not commit changes without explicit permission from the user.**
 
 ## Agent skills

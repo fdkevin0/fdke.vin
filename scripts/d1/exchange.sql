@@ -19,6 +19,11 @@ CREATE TABLE IF NOT EXISTS boc_rate_history (
 	PRIMARY KEY (currency, pub_time)
 );
 
+-- The primary key's leading column is currency, so a read that does not filter by
+-- one has nothing to sort or range-scan on: /api/exchange/rates orders by pub_time
+-- and accepts start/end without a currency. See docs/adr/0005.
+CREATE INDEX IF NOT EXISTS idx_boc_rate_history_pub_time ON boc_rate_history(pub_time);
+
 -- The poll watermark: the last publication round the poller stored. BOC advances
 -- every currency together, so one row is enough for all 40 — the CHECK constraint
 -- pins it to that one row. Read once per poll so a run that falls between rounds

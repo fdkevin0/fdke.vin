@@ -12,10 +12,6 @@ interface BocRateRowRecord {
 	middle_rate: number | null;
 }
 
-interface CountRow {
-	count: number | string;
-}
-
 export interface BocRateRow {
 	currency: string;
 	buyingRate: number | null;
@@ -37,10 +33,13 @@ export interface BocRateQueryOptions {
 export interface BocRateQueryResult {
 	data: BocRateRow[];
 	pagination: {
-		total: number;
 		page: number;
 		pageSize: number;
-		totalPages: number;
+		/**
+		 * Whether another page exists — established by reading one row past the page
+		 * rather than by counting the table. There is deliberately no `total`: see
+		 * `docs/adr/0005`.
+		 */
 		hasNextPage: boolean;
 	};
 }
@@ -62,7 +61,26 @@ export async function listBocCurrencies(): Promise<string[]> {
 export async function queryBocRateHistory(
 	options: BocRateQueryOptions = {},
 ): Promise<BocRateQueryResult> {
-	const db = await getDatabase();
+	return queryBocRateHistoryFrom(await getDatabase(), options);
+}
+
+/**
+ * One page of rate history, in one statement.
+ *
+ * Takes the database rather than resolving the binding itself so the SQL is
+ * reachable without the Workers runtime; {@link queryBocRateHistory} is the
+ * binding-resolving edge every caller actually uses.
+ *
+ * Paging reads `pageSize + 1` rows and reports the extra one as `hasNextPage`.
+ * The obvious alternative — `count(*)` for a total — costs a scan of every
+ * matching row on every request, and `boc_rate_history` is only indexed by
+ * `(currency, pub_time)`, so an unfiltered call scanned the whole table to
+ * produce a number the UI showed and nothing else acted on.
+ */
+export async function queryBocRateHistoryFrom(
+	db: D1Database,
+	options: BocRateQueryOptions = {},
+): Promise<BocRateQueryResult> {
 	const currency = options.currency?.toUpperCase();
 	const defaultLimit = options.start || options.end ? 200 : DEFAULT_HISTORY_LIMIT;
 	const pageSize = Math.max(1, Math.min(options.limit ?? defaultLimit, 1000));
@@ -75,11 +93,6 @@ export async function queryBocRateHistory(
 		end: options.end,
 	});
 
-	const totalResult = await db
-		.prepare(`SELECT count(*) AS count FROM boc_rate_history${clause}`)
-		.bind(...bindings)
-		.first<CountRow>();
-
 	const rowsResult = await db
 		.prepare(
 			`SELECT currency, pub_time, buying_rate, cash_buying_rate, selling_rate, cash_selling_rate, middle_rate
@@ -87,20 +100,17 @@ export async function queryBocRateHistory(
 			 ORDER BY pub_time DESC
 			 LIMIT ? OFFSET ?`,
 		)
-		.bind(...bindings, pageSize, offset)
+		.bind(...bindings, pageSize + 1, offset)
 		.all<BocRateRowRecord>();
 
-	const total = Number(totalResult?.count ?? 0);
-	const totalPages = Math.ceil(total / pageSize);
+	const rows = rowsResult.results ?? [];
 
 	return {
-		data: (rowsResult.results ?? []).map(mapRateRow),
+		data: rows.slice(0, pageSize).map(mapRateRow),
 		pagination: {
-			total,
 			page,
 			pageSize,
-			totalPages,
-			hasNextPage: page < totalPages,
+			hasNextPage: rows.length > pageSize,
 		},
 	};
 }

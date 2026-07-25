@@ -83,7 +83,7 @@ Which of a Publication's five numbers is meant: `buying_rate`, `cash_buying_rate
 _Avoid_: price, value, column
 
 **Rate history**:
-The accumulated Publications in `boc_rate_history` — append-only, never pruned or rolled up. Read by `/api/exchange/rates` and `/api/exchange/currencies`.
+The accumulated Publications in `boc_rate_history` — append-only, never pruned or rolled up. Read by `/api/exchange/rates` and `/api/exchange/currencies`, a page at a time; the read reports whether a next page exists, never how many rows match. See `docs/adr/0005`.
 _Avoid_: time series, archive
 
 ### Federation

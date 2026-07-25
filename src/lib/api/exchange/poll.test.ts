@@ -3,9 +3,11 @@ import type { BocRateRow } from "@/lib/api/exchange/boc";
 import {
 	isPublicationRoundStored,
 	latestPublicationTime,
+	type PollWatermark,
 	parseRateCells,
 	recordPublicationRound,
 } from "@/lib/api/exchange/poll";
+import { fakeD1Env } from "@/lib/testing/fake-d1";
 
 /**
  * Covers the pure half of the BOC poller — raw table cells to a rate row. The
@@ -141,48 +143,11 @@ describe("isPublicationRoundStored", () => {
 	});
 });
 
-/**
- * A D1 stand-in that records the statements actually executed. The point of the
- * watermark is how many statements a poll issues, so the tests below assert on
- * that count rather than on stored rows.
- */
-function fakeDatabase(stored: { pubTime: string; rowCount: number } | null) {
-	const executed: { sql: string; params: unknown[] }[] = [];
-
-	const prepare = (sql: string) => {
-		let params: unknown[] = [];
-		const statement = {
-			bind(...bound: unknown[]) {
-				params = bound;
-				return statement;
-			},
-			run: async () => {
-				executed.push({ sql, params });
-				return { meta: { changes: 1 } };
-			},
-			first: async () => {
-				executed.push({ sql, params });
-				if (stored === null) return null;
-				return { last_pub_time: stored.pubTime, last_row_count: stored.rowCount };
-			},
-			_execute() {
-				executed.push({ sql, params });
-			},
-		};
-		return statement;
-	};
-
-	const database = {
-		prepare,
-		batch: async (statements: { _execute(): void }[]) => {
-			for (const statement of statements) statement._execute();
-			return statements.map(() => ({ meta: { changes: 1 } }));
-		},
-	};
-
-	const writes = () => executed.filter(({ sql }) => /INSERT|UPDATE|DELETE/i.test(sql));
-
-	return { env: { DATABASE: database } as unknown as Env, executed, writes };
+/** The shared D1 stand-in, seeded with the watermark row the poll will read back. */
+function fakeDatabase(stored: PollWatermark | null) {
+	return fakeD1Env(
+		stored === null ? [] : [{ last_pub_time: stored.pubTime, last_row_count: stored.rowCount }],
+	);
 }
 
 describe("recordPublicationRound", () => {

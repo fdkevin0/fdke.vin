@@ -76,7 +76,10 @@ export const GET: APIRoute = async ({ url }) => {
 			page,
 		});
 
-		if (currency && result.pagination.total === 0) {
+		// Only the first page can prove a currency has nothing stored. Without a
+		// total, an empty later page just means the caller paged off the end, which
+		// was a 200 before and stays one.
+		if (currency && page === 1 && result.data.length === 0) {
 			return jsonError(404, `No rate found for ${currency.toUpperCase()}`);
 		}
 

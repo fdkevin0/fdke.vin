@@ -4,7 +4,8 @@ Date: 2026-07-25
 
 ## Status
 
-Accepted
+Accepted. The read-path consequence left open below is addressed by
+`docs/adr/0005`.
 
 ## Context
 

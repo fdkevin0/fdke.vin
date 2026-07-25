@@ -117,8 +117,6 @@ const { defaultCurrency = "USD", limit = 12 } = Astro.props;
 		pagination: {
 			page: number;
 			pageSize: number;
-			total: number;
-			totalPages: number;
 			hasNextPage: boolean;
 		};
 	};
@@ -281,12 +279,11 @@ const { defaultCurrency = "USD", limit = 12 } = Astro.props;
 
 		#renderMeta(currency: string, payload: RatesResponse) {
 			if (!this.#metaEl || !this.#paginationEl) return;
-			const total = payload?.pagination?.total ?? payload.data.length;
-			this.#metaEl.textContent = `${currency} · Showing ${payload.data.length} / ${total} latest`;
-			const { page, totalPages, hasNextPage } = payload.pagination || {};
-			this.#paginationEl.textContent = `Page ${page || 1} / ${totalPages || 1}${
-				hasNextPage ? " · More available" : ""
-			}`;
+			this.#metaEl.textContent = `${currency} · Showing ${payload.data.length} latest`;
+			// The API reports whether another page exists, not how many there are —
+			// counting them cost a full-table scan per request. See docs/adr/0005.
+			const { page, hasNextPage } = payload.pagination || {};
+			this.#paginationEl.textContent = `Page ${page || 1}${hasNextPage ? " · More available" : ""}`;
 		}
 
 		#renderHighlight(rows: RateRow[]) {

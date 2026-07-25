@@ -239,7 +239,7 @@ export async function storePublicationRound(env: Env, rates: BocRateRow[]): Prom
 
 	// Only on the write path — a few times a day — so a poll between rounds stays
 	// at one statement rather than paying for this on every cold isolate.
-	await ensurePollStateSchema(env);
+	await ensureExchangeSchema(env);
 
 	// One statement per row so a single malformed currency cannot reject the
 	// whole round, batched into one round trip.
@@ -278,19 +278,32 @@ export async function storePublicationRound(env: Env, rates: BocRateRow[]): Prom
 let ensureSchemaPromise: Promise<void> | null = null;
 
 /**
- * `boc_rate_history` predates this repo and is owned by `scripts/d1/exchange.sql`,
- * but `boc_poll_state` is new — creating it lazily keeps a deploy from silently
- * breaking the poll until someone remembers to run the script.
+ * The exchange feature's own schema, which `scripts/d1/exchange.sql` owns but this
+ * creates lazily too, so a deploy that lands before the script is run does not
+ * silently break the poll.
+ *
+ * The `pub_time` index serves the *read* path — `boc_rate_history` is keyed by
+ * `(currency, pub_time)`, so a query that does not filter by currency has nothing
+ * to sort or range-scan on. It is ensured from here because this is the only code
+ * that touches the table on a schedule; doing it from the read path would put a
+ * DDL statement in front of every API request.
  */
-function ensurePollStateSchema(env: Env): Promise<void> {
+function ensureExchangeSchema(env: Env): Promise<void> {
 	if (!ensureSchemaPromise) {
 		ensureSchemaPromise = (async () => {
+			// Deliberately not one `batch`. D1 runs a batch as a transaction, and the
+			// index is on a table this function does not create — so on a database
+			// where `boc_rate_history` is missing, batching would roll the watermark
+			// table back along with it, defeating the point of ensuring it here.
 			await env.DATABASE.prepare(
 				`CREATE TABLE IF NOT EXISTS boc_poll_state (
 					id INTEGER PRIMARY KEY CHECK (id = 1),
 					last_pub_time TEXT NOT NULL,
 					last_row_count INTEGER NOT NULL
 				)`,
+			).run();
+			await env.DATABASE.prepare(
+				"CREATE INDEX IF NOT EXISTS idx_boc_rate_history_pub_time ON boc_rate_history(pub_time)",
 			).run();
 		})();
 	}
