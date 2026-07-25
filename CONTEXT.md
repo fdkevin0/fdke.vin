@@ -60,15 +60,23 @@ _Avoid_: rss feed, feed reader
 
 ### Exchange rates
 
-The site records Bank of China exchange rates and serves them at `/tools/exchange` (`src/lib/api/exchange`, D1 `boc_rate_history`, the `*/2` cron). See `docs/adr/0003`.
+The site records Bank of China exchange rates and serves them at `/tools/exchange` (`src/lib/api/exchange`, D1 `boc_rate_history`, the `*/15` cron). See `docs/adr/0003` and `docs/adr/0004`.
 
 **Publication**:
 One currency's rates as Bank of China published them at a given moment — the seven-cell row on the BOC page, keyed by `(currency, pub_time)`. Re-reading the same Publication is a no-op, which is what makes polling faster than BOC publishes safe.
 _Avoid_: quote, tick, snapshot
 
+**Publication round**:
+All the Publications sharing one `pub_time` — the whole 40-currency page BOC releases in one go, and the unit a Rate poll decides about. BOC advances every currency together, so a round is what the Poll watermark records.
+_Avoid_: batch, publication (a Publication is one currency's row, not the page)
+
 **Rate poll**:
-One cron run: fetch the BOC published-rates page, parse every Publication on it, and append the ones not already stored. Does not compare, notify, or prune.
+One cron run: fetch the BOC published-rates page, parse every Publication on it, and append the Publication round if it is not already stored. Does not compare, notify, or prune.
 _Avoid_: scrape, sync, fetch (too general — the poll is the whole fetch-parse-append step)
+
+**Poll watermark**:
+The last Publication round the Rate poll stored — its `pub_time` and how many rows of it landed — held in D1 `boc_poll_state`. Read before writing so a poll between rounds, which is most of them, writes nothing. A shortcut, not a source of truth: losing it only means the poll writes rows the primary key would ignore anyway.
+_Avoid_: cursor, checkpoint, last-seen
 
 **Rate metric**:
 Which of a Publication's five numbers is meant: `buying_rate`, `cash_buying_rate`, `selling_rate`, `cash_selling_rate`, or `middle_rate`. A cell BOC leaves blank is stored as `NULL`, not `0`.

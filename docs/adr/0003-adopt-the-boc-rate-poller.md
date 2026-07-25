@@ -4,7 +4,8 @@ Date: 2026-07-25
 
 ## Status
 
-Accepted
+Accepted. The cadence and write-volume consequence below are addressed by
+`docs/adr/0004`.
 
 ## Context
 

@@ -16,28 +16,120 @@ const CELLS_PER_ROW = 7;
  * The cron expression that drives the poll, matched in `src/worker.ts` to tell
  * this trigger apart from the hourly feed run. Must stay in sync with
  * `triggers.crons` in `wrangler.jsonc`.
+ *
+ * BOC publishes about three times a day, so a quarter-hour poll cannot miss a
+ * publication; the watermark below makes the runs in between free anyway.
  */
-export const BOC_POLL_CRON = "*/2 * * * *";
+export const BOC_POLL_CRON = "*/15 * * * *";
 
 export interface BocPollResult {
 	/** Rows parsed off the page. */
 	fetched: number;
 	/** Rows that were new — i.e. a currency/pub_time pair not already stored. */
 	inserted: number;
+	/** True when the watermark already covered the fetched round and nothing was written. */
+	alreadyStored: boolean;
 }
 
 /**
- * One BOC rate poll: fetch the published-rates page, parse it, and append any
- * publication we have not already stored.
- *
- * `boc_rate_history` is keyed by `(currency, pub_time)`, so a repeat poll that
- * sees the same publication inserts nothing — `INSERT OR IGNORE` makes that the
- * normal, silent case rather than an error.
+ * The last publication round the poll stored: its publication time, and how many
+ * rows of it landed. The count is what keeps a round that only partly parsed
+ * recoverable — see {@link isPublicationRoundStored}.
+ */
+export interface PollWatermark {
+	pubTime: string;
+	rowCount: number;
+}
+
+/**
+ * One BOC rate poll: fetch the published-rates page, parse it, and append the
+ * publication round if we have not already stored it.
  */
 export async function pollBocRates(env: Env): Promise<BocPollResult> {
 	const rates = await fetchBocRates();
-	const inserted = await recordBocRates(env, rates);
-	return { fetched: rates.length, inserted };
+	return recordPublicationRound(env, rates);
+}
+
+/**
+ * Store a fetched publication round, unless the watermark says we already have it.
+ *
+ * `boc_rate_history` is keyed by `(currency, pub_time)`, so re-inserting a stored
+ * round would be harmless — but it would cost one ignored statement per currency,
+ * on every run, for the ~99% of runs that fall between rounds. Reading the
+ * watermark first makes "is this round new?" one decision here rather than forty
+ * conflicts in D1.
+ */
+export async function recordPublicationRound(
+	env: Env,
+	rates: BocRateRow[],
+): Promise<BocPollResult> {
+	if (rates.length === 0) return { fetched: 0, inserted: 0, alreadyStored: false };
+
+	const watermark = await readPollWatermark(env);
+	if (isPublicationRoundStored(rates, watermark)) {
+		return { fetched: rates.length, inserted: 0, alreadyStored: true };
+	}
+
+	const inserted = await storePublicationRound(env, rates);
+	return { fetched: rates.length, inserted, alreadyStored: false };
+}
+
+/**
+ * The newest publication time on a fetched page, or `null` if it held no rows.
+ *
+ * `pub_time` is a zero-padded `YYYY/MM/DD HH:MM:SS`, so string order is
+ * chronological order and no parsing is needed to compare two of them.
+ */
+export function latestPublicationTime(rates: BocRateRow[]): string | null {
+	let latest: string | null = null;
+	for (const rate of rates) {
+		if (latest === null || rate.pubTime > latest) latest = rate.pubTime;
+	}
+	return latest;
+}
+
+/**
+ * True when the page is exactly the publication round the watermark recorded,
+ * i.e. the poll has nothing to write.
+ *
+ * Two guards keep the watermark from hiding a row we never stored, which the
+ * `(currency, pub_time)` primary key can no longer heal once we stop writing:
+ *
+ * - *every* row must sit at the watermark's publication time, not merely be no
+ *   newer than it. BOC advances all currencies together, so this is normally one
+ *   comparison; a currency that somehow lagged behind still gets written.
+ * - the page must hold no more rows than we stored. `parseBocRates` drops rows it
+ *   cannot read, so a round can land incomplete — the count is what makes the
+ *   next poll re-write it instead of skipping it forever.
+ */
+export function isPublicationRoundStored(
+	rates: BocRateRow[],
+	watermark: PollWatermark | null,
+): boolean {
+	if (watermark === null || rates.length === 0) return false;
+	if (rates.length > watermark.rowCount) return false;
+	return rates.every((rate) => rate.pubTime === watermark.pubTime);
+}
+
+/**
+ * The last round we stored, or `null` before the first poll — the one statement a
+ * poll between rounds issues.
+ *
+ * A read failure is reported as "no watermark", which costs a full write pass the
+ * primary key would absorb anyway. That keeps the poll working on a deploy that
+ * lands before `boc_poll_state` exists: the write path creates it.
+ */
+async function readPollWatermark(env: Env): Promise<PollWatermark | null> {
+	try {
+		const row = await env.DATABASE.prepare(
+			"SELECT last_pub_time, last_row_count FROM boc_poll_state WHERE id = 1",
+		).first<{ last_pub_time: string; last_row_count: number }>();
+		if (!row) return null;
+		return { pubTime: row.last_pub_time, rowCount: row.last_row_count };
+	} catch (error) {
+		console.warn("[cron:boc] could not read the poll watermark", error);
+		return null;
+	}
 }
 
 /** Fetch and parse the BOC published-rates page. */
@@ -137,13 +229,21 @@ export function parseRateCells(cells: string[]): BocRateRow | null {
 	};
 }
 
-/** Append the rows we have not stored yet; returns how many were actually new. */
-export async function recordBocRates(env: Env, rates: BocRateRow[]): Promise<number> {
-	if (rates.length === 0) return 0;
+/**
+ * Append the rows of a round we have not stored yet and advance the watermark
+ * over them; returns how many rows were actually new.
+ */
+export async function storePublicationRound(env: Env, rates: BocRateRow[]): Promise<number> {
+	const latest = latestPublicationTime(rates);
+	if (latest === null) return 0;
+
+	// Only on the write path — a few times a day — so a poll between rounds stays
+	// at one statement rather than paying for this on every cold isolate.
+	await ensurePollStateSchema(env);
 
 	// One statement per row so a single malformed currency cannot reject the
-	// whole publication, batched into one round trip.
-	const statements = rates.map((rate) =>
+	// whole round, batched into one round trip.
+	const inserts = rates.map((rate) =>
 		env.DATABASE.prepare(
 			`INSERT OR IGNORE INTO boc_rate_history
 			 (currency, pub_time, buying_rate, cash_buying_rate, selling_rate, cash_selling_rate, middle_rate)
@@ -159,8 +259,42 @@ export async function recordBocRates(env: Env, rates: BocRateRow[]): Promise<num
 		),
 	);
 
-	const results = await env.DATABASE.batch(statements);
-	return results.reduce((sum, result) => sum + (result.meta?.changes ?? 0), 0);
+	// Last in the same batch — D1 runs a batch as one transaction, so the watermark
+	// cannot move past rows that failed to land. The `WHERE` guard keeps it
+	// monotonic: a stale page can never rewind it and hide a later round, but a
+	// fuller read of the round we are already on can raise the count.
+	const advanceWatermark = env.DATABASE.prepare(
+		`INSERT INTO boc_poll_state (id, last_pub_time, last_row_count) VALUES (1, ?1, ?2)
+		 ON CONFLICT(id) DO UPDATE SET last_pub_time = ?1, last_row_count = ?2
+		 WHERE last_pub_time < ?1 OR (last_pub_time = ?1 AND last_row_count < ?2)`,
+	).bind(latest, rates.length);
+
+	const results = await env.DATABASE.batch([...inserts, advanceWatermark]);
+	return results
+		.slice(0, inserts.length)
+		.reduce((sum, result) => sum + (result.meta?.changes ?? 0), 0);
+}
+
+let ensureSchemaPromise: Promise<void> | null = null;
+
+/**
+ * `boc_rate_history` predates this repo and is owned by `scripts/d1/exchange.sql`,
+ * but `boc_poll_state` is new — creating it lazily keeps a deploy from silently
+ * breaking the poll until someone remembers to run the script.
+ */
+function ensurePollStateSchema(env: Env): Promise<void> {
+	if (!ensureSchemaPromise) {
+		ensureSchemaPromise = (async () => {
+			await env.DATABASE.prepare(
+				`CREATE TABLE IF NOT EXISTS boc_poll_state (
+					id INTEGER PRIMARY KEY CHECK (id = 1),
+					last_pub_time TEXT NOT NULL,
+					last_row_count INTEGER NOT NULL
+				)`,
+			).run();
+		})();
+	}
+	return ensureSchemaPromise;
 }
 
 /**

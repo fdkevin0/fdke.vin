@@ -12,9 +12,9 @@
 		"enabled": true
 	},
 	"triggers": {
-		// "0 * * * *" starts the feed aggregator run; "*/2 * * * *" polls BOC exchange rates
+		// "0 * * * *" starts the feed aggregator run; "*/15 * * * *" polls BOC exchange rates
 		// (BOC_POLL_CRON in src/lib/api/exchange/poll.ts). src/worker.ts branches on which fired.
-		"crons": ["0 * * * *", "*/2 * * * *"]
+		"crons": ["0 * * * *", "*/15 * * * *"]
 	},
 	"routes": [
 		{

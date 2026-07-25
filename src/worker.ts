@@ -58,7 +58,11 @@ export default {
 		// Two crons share this handler; `controller.cron` is the expression that fired.
 		if (controller.cron === BOC_POLL_CRON) {
 			const result = await pollBocRates(env);
-			console.log(`[cron:boc] fetched ${result.fetched} rates, inserted ${result.inserted}`);
+			console.log(
+				result.alreadyStored
+					? `[cron:boc] fetched ${result.fetched} rates, already stored`
+					: `[cron:boc] fetched ${result.fetched} rates, inserted ${result.inserted}`,
+			);
 			return;
 		}
 
