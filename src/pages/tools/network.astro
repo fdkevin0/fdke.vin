@@ -1,0 +1,422 @@
+---
+import PageLayout from "@/layouts/Base.astro";
+import { readConnection } from "@/lib/network/connection";
+import { LOOKUP_HOST } from "@/lib/network/handler";
+
+export const prerender = false;
+
+// The connection panel is rendered server-side because it needs no upstream
+// call: every field is already attached to this request. The Radar-backed
+// groups below load afterwards, so a slow or throttled Radar never delays the
+// part the reader came for. See docs/adr/0006.
+const connection = readConnection(Astro.request);
+
+const location = [connection.city, connection.region, connection.country]
+	.filter(Boolean)
+	.join(", ");
+
+const rows: { label: string; value: string | null }[] = [
+	{ label: "IP", value: connection.ip || null },
+	{ label: "Version", value: connection.ipVersion ? `IPv${connection.ipVersion}` : null },
+	{ label: "Location", value: location || null },
+	{ label: "Timezone", value: connection.timezone },
+	{
+		label: "ASN",
+		value: connection.asn
+			? `AS${connection.asn}${connection.asOrganization ? ` · ${connection.asOrganization}` : ""}`
+			: null,
+	},
+	{ label: "Edge", value: connection.colo },
+	{ label: "Protocol", value: connection.httpProtocol },
+	{ label: "TLS", value: connection.tlsVersion },
+	{
+		label: "RTT",
+		value: connection.clientTcpRttMs === null ? null : `${connection.clientTcpRttMs} ms`,
+	},
+];
+
+const presentRows = rows.filter((row) => row.value);
+const lookupHost = LOOKUP_HOST;
+---
+
+<PageLayout
+	meta={{
+		title: "Network",
+		description: "Your connection as the edge sees it, and how the Internet around it looks.",
+	}}
+>
+	<section class="tool-workbench space-y-5">
+		<div class="tool-hero space-y-4 pt-8">
+			<p class="tool-kicker">
+				<a href="/tools/" class="hover:underline">Tools</a> / Network
+			</p>
+			<h1 class="tool-title">Network</h1>
+			<p class="tool-lede max-w-2xl">
+				What the edge sees when you connect, what Radar knows about any address, and how the
+				Internet around you is behaving.
+			</p>
+		</div>
+
+		<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
+			<h2 class="mb-4 text-lg font-semibold">Your connection</h2>
+			{
+				presentRows.length === 0 ? (
+					<p class="text-sm text-zinc-600 dark:text-zinc-300">
+						No edge data on this request — this page is being served outside Cloudflare.
+					</p>
+				) : (
+					<dl class="space-y-3">
+						{presentRows.map((row) => (
+							<div class="grid grid-cols-3 gap-2 text-sm">
+								<dt class="text-zinc-500 dark:text-zinc-400">{row.label}</dt>
+								<dd class="col-span-2 font-mono break-all">{row.value}</dd>
+							</div>
+						))}
+					</dl>
+				)
+			}
+			<p class="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
+				From this request alone — no lookup, nothing stored. Same data from a terminal:
+				<code class="font-mono">curl {lookupHost}?detail=1</code>
+			</p>
+		</div>
+
+		<network-panels
+			data-country={connection.country ?? ""}
+			data-lookup-host={lookupHost}
+			class="block space-y-5"
+		>
+			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
+				<h2 class="mb-1 text-lg font-semibold">Look up an address</h2>
+				<p class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+					An address or a hostname. Country-level only — Radar does not geolocate finer.
+				</p>
+				<form data-lookup-form class="flex gap-2">
+					<label class="sr-only" for="network-lookup">Address or hostname</label>
+					<input
+						id="network-lookup"
+						name="q"
+						type="text"
+						autocomplete="off"
+						spellcheck="false"
+						placeholder="1.1.1.1 or github.com"
+						class="flex-1 rounded border border-zinc-300 bg-transparent px-3 py-2 font-mono text-sm dark:border-zinc-700"
+					/>
+					<button
+						type="submit"
+						class="rounded border border-zinc-300 px-4 py-2 text-sm transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+					>
+						Look up
+					</button>
+				</form>
+				<pre
+					data-lookup-result
+					class="mt-4 hidden overflow-x-auto rounded bg-zinc-50 p-3 font-mono text-xs dark:bg-zinc-900">
+				</pre>
+			</div>
+
+			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
+				<h2 class="mb-1 text-lg font-semibold">
+					{connection.country ? `${connection.country} vs. world` : "Adoption worldwide"}
+				</h2>
+				<p class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+					Share of HTTP traffic Cloudflare saw over the last 7 days.
+				</p>
+				<div data-adoption class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+			</div>
+
+			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
+				<h2 class="mb-1 text-lg font-semibold">Internet health</h2>
+				<p class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+					Verified outages are corroborated. Traffic anomalies are algorithmic and unconfirmed.
+				</p>
+				<div data-health class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+			</div>
+
+			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
+				<h2 class="mb-1 text-lg font-semibold">Routing</h2>
+				<p class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+					Origin hijacks and route leaks Radar detected recently.
+				</p>
+				<div data-routing class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+			</div>
+
+			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
+				<h2 class="mb-1 text-lg font-semibold">Rankings &amp; attacks</h2>
+				<p class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+					Most popular and fastest-rising domains, and how attack traffic breaks down.
+				</p>
+				<div data-rankings class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+			</div>
+		</network-panels>
+	</section>
+</PageLayout>
+
+<script>
+	// The group readers define these shapes; importing them means a field added
+	// or renamed there is a type error here rather than a silently blank panel.
+	// `import type` is erased at build, so this pulls no server code client-side.
+	import type {
+		AdoptionSnapshot,
+		AttackShare,
+		HealthSnapshot,
+		OutageEvent,
+		RankedDomain,
+		RankingsSnapshot,
+		RoutingSnapshot,
+	} from "@/lib/network/datasets";
+
+	const escapeHtml = (value: string) =>
+		value.replace(
+			/[&<>"']/g,
+			(char) =>
+				({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char,
+		);
+
+	class NetworkPanelsElement extends HTMLElement {
+		#country = "";
+		#lookupHost = "";
+
+		connectedCallback() {
+			this.#country = this.dataset.country ?? "";
+			this.#lookupHost = this.dataset.lookupHost ?? "";
+
+			this.#bindLookup();
+			// The groups are independent: one failing must not blank the others,
+			// so each loads and reports on its own.
+			void this.#loadAdoption();
+			void this.#loadHealth();
+			void this.#loadRouting();
+			void this.#loadRankings();
+		}
+
+		/** A group endpoint, carrying the reader's country when the edge knew it. */
+		#groupUrl(group: string): string {
+			return this.#country
+				? `/api/network/${group}?cc=${encodeURIComponent(this.#country)}`
+				: `/api/network/${group}`;
+		}
+
+		/**
+		 * Fetch one group into its panel, reporting failure in place.
+		 *
+		 * A renderer returning an empty string means "the group came back with
+		 * nothing", which reads differently from a failure and is said so.
+		 */
+		async #loadGroup<T>(selector: string, url: string, render: (data: T) => string) {
+			const target = this.#el(selector);
+			if (!target) return;
+
+			try {
+				const response = await fetch(url);
+				if (!response.ok) throw new Error(String(response.status));
+
+				const markup = render((await response.json()) as T);
+				if (markup) target.innerHTML = markup;
+				else target.textContent = "Nothing reported right now.";
+			} catch {
+				target.textContent = "This data is unavailable right now.";
+			}
+		}
+
+		#loadRouting() {
+			return this.#loadGroup<RoutingSnapshot>(
+				"[data-routing]",
+				"/api/network/routing",
+				(snapshot) => {
+					if (snapshot.events.length === 0) return "";
+
+					return `<ul class="space-y-2">${snapshot.events
+						.map((event) => {
+							const label = event.kind === "hijack" ? "Hijack" : "Leak";
+							const origins = [
+								event.detectedOrigin ? `saw ${escapeHtml(event.detectedOrigin)}` : null,
+								event.expectedOrigin ? `expected ${escapeHtml(event.expectedOrigin)}` : null,
+							]
+								.filter(Boolean)
+								.join(", ");
+							const confidence = event.confidence
+								? ` · confidence ${escapeHtml(event.confidence)}`
+								: "";
+
+							return `<li class="text-sm">
+								<span class="text-zinc-700 dark:text-zinc-200">${label}</span>
+								${event.prefix ? `<span class="font-mono"> ${escapeHtml(event.prefix)}</span>` : ""}
+								<div class="text-xs text-zinc-500 dark:text-zinc-400">${origins}${confidence}</div>
+							</li>`;
+						})
+						.join("")}</ul>`;
+				},
+			);
+		}
+
+		#loadRankings() {
+			return this.#loadGroup<RankingsSnapshot>(
+				"[data-rankings]",
+				this.#groupUrl("rankings"),
+				(snapshot) => {
+					const domainList = (title: string, domains: RankedDomain[]) =>
+						domains.length === 0
+							? ""
+							: `<div>
+							<p class="mb-2 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">${title}</p>
+							<ol class="space-y-1 text-sm">${domains
+								.map(
+									(entry) =>
+										`<li class="flex gap-2"><span class="w-5 text-right font-mono text-zinc-400">${entry.rank}</span><span class="font-mono">${escapeHtml(entry.domain)}</span></li>`,
+								)
+								.join("")}</ol>
+						</div>`;
+
+					const shareList = (title: string, shares: AttackShare[]) =>
+						shares.length === 0
+							? ""
+							: `<div>
+							<p class="mb-2 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">${title}</p>
+							<ul class="space-y-1 text-sm">${shares
+								.map(
+									(share) =>
+										`<li class="flex justify-between gap-2"><span>${escapeHtml(share.label)}</span><span class="font-mono text-zinc-500 dark:text-zinc-400">${share.percentage.toFixed(1)}%</span></li>`,
+								)
+								.join("")}</ul>
+						</div>`;
+
+					const sections = [
+						domainList(
+							snapshot.country ? `Popular · ${snapshot.country}` : "Popular",
+							snapshot.popular,
+						),
+						domainList("Trending", snapshot.trending),
+						shareList("DDoS L3/4 by protocol", snapshot.ddosLayer3),
+						shareList("DDoS L7 by mitigation", snapshot.ddosLayer7),
+					].filter(Boolean);
+
+					return sections.length === 0
+						? ""
+						: `<div class="grid gap-6 sm:grid-cols-2">${sections.join("")}</div>`;
+				},
+			);
+		}
+
+		#el<T extends HTMLElement>(selector: string): T | null {
+			return this.querySelector<T>(selector);
+		}
+
+		#bindLookup() {
+			const form = this.#el<HTMLFormElement>("[data-lookup-form]");
+			const output = this.#el<HTMLPreElement>("[data-lookup-result]");
+			const input = this.#el<HTMLInputElement>("#network-lookup");
+			if (!form || !output || !input) return;
+
+			// A ?q= lands here from the lookup host, which redirects browsers
+			// rather than serving them plain text.
+			const initial = new URLSearchParams(window.location.search).get("q");
+			if (initial) {
+				input.value = initial;
+				void this.#lookup(initial, output);
+			}
+
+			form.addEventListener("submit", (event) => {
+				event.preventDefault();
+				const query = input.value.trim();
+				if (query) void this.#lookup(query, output);
+			});
+		}
+
+		async #lookup(query: string, output: HTMLPreElement) {
+			output.classList.remove("hidden");
+			output.textContent = "Looking up…";
+
+			try {
+				const response = await fetch(
+					`https://${this.#lookupHost}/${encodeURIComponent(query)}?detail=1`,
+					{ headers: { Accept: "text/plain" } },
+				);
+				output.textContent = (await response.text()).trimEnd() || "No result.";
+			} catch {
+				output.textContent = "Lookup failed.";
+			}
+		}
+
+		#loadAdoption() {
+			return this.#loadGroup<AdoptionSnapshot>(
+				"[data-adoption]",
+				this.#groupUrl("adoption"),
+				(snapshot) => {
+					const rows = snapshot.metrics.filter(
+						(metric) => metric.local !== null || metric.global !== null,
+					);
+					if (rows.length === 0) return "";
+
+					const percent = (value: number | null) => (value === null ? "—" : `${value.toFixed(1)}%`);
+
+					return `
+					<table class="w-full text-sm">
+						<thead>
+							<tr class="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+								<th class="py-1 text-left font-normal"></th>
+								${snapshot.country ? `<th class="py-1 text-right font-normal">${snapshot.country}</th>` : ""}
+								<th class="py-1 text-right font-normal">World</th>
+							</tr>
+						</thead>
+						<tbody>
+							${rows
+								.map(
+									(metric) => `
+								<tr class="border-t border-zinc-100 dark:border-zinc-800">
+									<td class="py-2 text-zinc-600 dark:text-zinc-300">${metric.label}</td>
+									${snapshot.country ? `<td class="py-2 text-right font-mono">${percent(metric.local)}</td>` : ""}
+									<td class="py-2 text-right font-mono text-zinc-500 dark:text-zinc-400">${percent(metric.global)}</td>
+								</tr>`,
+								)
+								.join("")}
+						</tbody>
+					</table>`;
+				},
+			);
+		}
+
+		#loadHealth() {
+			return this.#loadGroup<HealthSnapshot>("[data-health]", "/api/network/health", (snapshot) => {
+				const sections = [
+					{ title: "Verified outages", events: snapshot.outages },
+					{ title: "Traffic anomalies · unconfirmed", events: snapshot.anomalies },
+				].filter((section) => section.events.length > 0);
+
+				return sections
+					.map(
+						(section) => `
+					<div class="mb-4 last:mb-0">
+						<p class="mb-2 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">${section.title}</p>
+						<ul class="space-y-2">
+							${section.events.map((event) => this.#renderEvent(event)).join("")}
+						</ul>
+					</div>`,
+					)
+					.join("");
+			});
+		}
+
+		#renderEvent(event: OutageEvent): string {
+			const where =
+				[...event.locations, ...event.asns].map(escapeHtml).join(" · ") || "Unspecified";
+			const detail = [event.cause, event.scope]
+				.filter(Boolean)
+				.map(String)
+				.map(escapeHtml)
+				.join(" · ");
+			const start = event.startDate ? new Date(event.startDate).toLocaleDateString() : null;
+			const end = event.endDate ? new Date(event.endDate).toLocaleDateString() : "ongoing";
+			const when = start ? `${start} → ${end}` : "";
+
+			return `
+				<li class="text-sm">
+					<span class="text-zinc-700 dark:text-zinc-200">${where}</span>
+					${detail ? `<span class="text-zinc-500 dark:text-zinc-400"> · ${detail}</span>` : ""}
+					${when ? `<div class="text-xs text-zinc-500 dark:text-zinc-400">${when}</div>` : ""}
+				</li>`;
+		}
+	}
+
+	customElements.define("network-panels", NetworkPanelsElement);
+</script>

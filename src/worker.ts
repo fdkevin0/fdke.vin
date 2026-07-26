@@ -13,6 +13,7 @@ import { processFeedFetchMessage } from "@/lib/feed/ingest";
 import type { FeedEnv } from "@/lib/feed/runtime";
 import type { FeedAiMessage, FeedFetchMessage } from "@/lib/feed/types";
 import { FEED_COORDINATOR_NAME, RSS_AI_QUEUE_NAME, RSS_FETCH_QUEUE_NAME } from "@/lib/feed/types";
+import { handleLookupHostRequest, isLookupHost } from "@/lib/network/handler";
 
 const startRunSchema = z.object({
 	trigger: z.enum(["cron", "manual", "alarm"]).optional().default("manual"),
@@ -23,6 +24,17 @@ const completeRunSchema = z.object({
 	runId: z.string().min(1),
 	ok: z.boolean(),
 });
+
+/**
+ * The Workers-specific shared edge cache.
+ *
+ * `caches.default` exists at runtime but `astro check` resolves the global
+ * against the DOM `CacheStorage`, which only declares `open()`. The cast names
+ * what the runtime actually provides rather than widening the handler's type.
+ */
+function edgeCache(): Cache {
+	return (caches as unknown as { default: Cache }).default;
+}
 
 export class FeedCoordinator extends DurableObject<FeedEnv> {
 	override async fetch(request: Request): Promise<Response> {
@@ -52,6 +64,18 @@ export class FeedCoordinator extends DurableObject<FeedEnv> {
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
+		// The lookup host is answered before Astro sees the request: it uses none
+		// of the site's pipeline — no auth, no i18n, no page routing — and it is
+		// the one endpoint here that scripts poll. See `docs/adr/0006`.
+		const { hostname } = new URL(request.url);
+		if (isLookupHost(hostname)) {
+			return handleLookupHostRequest(request, {
+				token: env.RADAR_API_TOKEN,
+				cache: edgeCache(),
+				waitUntil: (promise) => ctx.waitUntil(promise),
+			});
+		}
+
 		return handle(request, env, ctx);
 	},
 	async scheduled(controller, env, _ctx): Promise<void> {

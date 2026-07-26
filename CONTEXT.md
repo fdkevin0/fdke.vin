@@ -137,6 +137,30 @@ _Avoid_: fan-out (that's the mechanism), push, broadcast
 The set of remote domains (`ap_blocklist`) whose inbound Activities the inbox drops before any store write. Managed from the dashboard; enforced by matching the actor URI's host.
 _Avoid_: banlist, denylist, mute
 
+### Network
+
+The site answers questions about addresses at `ip.fdke.vin` and about the Internet at large at `/tools/network`, drawing on Cloudflare Radar. See `docs/adr/0006`.
+
+**Connection**:
+What the edge observed about one live request — the caller's address, colo, TLS version, HTTP version, round-trip time, and city-level location. Exists only for the duration of the request that produced it, and is never cached or stored. Costs nothing to read, which is why the bare `curl ip.fdke.vin` answers even when Radar is unconfigured.
+_Avoid_: session (that's Cloudflare Access), visit, client info
+
+**IP profile**:
+What Radar knows about an address, whether or not it ever connected here: IP version, country, origin ASN and AS org, and on request the RIR, website, estimated users and peer ASes. Country-granular by nature — Radar has no IP→city path. Distinct from a Connection: an address that never connected has no TLS version or colo to report.
+_Avoid_: geolocation (implies a precision Radar does not have), whois, IP info
+
+**Network lookup**:
+Resolving one path segment on the lookup host into IP profiles. A hostname is resolved to addresses first (over 1.1.1.1 DoH, since Radar does not resolve names); an address is profiled directly.
+_Avoid_: query, search (that names Radar's `/search/global` endpoint)
+
+**Internet snapshot**:
+The Radar aggregate datasets — adoption, health, routing, rankings — read as groups and, where the dataset supports a location filter, paired against the reader's own country. Never about a single address.
+_Avoid_: stats, dashboard, metrics
+
+**Verified outage / traffic anomaly**:
+Radar's own distinction, preserved rather than merged: a **verified outage** has been manually corroborated, a **traffic anomaly** is an algorithmically observed drop that has not been. They are always labelled differently.
+_Avoid_: incident, downtime (neither says whether anyone confirmed it)
+
 ### Access
 
 **Protected route**:
