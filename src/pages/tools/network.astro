@@ -15,10 +15,18 @@ const location = [connection.city, connection.region, connection.country]
 	.filter(Boolean)
 	.join(", ");
 
+// The address is the one thing a reader opens this page for, so it leads as the
+// readout and takes its own supporting line — who and where. The panel below
+// carries the rest of the handshake — how — with no field said twice.
+const identity = [
+	connection.ipVersion ? `IPv${connection.ipVersion}` : null,
+	location || null,
+	connection.colo ? `via ${connection.colo}` : null,
+]
+	.filter(Boolean)
+	.join(" · ");
+
 const rows: { label: string; value: string | null }[] = [
-	{ label: "IP", value: connection.ip || null },
-	{ label: "Version", value: connection.ipVersion ? `IPv${connection.ipVersion}` : null },
-	{ label: "Location", value: location || null },
 	{ label: "Timezone", value: connection.timezone },
 	{
 		label: "ASN",
@@ -26,12 +34,11 @@ const rows: { label: string; value: string | null }[] = [
 			? `AS${connection.asn}${connection.asOrganization ? ` · ${connection.asOrganization}` : ""}`
 			: null,
 	},
-	{ label: "Edge", value: connection.colo },
 	{ label: "Protocol", value: connection.httpProtocol },
 	{ label: "TLS", value: connection.tlsVersion },
 	{
 		label: "RTT",
-		value: connection.clientTcpRttMs === null ? null : `${connection.clientTcpRttMs} ms`,
+		value: connection.clientTcpRttMs === null ? null : `${connection.clientTcpRttMs} ms`,
 	},
 ];
 
@@ -55,98 +62,135 @@ const lookupHost = LOOKUP_HOST;
 				What the edge sees when you connect, what Radar knows about any address, and how the
 				Internet around you is behaving.
 			</p>
+			<div class="border-t border-[var(--tool-line)] pt-4">
+				<p class="tool-field-label">Your Address</p>
+				{
+					connection.ip ? (
+						<>
+							<p class="tool-readout mt-2" translate="no">
+								{connection.ip}
+							</p>
+							{identity && <p class="tool-note mt-2">{identity}</p>}
+						</>
+					) : (
+						<p class="tool-lede mt-2">
+							No edge data on this request — this page is being served outside Cloudflare.
+						</p>
+					)
+				}
+			</div>
 		</div>
 
-		<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-			<h2 class="mb-4 text-lg font-semibold">Your connection</h2>
-			{
-				presentRows.length === 0 ? (
-					<p class="text-sm text-zinc-600 dark:text-zinc-300">
-						No edge data on this request — this page is being served outside Cloudflare.
-					</p>
-				) : (
-					<dl class="space-y-3">
+		{
+			presentRows.length > 0 && (
+				<div class="tool-panel">
+					<div class="tool-panel-head mb-3">
+						<h2 class="tool-panel-title">Connection Detail</h2>
+						<p class="tool-source">This Request</p>
+					</div>
+					<dl class="tool-rows">
 						{presentRows.map((row) => (
-							<div class="grid grid-cols-3 gap-2 text-sm">
-								<dt class="text-zinc-500 dark:text-zinc-400">{row.label}</dt>
-								<dd class="col-span-2 font-mono break-all">{row.value}</dd>
+							<div class="tool-row">
+								<dt>{row.label}</dt>
+								<dd translate="no">{row.value}</dd>
 							</div>
 						))}
 					</dl>
-				)
-			}
-			<p class="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-				From this request alone — no lookup, nothing stored. Same data from a terminal:
-				<code class="font-mono">curl {lookupHost}?detail=1</code>
-			</p>
-		</div>
+					<p class="tool-note mt-4">
+						From this request alone — no lookup, nothing stored. Same data from a terminal:{" "}
+						<code translate="no">curl {lookupHost}?detail=1</code>
+					</p>
+				</div>
+			)
+		}
 
 		<network-panels
 			data-country={connection.country ?? ""}
 			data-lookup-host={lookupHost}
 			class="block space-y-5"
 		>
-			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-				<h2 class="mb-1 text-lg font-semibold">Look up an address</h2>
-				<p class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+			<div class="tool-panel">
+				<div class="tool-panel-head">
+					<h2 class="tool-panel-title">Look Up an Address</h2>
+					<p class="tool-source">Radar</p>
+				</div>
+				<p class="tool-note mt-1 mb-4">
 					An address or a hostname. Country-level only — Radar does not geolocate finer.
 				</p>
-				<form data-lookup-form class="flex gap-2">
+				<form data-lookup-form class="flex flex-wrap gap-2">
 					<label class="sr-only" for="network-lookup">Address or hostname</label>
 					<input
 						id="network-lookup"
 						name="q"
 						type="text"
 						autocomplete="off"
+						autocapitalize="off"
+						autocorrect="off"
 						spellcheck="false"
-						placeholder="1.1.1.1 or github.com"
-						class="flex-1 rounded border border-zinc-300 bg-transparent px-3 py-2 font-mono text-sm dark:border-zinc-700"
+						placeholder="1.1.1.1 or github.com…"
+						class="tool-input min-w-0 flex-1"
 					/>
-					<button
-						type="submit"
-						class="rounded border border-zinc-300 px-4 py-2 text-sm transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-					>
-						Look up
+					<button type="submit" class="tool-button disabled:opacity-60" data-lookup-submit>
+						Look Up
 					</button>
 				</form>
 				<pre
 					data-lookup-result
-					class="mt-4 hidden overflow-x-auto rounded bg-zinc-50 p-3 font-mono text-xs dark:bg-zinc-900">
+					aria-live="polite"
+					class="tool-status mt-4 hidden overflow-x-auto p-3 text-xs">
 				</pre>
 			</div>
 
-			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-				<h2 class="mb-1 text-lg font-semibold">
-					{connection.country ? `${connection.country} vs. world` : "Adoption worldwide"}
-				</h2>
-				<p class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+			<div class="tool-panel">
+				<div class="tool-panel-head">
+					<h2 class="tool-panel-title">
+						{connection.country ? `${connection.country} vs. World` : "Adoption Worldwide"}
+					</h2>
+					<p class="tool-source">Radar · 7d</p>
+				</div>
+				<p class="tool-note mt-1 mb-4">
 					Share of HTTP traffic Cloudflare saw over the last 7 days.
 				</p>
-				<div data-adoption class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+				<div data-adoption aria-busy="true" class="text-sm">
+					<span class="tool-lede">Loading…</span>
+				</div>
 			</div>
 
-			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-				<h2 class="mb-1 text-lg font-semibold">Internet health</h2>
-				<p class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+			<div class="tool-panel">
+				<div class="tool-panel-head">
+					<h2 class="tool-panel-title">Internet Health</h2>
+					<p class="tool-source">Radar</p>
+				</div>
+				<p class="tool-note mt-1 mb-4">
 					Verified outages are corroborated. Traffic anomalies are algorithmic and unconfirmed.
 				</p>
-				<div data-health class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+				<div data-health aria-busy="true" class="text-sm">
+					<span class="tool-lede">Loading…</span>
+				</div>
 			</div>
 
-			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-				<h2 class="mb-1 text-lg font-semibold">Routing</h2>
-				<p class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
-					Origin hijacks and route leaks Radar detected recently.
-				</p>
-				<div data-routing class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+			<div class="tool-panel">
+				<div class="tool-panel-head">
+					<h2 class="tool-panel-title">Routing</h2>
+					<p class="tool-source">Radar</p>
+				</div>
+				<p class="tool-note mt-1 mb-4">Origin hijacks and route leaks Radar detected recently.</p>
+				<div data-routing aria-busy="true" class="text-sm">
+					<span class="tool-lede">Loading…</span>
+				</div>
 			</div>
 
-			<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-				<h2 class="mb-1 text-lg font-semibold">Rankings &amp; attacks</h2>
-				<p class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+			<div class="tool-panel">
+				<div class="tool-panel-head">
+					<h2 class="tool-panel-title">Rankings &amp; Attacks</h2>
+					<p class="tool-source">Radar</p>
+				</div>
+				<p class="tool-note mt-1 mb-4">
 					Most popular and fastest-rising domains, and how attack traffic breaks down.
 				</p>
-				<div data-rankings class="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+				<div data-rankings aria-busy="true" class="text-sm">
+					<span class="tool-lede">Loading…</span>
+				</div>
 			</div>
 		</network-panels>
 	</section>
@@ -165,6 +209,14 @@ const lookupHost = LOOKUP_HOST;
 		RankingsSnapshot,
 		RoutingSnapshot,
 	} from "@/lib/network/datasets";
+
+	// The reader's own locale decides how these dates read, so the format is
+	// resolved once here rather than hardcoded at each call site.
+	const dateFormat = new Intl.DateTimeFormat(undefined, {
+		day: "numeric",
+		month: "short",
+		year: "numeric",
+	});
 
 	const escapeHtml = (value: string) =>
 		value.replace(
@@ -215,7 +267,9 @@ const lookupHost = LOOKUP_HOST;
 				if (markup) target.innerHTML = markup;
 				else target.textContent = "Nothing reported right now.";
 			} catch {
-				target.textContent = "This data is unavailable right now.";
+				target.textContent = "This data is unavailable right now. Reload to try again.";
+			} finally {
+				target.setAttribute("aria-busy", "false");
 			}
 		}
 
@@ -240,9 +294,9 @@ const lookupHost = LOOKUP_HOST;
 								: "";
 
 							return `<li class="text-sm">
-								<span class="text-zinc-700 dark:text-zinc-200">${label}</span>
-								${event.prefix ? `<span class="font-mono"> ${escapeHtml(event.prefix)}</span>` : ""}
-								<div class="text-xs text-zinc-500 dark:text-zinc-400">${origins}${confidence}</div>
+								<span class="text-[var(--tool-ink)]">${label}</span>
+								${event.prefix ? `<span class="tabular-nums" translate="no"> ${escapeHtml(event.prefix)}</span>` : ""}
+								<div class="tool-note">${origins}${confidence}</div>
 							</li>`;
 						})
 						.join("")}</ul>`;
@@ -259,11 +313,11 @@ const lookupHost = LOOKUP_HOST;
 						domains.length === 0
 							? ""
 							: `<div>
-							<p class="mb-2 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">${title}</p>
+							<p class="tool-field-label mb-2">${title}</p>
 							<ol class="space-y-1 text-sm">${domains
 								.map(
 									(entry) =>
-										`<li class="flex gap-2"><span class="w-5 text-right font-mono text-zinc-400">${entry.rank}</span><span class="font-mono">${escapeHtml(entry.domain)}</span></li>`,
+										`<li class="flex gap-2"><span class="w-5 shrink-0 text-right tabular-nums text-[var(--tool-muted)]">${entry.rank}</span><span class="min-w-0 truncate" translate="no">${escapeHtml(entry.domain)}</span></li>`,
 								)
 								.join("")}</ol>
 						</div>`;
@@ -272,11 +326,11 @@ const lookupHost = LOOKUP_HOST;
 						shares.length === 0
 							? ""
 							: `<div>
-							<p class="mb-2 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">${title}</p>
+							<p class="tool-field-label mb-2">${title}</p>
 							<ul class="space-y-1 text-sm">${shares
 								.map(
 									(share) =>
-										`<li class="flex justify-between gap-2"><span>${escapeHtml(share.label)}</span><span class="font-mono text-zinc-500 dark:text-zinc-400">${share.percentage.toFixed(1)}%</span></li>`,
+										`<li class="flex justify-between gap-2"><span class="min-w-0 truncate">${escapeHtml(share.label)}</span><span class="shrink-0 tabular-nums text-[var(--tool-muted)]">${share.percentage.toFixed(1)}%</span></li>`,
 								)
 								.join("")}</ul>
 						</div>`;
@@ -319,13 +373,28 @@ const lookupHost = LOOKUP_HOST;
 			form.addEventListener("submit", (event) => {
 				event.preventDefault();
 				const query = input.value.trim();
-				if (query) void this.#lookup(query, output);
+				if (!query) return;
+
+				// A result is worth linking to, so the address it describes lives in
+				// the URL — the same ?q= this page already reads on load.
+				const url = new URL(window.location.href);
+				url.searchParams.set("q", query);
+				window.history.replaceState(null, "", url);
+
+				void this.#lookup(query, output);
 			});
 		}
 
 		async #lookup(query: string, output: HTMLPreElement) {
+			const submit = this.#el<HTMLButtonElement>("[data-lookup-submit]");
+			const label = submit?.textContent ?? "";
+
 			output.classList.remove("hidden");
 			output.textContent = "Looking up…";
+			if (submit) {
+				submit.disabled = true;
+				submit.textContent = "Looking Up…";
+			}
 
 			try {
 				const response = await fetch(
@@ -334,7 +403,12 @@ const lookupHost = LOOKUP_HOST;
 				);
 				output.textContent = (await response.text()).trimEnd() || "No result.";
 			} catch {
-				output.textContent = "Lookup failed.";
+				output.textContent = "Lookup failed. Check the address and try again.";
+			} finally {
+				if (submit) {
+					submit.disabled = false;
+					submit.textContent = label;
+				}
 			}
 		}
 
@@ -352,21 +426,22 @@ const lookupHost = LOOKUP_HOST;
 
 					return `
 					<table class="w-full text-sm">
+						<caption class="sr-only">Share of HTTP traffic by protocol and standard</caption>
 						<thead>
-							<tr class="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-								<th class="py-1 text-left font-normal"></th>
-								${snapshot.country ? `<th class="py-1 text-right font-normal">${snapshot.country}</th>` : ""}
-								<th class="py-1 text-right font-normal">World</th>
+							<tr class="tool-field-label">
+								<th class="py-1 text-left font-normal"><span class="sr-only">Metric</span></th>
+								${snapshot.country ? `<th class="py-1 text-right font-normal" scope="col">${snapshot.country}</th>` : ""}
+								<th class="py-1 text-right font-normal" scope="col">World</th>
 							</tr>
 						</thead>
 						<tbody>
 							${rows
 								.map(
 									(metric) => `
-								<tr class="border-t border-zinc-100 dark:border-zinc-800">
-									<td class="py-2 text-zinc-600 dark:text-zinc-300">${metric.label}</td>
-									${snapshot.country ? `<td class="py-2 text-right font-mono">${percent(metric.local)}</td>` : ""}
-									<td class="py-2 text-right font-mono text-zinc-500 dark:text-zinc-400">${percent(metric.global)}</td>
+								<tr class="border-t border-[var(--tool-line)]">
+									<th class="py-2 text-left font-normal text-[var(--tool-ink)]" scope="row">${metric.label}</th>
+									${snapshot.country ? `<td class="py-2 text-right tabular-nums">${percent(metric.local)}</td>` : ""}
+									<td class="py-2 text-right tabular-nums text-[var(--tool-muted)]">${percent(metric.global)}</td>
 								</tr>`,
 								)
 								.join("")}
@@ -387,7 +462,7 @@ const lookupHost = LOOKUP_HOST;
 					.map(
 						(section) => `
 					<div class="mb-4 last:mb-0">
-						<p class="mb-2 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">${section.title}</p>
+						<p class="tool-field-label mb-2">${section.title}</p>
 						<ul class="space-y-2">
 							${section.events.map((event) => this.#renderEvent(event)).join("")}
 						</ul>
@@ -405,15 +480,17 @@ const lookupHost = LOOKUP_HOST;
 				.map(String)
 				.map(escapeHtml)
 				.join(" · ");
-			const start = event.startDate ? new Date(event.startDate).toLocaleDateString() : null;
-			const end = event.endDate ? new Date(event.endDate).toLocaleDateString() : "ongoing";
+			const stamp = (value: string) =>
+				`<time datetime="${escapeHtml(value)}">${dateFormat.format(new Date(value))}</time>`;
+			const start = event.startDate ? stamp(event.startDate) : null;
+			const end = event.endDate ? stamp(event.endDate) : "ongoing";
 			const when = start ? `${start} → ${end}` : "";
 
 			return `
 				<li class="text-sm">
-					<span class="text-zinc-700 dark:text-zinc-200">${where}</span>
-					${detail ? `<span class="text-zinc-500 dark:text-zinc-400"> · ${detail}</span>` : ""}
-					${when ? `<div class="text-xs text-zinc-500 dark:text-zinc-400">${when}</div>` : ""}
+					<span class="text-[var(--tool-ink)]">${where}</span>
+					${detail ? `<span class="text-[var(--tool-muted)]"> · ${detail}</span>` : ""}
+					${when ? `<div class="tool-note">${when}</div>` : ""}
 				</li>`;
 		}
 	}

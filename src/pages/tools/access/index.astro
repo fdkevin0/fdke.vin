@@ -78,7 +78,8 @@ const props = await (async () => {
 			teamDomain: "",
 			claims: null,
 			identity: null,
-			error: "Cloudflare Access not configured",
+			error:
+				"Cloudflare Access is not configured. Set CLOUDFLARE_TEAM_DOMAIN and CLOUDFLARE_POLICY_AUD, then redeploy.",
 		};
 	}
 
@@ -91,7 +92,8 @@ const props = await (async () => {
 	let error: string | null = null;
 
 	if (!token) {
-		error = "No authentication token found";
+		error =
+			"No authentication token found. Sign in through Cloudflare Access and reload this page.";
 	} else {
 		try {
 			// Re-verify JWT to access full claims for display
@@ -134,6 +136,44 @@ const props = await (async () => {
 		error,
 	};
 })();
+
+// The server cannot know the reader's timezone, so timestamps are stated in UTC
+// and labelled, rather than silently rendered in whatever zone the worker runs
+// in. The reader's own language still decides the format.
+const readerLocales = (Astro.request.headers.get("accept-language") ?? "")
+	.split(",")
+	.map((part) => part.split(";")[0]?.trim())
+	.filter((tag): tag is string => Boolean(tag) && tag !== "*");
+
+const timestampFormat = (() => {
+	const options: Intl.DateTimeFormatOptions = {
+		dateStyle: "medium",
+		timeStyle: "short",
+		timeZone: "UTC",
+	};
+	try {
+		return new Intl.DateTimeFormat(readerLocales, options);
+	} catch {
+		// A malformed Accept-Language must not take the page down.
+		return new Intl.DateTimeFormat(undefined, options);
+	}
+})();
+
+const formatStamp = (value: string | number) => `${timestampFormat.format(new Date(value))} UTC`;
+
+const statusRows: { label: string; value: string | null }[] = props.claims
+	? [
+			{ label: "Email", value: props.claims.email },
+			{ label: "Name", value: props.claims.common_name ?? null },
+			{ label: "User UUID", value: props.identity?.user_uuid ?? null },
+			{ label: "Country", value: props.claims.country ?? null },
+			{ label: "IP Address", value: props.identity?.ip ?? null },
+			{ label: "Issued", value: formatStamp(props.claims.iat * 1000) },
+			{ label: "Expires", value: formatStamp(props.claims.exp * 1000) },
+			{ label: "WARP", value: props.identity?.is_warp ? "Enabled" : null },
+			{ label: "Gateway", value: props.identity?.is_gateway ? "Enabled" : null },
+		].filter((row) => row.value)
+	: [];
 ---
 
 <PageLayout
@@ -142,113 +182,86 @@ const props = await (async () => {
 		description: "View your Cloudflare Zero Trust authentication status and JWT claims.",
 	}}
 >
-	<section class="space-y-6">
-		<div class="space-y-3">
-			<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
+	<section class="tool-workbench space-y-5">
+		<div class="tool-hero space-y-4 pt-8">
+			<p class="tool-kicker">
 				<a href="/tools/" class="hover:underline">Tools</a> / Access
 			</p>
-			<h1 class="title text-2xl">Cloudflare Access</h1>
-			<p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-				Authentication info for Cloudflare Zero Trust. Your session is protected by Cloudflare
-				Access JWT validation.
+			<h1 class="tool-title">Cloudflare Access</h1>
+			<p class="tool-lede max-w-2xl">
+				The Zero Trust session behind this page: who the edge signed in, which device it trusts, and
+				when the token runs out.
 			</p>
+			{
+				props.claims && (
+					<div class="border-t border-[var(--tool-line)] pt-4">
+						<p class="tool-field-label">Signed In As</p>
+						<p class="tool-readout mt-2" translate="no">
+							{props.claims.email}
+						</p>
+						<p class="tool-note mt-2">Token expires {formatStamp(props.claims.exp * 1000)}</p>
+					</div>
+				)
+			}
 		</div>
 
 		{
 			props.error ? (
 				<div
-					class={`rounded border p-4 ${props.isLocalBypass ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20" : "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20"}`}
+					class={
+						props.isLocalBypass
+							? "tool-status p-4 text-sm"
+							: "rounded-md border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300"
+					}
+					role="status"
 				>
-					<p
-						class={`text-sm ${props.isLocalBypass ? "text-blue-800 dark:text-blue-300" : "text-red-800 dark:text-red-300"}`}
-					>
-						{props.error}
+					<p class="tool-field-label mb-2">
+						{props.isLocalBypass ? "Local Development" : "Not Signed In"}
 					</p>
+					<p class="leading-relaxed">{props.error}</p>
 				</div>
 			) : (
-				<div class="space-y-6">
-					<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-						<h2 class="mb-4 text-lg font-semibold">Authentication Status</h2>
-						{props.claims && (
-							<div class="space-y-3">
-								<div class="grid grid-cols-3 gap-2 text-sm">
-									<span class="text-zinc-500 dark:text-zinc-400">Email</span>
-									<span class="col-span-2 font-mono">{props.claims.email}</span>
-								</div>
-								{props.claims.common_name && (
-									<div class="grid grid-cols-3 gap-2 text-sm">
-										<span class="text-zinc-500 dark:text-zinc-400">Name</span>
-										<span class="col-span-2 font-mono">{props.claims.common_name}</span>
-									</div>
-								)}
-								{props.identity?.user_uuid && (
-									<div class="grid grid-cols-3 gap-2 text-sm">
-										<span class="text-zinc-500 dark:text-zinc-400">User UUID</span>
-										<span class="col-span-2 font-mono break-all">{props.identity.user_uuid}</span>
-									</div>
-								)}
-								{props.claims.country && (
-									<div class="grid grid-cols-3 gap-2 text-sm">
-										<span class="text-zinc-500 dark:text-zinc-400">Country</span>
-										<span class="col-span-2 font-mono">{props.claims.country}</span>
-									</div>
-								)}
-								{props.identity?.ip && (
-									<div class="grid grid-cols-3 gap-2 text-sm">
-										<span class="text-zinc-500 dark:text-zinc-400">IP Address</span>
-										<span class="col-span-2 font-mono">{props.identity.ip}</span>
-									</div>
-								)}
-								<div class="grid grid-cols-3 gap-2 text-sm">
-									<span class="text-zinc-500 dark:text-zinc-400">Issued</span>
-									<span class="col-span-2 font-mono">
-										{new Date(props.claims.iat * 1000).toLocaleString()}
-									</span>
-								</div>
-								<div class="grid grid-cols-3 gap-2 text-sm">
-									<span class="text-zinc-500 dark:text-zinc-400">Expires</span>
-									<span class="col-span-2 font-mono">
-										{new Date(props.claims.exp * 1000).toLocaleString()}
-									</span>
-								</div>
-								{props.identity?.is_warp && (
-									<div class="grid grid-cols-3 gap-2 text-sm">
-										<span class="text-zinc-500 dark:text-zinc-400">WARP</span>
-										<span class="col-span-2 font-mono">Enabled</span>
-									</div>
-								)}
-								{props.identity?.is_gateway && (
-									<div class="grid grid-cols-3 gap-2 text-sm">
-										<span class="text-zinc-500 dark:text-zinc-400">Gateway</span>
-										<span class="col-span-2 font-mono">Enabled</span>
-									</div>
-								)}
+				<div class="space-y-5">
+					{statusRows.length > 0 && (
+						<div class="tool-panel">
+							<div class="tool-panel-head mb-3">
+								<h2 class="tool-panel-title">Authentication Status</h2>
+								<p class="tool-source">Verified JWT</p>
 							</div>
-						)}
-					</div>
+							<dl class="tool-rows">
+								{statusRows.map((row) => (
+									<div class="tool-row">
+										<dt>{row.label}</dt>
+										<dd translate="no">{row.value}</dd>
+									</div>
+								))}
+							</dl>
+						</div>
+					)}
 
-					{props.identity && props.identity.device_sessions && (
-						<div class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-							<h2 class="mb-4 text-lg font-semibold">Device Sessions</h2>
-							<ul class="space-y-2 text-sm">
+					{props.identity?.device_sessions && props.identity.device_sessions.length > 0 && (
+						<div class="tool-panel">
+							<div class="tool-panel-head mb-3">
+								<h2 class="tool-panel-title">Device Sessions</h2>
+								<p class="tool-source">Access Identity</p>
+							</div>
+							<ul class="space-y-4" role="list">
 								{props.identity.device_sessions.map((session) => (
-									<li class="border-b border-zinc-100 pb-2 last:border-0 last:pb-0 dark:border-zinc-800">
-										<div class="grid grid-cols-3 gap-2">
-											<span class="text-zinc-500 dark:text-zinc-400">Session ID</span>
-											<span class="col-span-2 font-mono break-all">{session.id}</span>
-										</div>
-										<div class="grid grid-cols-3 gap-2">
-											<span class="text-zinc-500 dark:text-zinc-400">Created</span>
-											<span class="col-span-2 font-mono">
-												{new Date(session.created_at).toLocaleString()}
-											</span>
-										</div>
-										<div class="grid grid-cols-3 gap-2">
-											<span class="text-zinc-500 dark:text-zinc-400">Expires</span>
-											<span class="col-span-2 font-mono">
-												{new Date(session.expires_at).toLocaleString()}
-											</span>
-										</div>
+									<li class="border-t border-[var(--tool-line)] pt-4 first:border-0 first:pt-0">
+										<dl class="tool-rows">
+											<div class="tool-row">
+												<dt>Session ID</dt>
+												<dd translate="no">{session.id}</dd>
+											</div>
+											<div class="tool-row">
+												<dt>Created</dt>
+												<dd>{formatStamp(session.created_at)}</dd>
+											</div>
+											<div class="tool-row">
+												<dt>Expires</dt>
+												<dd>{formatStamp(session.expires_at)}</dd>
+											</div>
+										</dl>
 									</li>
 								))}
 							</ul>
@@ -256,10 +269,8 @@ const props = await (async () => {
 					)}
 
 					{props.claims && (
-						<details class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-							<summary class="cursor-pointer font-semibold hover:text-zinc-600 dark:hover:text-zinc-300">
-								Raw JWT Claims
-							</summary>
+						<details class="tool-panel">
+							<summary class="tool-panel-title cursor-pointer">Raw JWT Claims</summary>
 							<div class="mt-4">
 								<CodePanel
 									title="JWT JSON"
@@ -273,10 +284,8 @@ const props = await (async () => {
 					)}
 
 					{props.identity && (
-						<details class="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-							<summary class="cursor-pointer font-semibold hover:text-zinc-600 dark:hover:text-zinc-300">
-								Full Identity Payload
-							</summary>
+						<details class="tool-panel">
+							<summary class="tool-panel-title cursor-pointer">Full Identity Payload</summary>
 							<div class="mt-4">
 								<CodePanel
 									title="Identity JSON"
@@ -289,18 +298,15 @@ const props = await (async () => {
 						</details>
 					)}
 
-					<div class="flex gap-3">
-						<a
-							href={`${props.teamDomain}/cdn-cgi/access/logout`}
-							class="rounded border border-zinc-300 px-4 py-2 text-sm transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-						>
-							Logout
+					<div class="flex flex-wrap gap-3">
+						<a class="tool-button" href={`${props.teamDomain}/cdn-cgi/access/logout`}>
+							Log Out
 						</a>
 						<a
+							class="tool-button"
 							href="https://one.dash.cloudflare.com/"
 							target="_blank"
 							rel="noopener noreferrer"
-							class="rounded border border-zinc-300 px-4 py-2 text-sm transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
 						>
 							Cloudflare One Dashboard
 						</a>

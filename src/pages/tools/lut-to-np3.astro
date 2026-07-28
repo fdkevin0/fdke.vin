@@ -76,10 +76,19 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 						</label>
 					</div>
 
-					<label class="space-y-2">
-						<span class="tool-field-label">Gray-Axis Weighting</span>
+					<div class="space-y-2">
+						<div class="flex items-baseline justify-between gap-3">
+							<label class="tool-field-label" for="gray-weight">Gray-Axis Weighting</label>
+							<output
+								class="text-sm font-semibold text-[var(--tool-teal)] tabular-nums"
+								for="gray-weight"
+								data-gray-weight-output>0.80</output
+							>
+						</div>
 						<input
+							id="gray-weight"
 							class="w-full accent-[var(--tool-green)]"
+							aria-describedby="gray-weight-help"
 							autocomplete="off"
 							max="1"
 							min="0"
@@ -88,14 +97,14 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 							type="range"
 							value="0.8"
 						/>
-						<p class="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+						<p class="tool-note" id="gray-weight-help">
 							Higher values push the fit toward neutral-axis tone response. Lower values let the
 							converter borrow more average RGB behavior.
 						</p>
-					</label>
+					</div>
 
 					<div class="tool-status p-3 text-xs leading-relaxed">
-						<p class="font-semibold">First version constraints</p>
+						<p class="font-semibold">First Version Constraints</p>
 						<p class="mt-2">
 							Supported inputs are display-referred 3D <code>.cube</code> LUTs with
 							<code>DOMAIN_MIN 0 0 0</code> and <code>DOMAIN_MAX 1 1 1</code>. Log, ACES, HDR, and
@@ -135,6 +144,15 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 </PageLayout>
 
 <script>
+	// The title comes out of a file the reader picked, so it is never trusted as
+	// markup on the way back into the panel.
+	const escapeHtml = (value: string) =>
+		value.replace(
+			/[&<>"']/g,
+			(char) =>
+				({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char,
+		);
+
 	class LutToNp3Tool extends HTMLElement {
 		connectedCallback() {
 			const form = this.querySelector("[data-tool-form]");
@@ -158,6 +176,26 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 
 			const fileInput = form.querySelector('input[name="file"]');
 			const nameInput = form.querySelector('input[name="name"]');
+			const convertButton = form.querySelector("[data-convert]");
+
+			// A slider with no readout hides the value it is setting.
+			const grayWeight = form.querySelector('input[name="grayWeight"]');
+			const grayWeightOutput = this.querySelector("[data-gray-weight-output]");
+			if (grayWeight instanceof HTMLInputElement && grayWeightOutput instanceof HTMLElement) {
+				const syncGrayWeight = () => {
+					grayWeightOutput.textContent = Number(grayWeight.value).toFixed(2);
+				};
+				syncGrayWeight();
+				grayWeight.addEventListener("input", syncGrayWeight);
+			}
+
+			// Both buttons drive the same endpoint, so neither stays clickable while
+			// the other is mid-flight.
+			const setBusy = (busy: boolean) => {
+				for (const button of [inspectButton, convertButton]) {
+					if (button instanceof HTMLButtonElement) button.disabled = busy;
+				}
+			};
 
 			const renderInspection = (payload: {
 				title?: string | null;
@@ -169,26 +207,28 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 				const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
 				const rows = [
 					["Title", payload.title || "Untitled"],
-					["3D size", String(payload.size || "--")],
+					["3D size", String(payload.size || "Unknown")],
 					["Detected input space", payload.detectedInputSpace || "Unknown"],
 					["Detected gamma", payload.detectedGamma || "Unknown"],
 				];
 				inspectionPanel.innerHTML = `
-					<div class="space-y-2">
+					<dl class="tool-rows">
 						${rows
 							.map(
 								([label, value]) => `
-								<div class="flex items-start justify-between gap-4 text-xs">
-									<span class="tracking-[0.22em] text-zinc-500 uppercase dark:text-zinc-400">${label}</span>
-									<span class="text-right text-zinc-800 dark:text-zinc-100">${value}</span>
+								<div class="tool-row">
+									<dt>${escapeHtml(String(label))}</dt>
+									<dd>${escapeHtml(String(value))}</dd>
 								</div>`,
 							)
 							.join("")}
-					</div>
+					</dl>
 					${
 						warnings.length > 0
-							? `<div class="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">${warnings.join("<br>")}</div>`
-							: `<p class="text-xs text-zinc-500 dark:text-zinc-400">No metadata warnings were detected.</p>`
+							? `<div class="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">${warnings
+									.map((warning) => escapeHtml(String(warning)))
+									.join("<br>")}</div>`
+							: `<p class="tool-note">No metadata warnings were detected.</p>`
 					}
 				`;
 				if (nameInput instanceof HTMLInputElement && !nameInput.value && payload.title) {
@@ -229,6 +269,7 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 			};
 
 			inspectButton?.addEventListener("click", async () => {
+				setBusy(true);
 				try {
 					const response = await send("inspect");
 					if (!response) return;
@@ -243,11 +284,14 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 					setStatus("Inspection complete.");
 				} catch (error) {
 					setStatus(error instanceof Error ? error.message : "Inspection failed.", true);
+				} finally {
+					setBusy(false);
 				}
 			});
 
 			form.addEventListener("submit", async (event) => {
 				event.preventDefault();
+				setBusy(true);
 				try {
 					const response = await send("convert");
 					if (!response) return;
@@ -266,6 +310,8 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 					setStatus(`Generated ${filename}.`);
 				} catch (error) {
 					setStatus(error instanceof Error ? error.message : "Conversion failed.", true);
+				} finally {
+					setBusy(false);
 				}
 			});
 		}
