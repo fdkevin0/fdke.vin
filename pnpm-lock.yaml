@@ -28,8 +28,8 @@ importers:
         specifier: ^3.7.3
         version: 3.7.3
       '@fedify/fedify':
-        specifier: 2.3.2
-        version: 2.3.2
+        specifier: 2.3.4
+        version: 2.3.4
       '@js-temporal/polyfill':
         specifier: ^0.5.1
         version: 0.5.1
@@ -94,8 +94,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0(supports-color@10.2.2)
       satori:
-        specifier: ^0.28.2
-        version: 0.28.2
+        specifier: ^0.29.0
+        version: 0.29.0
       satori-html:
         specifier: ^0.3.2
         version: 0.3.2
@@ -730,28 +730,28 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fedify/fedify@2.3.2':
-    resolution: {integrity: sha512-tdmhGTG5JlX551igR/zB2z421pdU8iZjVmiilf5nX/wgB+BJqUQF0AY0GIpg+ZulABnVD+CYJSS9KXAt7F37uw==}
+  '@fedify/fedify@2.3.4':
+    resolution: {integrity: sha512-mrANyBg/2+LgDooOpDPfa5MWUZzWPU/HubgO6Gpw5jR+U15UU5bHGUEUpWsFGsC61ciCVq0BycV3mdD0EivLxA==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
-  '@fedify/uri-template@2.3.2':
-    resolution: {integrity: sha512-cIaTC6xp2FasoakP8yqRZvoneldRrDRqCqw3/hmhfk7LsV7UABaHr+ncL9ZA9KL2CcfuSOyWeVqCohSABtkuKQ==}
+  '@fedify/uri-template@2.3.4':
+    resolution: {integrity: sha512-J7/eNopw/5hFSQJ3mJneg9hl0yzZxrQrH5/RZrnErLBpdW2NA6zshRMiIu5yFvVGcK5d23R87oWqmfCXDUcw4w==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
-  '@fedify/vocab-runtime@2.3.2':
-    resolution: {integrity: sha512-g4KemZ1Ocj/vXsq5D+ksKO/dSYmGq8WPMUq+xvNZi3j3iCUuCcRsuodgWhn7StajvSLF/wCkYgjaHgkqbp+92g==}
+  '@fedify/vocab-runtime@2.3.4':
+    resolution: {integrity: sha512-ibpuxBWLopyC0hambvWWqXejniFlCx+QNAUp9/WgnJbq1w77WDJ+6B5pNjMdzUhmQlvCKErdebJCTwp/NgRqNQ==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
-  '@fedify/vocab-tools@2.3.2':
-    resolution: {integrity: sha512-EKXFz9U7fPRoaubxicPnoiFjwqVu2QhFQdRD0y8L1gtvyT3odCa68t2aiOfYMwgrvoIAdR53IjCR5A4zjGGWuA==}
+  '@fedify/vocab-tools@2.3.4':
+    resolution: {integrity: sha512-hh6J5xFqGjMpEB40IM5uWpR4y8YovhQt6CWfC9ylpPZv5zwIDq5D4STNi4WIUQ15xt3/z7HCcZh5dzGS6wgKog==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
-  '@fedify/vocab@2.3.2':
-    resolution: {integrity: sha512-1SeRo8opv3AsE7Bmy1ksMtQYUsnoFed+OulWKXIpw+ou77V778SDBOnv7RYyQH4xahsOel6GAv9y6/Ezp908tw==}
+  '@fedify/vocab@2.3.4':
+    resolution: {integrity: sha512-xQ9QbTD9WFQAKl2Lt1chPCr5Oe+V+VQNtvjsfN7NxZQ5Q8f7K40NTMjHAMfYprFxos9ldYV5IQ3INsOeWQcGOw==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
-  '@fedify/webfinger@2.3.2':
-    resolution: {integrity: sha512-+/8mwHqJmsxoST/suuPwKumaiUAi//qZ4+FSOfIfWz2EwlBa8Ru/S5LsuTb9QXGVAJS6Oizj3Imzm3raxRsYiQ==}
+  '@fedify/webfinger@2.3.4':
+    resolution: {integrity: sha512-mjerv2yWIHi6MJVPMi/HY9FVKX9ZuuwjWXOueWnZvi9NToXeboHM086jciQeOjBqxSyWvO6n+qWMhnWbv6xqxQ==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
   '@iconify-json/mdi@1.2.3':
@@ -3058,8 +3058,8 @@ packages:
   satori-html@0.3.2:
     resolution: {integrity: sha512-wjTh14iqADFKDK80e51/98MplTGfxz2RmIzh0GqShlf4a67+BooLywF17TvJPD6phO0Hxm7Mf1N5LtRYvdkYRA==}
 
-  satori@0.28.2:
-    resolution: {integrity: sha512-AZBuptlBvlMf+EC/WI6Ss5MJwSEstrC6Pf1o5b2keg6h1QbvjStmrnJXUDGWOrfC1KSU0FApyGhF2xnBwmJRgA==}
+  satori@0.29.0:
+    resolution: {integrity: sha512-fPAfrwNaIQ7EsJLhY382STEqpczN6ZEH9NsKXDQgRcxUXNNPB73iAjSshzFwTaaScT68pxV0pmG6TBzDQ4sEGw==}
     engines: {node: '>=16'}
 
   satteri@0.9.5:
@@ -4216,12 +4216,12 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@fedify/fedify@2.3.2':
+  '@fedify/fedify@2.3.4':
     dependencies:
-      '@fedify/uri-template': 2.3.2
-      '@fedify/vocab': 2.3.2
-      '@fedify/vocab-runtime': 2.3.2
-      '@fedify/webfinger': 2.3.2
+      '@fedify/uri-template': 2.3.4
+      '@fedify/vocab': 2.3.4
+      '@fedify/vocab-runtime': 2.3.4
+      '@fedify/webfinger': 2.3.4
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 2.2.4
       '@opentelemetry/api': 1.9.1
@@ -4236,9 +4236,9 @@ snapshots:
       structured-field-values: 2.0.4
       urlpattern-polyfill: 10.1.0
 
-  '@fedify/uri-template@2.3.2': {}
+  '@fedify/uri-template@2.3.4': {}
 
-  '@fedify/vocab-runtime@2.3.2':
+  '@fedify/vocab-runtime@2.3.4':
     dependencies:
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 2.2.4
@@ -4249,18 +4249,18 @@ snapshots:
       jsonld: 9.0.0
       pkijs: 3.4.0
 
-  '@fedify/vocab-tools@2.3.2':
+  '@fedify/vocab-tools@2.3.4':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       byte-encodings: 1.0.11
       es-toolkit: 1.49.0
       yaml: 2.9.0
 
-  '@fedify/vocab@2.3.2':
+  '@fedify/vocab@2.3.4':
     dependencies:
-      '@fedify/vocab-runtime': 2.3.2
-      '@fedify/vocab-tools': 2.3.2
-      '@fedify/webfinger': 2.3.2
+      '@fedify/vocab-runtime': 2.3.4
+      '@fedify/vocab-tools': 2.3.4
+      '@fedify/webfinger': 2.3.4
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 2.2.4
       '@multiformats/base-x': 4.0.1
@@ -4270,9 +4270,9 @@ snapshots:
       jsonld: 9.0.0
       pkijs: 3.4.0
 
-  '@fedify/webfinger@2.3.2':
+  '@fedify/webfinger@2.3.4':
     dependencies:
-      '@fedify/vocab-runtime': 2.3.2
+      '@fedify/vocab-runtime': 2.3.4
       '@logtape/logtape': 2.2.4
       '@opentelemetry/api': 1.9.1
       es-toolkit: 1.46.1
@@ -7029,7 +7029,7 @@ snapshots:
     dependencies:
       ultrahtml: 1.7.0
 
-  satori@0.28.2:
+  satori@0.29.0:
     dependencies:
       '@shuding/opentype.js': 1.4.0-beta.0
       css-background-parser: 0.1.0
