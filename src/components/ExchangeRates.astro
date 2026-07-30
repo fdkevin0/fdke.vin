@@ -24,13 +24,7 @@ const { defaultCurrency = "USD", limit = 12 } = Astro.props;
 							<option value={defaultCurrency}>{defaultCurrency}</option>
 						</select>
 					</label>
-					<button
-						class="tool-button disabled:cursor-not-allowed disabled:opacity-60"
-						data-refresh
-						type="button"
-					>
-						Refresh
-					</button>
+					<button class="tool-button" data-refresh type="button"> Refresh </button>
 				</div>
 			</div>
 			<div class="mt-4 grid gap-3 sm:grid-cols-3">

@@ -11,7 +11,7 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 	}}
 >
 	<section class="tool-workbench space-y-5">
-		<div class="tool-hero space-y-4 pt-8">
+		<div class="tool-hero space-y-4">
 			<p class="tool-kicker">
 				<a href="/tools/" class="hover:underline">Tools</a> / LUT to NP3
 			</p>
@@ -114,11 +114,7 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 
 					<div class="flex flex-wrap gap-3">
 						<button class="tool-button" data-inspect type="button"> Inspect LUT </button>
-						<button
-							class="tool-button tool-button-primary disabled:cursor-not-allowed disabled:opacity-60"
-							data-convert
-							type="submit"
-						>
+						<button class="tool-button tool-button-primary" data-convert type="submit">
 							Generate NP3
 						</button>
 					</div>
@@ -146,12 +142,7 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 <script>
 	// The title comes out of a file the reader picked, so it is never trusted as
 	// markup on the way back into the panel.
-	const escapeHtml = (value: string) =>
-		value.replace(
-			/[&<>"']/g,
-			(char) =>
-				({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char,
-		);
+	import { escapeHtml } from "@/utils/html";
 
 	class LutToNp3Tool extends HTMLElement {
 		connectedCallback() {
@@ -170,8 +161,7 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 
 			const setStatus = (message: string, isError = false) => {
 				status.textContent = message;
-				status.classList.toggle("border-red-500", isError);
-				status.classList.toggle("text-red-600", isError);
+				status.classList.toggle("tool-status--danger", isError);
 			};
 
 			const fileInput = form.querySelector('input[name="file"]');
@@ -205,7 +195,7 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 				warnings?: string[];
 			}) => {
 				const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
-				const rows = [
+				const rows: [string, string][] = [
 					["Title", payload.title || "Untitled"],
 					["3D size", String(payload.size || "Unknown")],
 					["Detected input space", payload.detectedInputSpace || "Unknown"],
@@ -217,16 +207,16 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 							.map(
 								([label, value]) => `
 								<div class="tool-row">
-									<dt>${escapeHtml(String(label))}</dt>
-									<dd>${escapeHtml(String(value))}</dd>
+									<dt>${label}</dt>
+									<dd>${escapeHtml(value)}</dd>
 								</div>`,
 							)
 							.join("")}
 					</dl>
 					${
 						warnings.length > 0
-							? `<div class="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">${warnings
-									.map((warning) => escapeHtml(String(warning)))
+							? `<div class="tool-status tool-status--warn p-3 text-xs">${warnings
+									.map(escapeHtml)
 									.join("<br>")}</div>`
 							: `<p class="tool-note">No metadata warnings were detected.</p>`
 					}

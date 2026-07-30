@@ -1,0 +1,7 @@
+/** Values that reach `innerHTML` are never trusted as markup on the way in. */
+export const escapeHtml = (value: string) =>
+	value.replace(
+		/[&<>"']/g,
+		(char) =>
+			({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char,
+	);

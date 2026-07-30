@@ -105,10 +105,12 @@
 		box-shadow: 0 1px 0 color-mix(in oklab, var(--tool-ink) 8%, transparent);
 	}
 
+	/* The top padding clears ::before below, so it lives here rather than as a
+	   pt-8 every page has to remember to repeat. */
 	.tool-hero {
 		position: relative;
 		overflow: hidden;
-		padding: 1rem;
+		padding: 2rem 1rem 1rem;
 	}
 
 	.tool-hero::before {
@@ -288,6 +290,13 @@
 		color: var(--tool-teal);
 	}
 
+	/* The class already transitions opacity for this; every caller was spelling
+	   the disabled look out in utilities, and one of them forgot. */
+	.tool-button:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+
 	.tool-button-primary {
 		border-color: var(--tool-green);
 		background-color: var(--tool-green);
@@ -298,6 +307,13 @@
 		border-color: var(--tool-teal);
 		background-color: var(--tool-teal);
 		color: #fff;
+	}
+
+	/* Every workbench page leads with one headline value under the lede, ruled off
+	   from it. The rule and its spacing belong to the system, not to each page. */
+	.tool-hero-readout {
+		border-top: 1px solid var(--tool-line);
+		padding-top: 1rem;
 	}
 
 	.tool-readout {
@@ -314,6 +330,18 @@
 		border: 1px dashed var(--tool-line);
 		border-radius: 6px;
 		color: var(--tool-muted);
+	}
+
+	/* A status block that carries severity turns solid and takes a tint. The
+	   workbench palette has no red or amber of its own, so the two it needs are
+	   stated once here instead of as raw utilities at each call site — which is
+	   how three pages ended up with three different reds. */
+	.tool-status--warn {
+		@apply border-solid border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300;
+	}
+
+	.tool-status--danger {
+		@apply border-solid border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300;
 	}
 
 	.tool-note {

@@ -53,7 +53,7 @@ const lookupHost = LOOKUP_HOST;
 	}}
 >
 	<section class="tool-workbench space-y-5">
-		<div class="tool-hero space-y-4 pt-8">
+		<div class="tool-hero space-y-4">
 			<p class="tool-kicker">
 				<a href="/tools/" class="hover:underline">Tools</a> / Network
 			</p>
@@ -62,7 +62,7 @@ const lookupHost = LOOKUP_HOST;
 				What the edge sees when you connect, what Radar knows about any address, and how the
 				Internet around you is behaving.
 			</p>
-			<div class="border-t border-[var(--tool-line)] pt-4">
+			<div class="tool-hero-readout">
 				<p class="tool-field-label">Your Address</p>
 				{
 					connection.ip ? (
@@ -130,9 +130,7 @@ const lookupHost = LOOKUP_HOST;
 						placeholder="1.1.1.1 or github.com…"
 						class="tool-input min-w-0 flex-1"
 					/>
-					<button type="submit" class="tool-button disabled:opacity-60" data-lookup-submit>
-						Look Up
-					</button>
+					<button type="submit" class="tool-button" data-lookup-submit> Look Up </button>
 				</form>
 				<pre
 					data-lookup-result
@@ -209,6 +207,7 @@ const lookupHost = LOOKUP_HOST;
 		RankingsSnapshot,
 		RoutingSnapshot,
 	} from "@/lib/network/datasets";
+	import { escapeHtml } from "@/utils/html";
 
 	// The reader's own locale decides how these dates read, so the format is
 	// resolved once here rather than hardcoded at each call site.
@@ -217,13 +216,6 @@ const lookupHost = LOOKUP_HOST;
 		month: "short",
 		year: "numeric",
 	});
-
-	const escapeHtml = (value: string) =>
-		value.replace(
-			/[&<>"']/g,
-			(char) =>
-				({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char,
-		);
 
 	class NetworkPanelsElement extends HTMLElement {
 		#country = "";
@@ -387,14 +379,18 @@ const lookupHost = LOOKUP_HOST;
 
 		async #lookup(query: string, output: HTMLPreElement) {
 			const submit = this.#el<HTMLButtonElement>("[data-lookup-submit]");
-			const label = submit?.textContent ?? "";
+			// Both button states are written outright: reading the current label to
+			// restore it later goes wrong the moment the ?q= autoload is still in
+			// flight when the reader submits, which would pin it to "Looking Up…".
+			const setBusy = (busy: boolean) => {
+				if (!submit) return;
+				submit.disabled = busy;
+				submit.textContent = busy ? "Looking Up…" : "Look Up";
+			};
 
 			output.classList.remove("hidden");
 			output.textContent = "Looking up…";
-			if (submit) {
-				submit.disabled = true;
-				submit.textContent = "Looking Up…";
-			}
+			setBusy(true);
 
 			try {
 				const response = await fetch(
@@ -405,10 +401,7 @@ const lookupHost = LOOKUP_HOST;
 			} catch {
 				output.textContent = "Lookup failed. Check the address and try again.";
 			} finally {
-				if (submit) {
-					submit.disabled = false;
-					submit.textContent = label;
-				}
+				setBusy(false);
 			}
 		}
 
