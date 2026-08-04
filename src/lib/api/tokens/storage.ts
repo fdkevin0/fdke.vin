@@ -2,7 +2,7 @@ import { generateApiToken, sha256 } from "@/lib/api/tokens/crypto";
 import type { ApiScope } from "@/lib/api/tokens/scopes";
 import { hasRequiredScope, isApiScope } from "@/lib/api/tokens/scopes";
 import type { CloudflareAccessUser } from "@/lib/cloudflare-access";
-import { requireCloudflareEnv } from "@/lib/cloudflare-runtime";
+import { requireCloudflareEnv, runInBackground } from "@/lib/cloudflare-runtime";
 
 export interface StoredApiToken {
 	id: string;
@@ -296,11 +296,15 @@ export async function verifyApiToken(
 		return null;
 	}
 
+	// Off the critical path, but `void` alone let the runtime cancel it once the
+	// response was sent, so last-used timestamps went missing at random.
 	const now = new Date().toISOString();
-	void db
-		.prepare("UPDATE api_tokens SET last_used_at = ?, updated_at = ? WHERE id = ?")
-		.bind(now, now, result.id)
-		.run();
+	await runInBackground(
+		db
+			.prepare("UPDATE api_tokens SET last_used_at = ?, updated_at = ? WHERE id = ?")
+			.bind(now, now, result.id)
+			.run(),
+	);
 
 	return {
 		token: mapTokenRow(result),

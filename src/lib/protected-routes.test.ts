@@ -39,6 +39,31 @@ describe("routeNeedsAuth", () => {
 			expect(routeNeedsAuth(pathname), pathname).toBe(false);
 		}
 	});
+
+	it("matches whole segments, not name prefixes", () => {
+		for (const pathname of [
+			"/tools/mailbox",
+			"/api/tokensX",
+			"/dashboards",
+			"/authenticate",
+			"/tools/accessible",
+			"/api/ap/notesy",
+		]) {
+			expect(routeNeedsAuth(pathname), pathname).toBe(false);
+		}
+	});
+
+	it("treats a trailing slash the same as none", () => {
+		for (const pathname of [
+			"/auth/",
+			"/api/tokens/",
+			"/api/ping/",
+			"/dashboard/",
+			"/tools/access/",
+		]) {
+			expect(routeNeedsAuth(pathname), pathname).toBe(true);
+		}
+	});
 });
 
 describe("getRequiredApiScope", () => {

@@ -1,5 +1,6 @@
 import { CLOUDFLARE_POLICY_AUD, CLOUDFLARE_TEAM_DOMAIN } from "astro:env/server";
-import { defineMiddleware } from "astro:middleware";
+import { defineMiddleware, sequence } from "astro:middleware";
+import { jsonError } from "@/lib/api/http";
 import { verifyApiToken } from "@/lib/api/tokens/storage";
 import {
 	getLocalMockUser,
@@ -21,11 +22,11 @@ function createAuthRedirect(url: URL): Response {
 	return Response.redirect(authUrl);
 }
 
-export const onRequest = defineMiddleware(async (context, next) => {
-	const { url } = context;
-	context.locals.apiToken = null;
+/** Resolves the reader's language before anything else needs it. */
+const localeMiddleware = defineMiddleware(async (context, next) => {
 	const requestHeaders = !context.isPrerendered ? context.request.headers : null;
 	context.locals.siteCountry = requestHeaders?.get("cf-ipcountry") ?? null;
+
 	const siteLangCookie = !context.isPrerendered
 		? context.cookies.get(SITE_LANG_COOKIE_KEY)?.value
 		: undefined;
@@ -35,13 +36,25 @@ export const onRequest = defineMiddleware(async (context, next) => {
 			? DEFAULT_SITE_LANG
 			: getCountrySiteLang(context.locals.siteCountry ?? undefined);
 
+	return next();
+});
+
+/** Gates protected routes on an Access session or a scoped API token. */
+const authMiddleware = defineMiddleware(async (context, next) => {
+	const { url } = context;
+	context.locals.apiToken = null;
+	context.locals.accessClaims = null;
+
 	if (!routeNeedsAuth(url.pathname)) {
 		context.locals.user = null;
 		return next();
 	}
 
+	const isApiRoute = url.pathname.startsWith("/api/");
+	const requestHeaders = !context.isPrerendered ? context.request.headers : null;
 	const requiredApiScope = getRequiredApiScope(url.pathname);
 	const authorization = requestHeaders?.get("authorization");
+
 	if (requiredApiScope && authorization?.startsWith("Bearer ")) {
 		const bearerToken = authorization.slice("Bearer ".length).trim();
 
@@ -61,16 +74,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
 				console.error("API token verification failed:", error);
 			}
 
-			return new Response(JSON.stringify({ error: "Unauthorized" }), {
-				status: 401,
-				headers: { "Content-Type": "application/json" },
-			});
+			return jsonError(401, "Unauthorized");
 		}
 	}
 
-	const isLocalDev = import.meta.env.DEV;
-
-	if (isLocalDev) {
+	if (import.meta.env.DEV) {
 		context.locals.user = getLocalMockUser();
 		console.log(
 			"[Cloudflare Access] Bypassed for local dev - using mock user:",
@@ -92,30 +100,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		context.cookies.get("CF_Authorization")?.value;
 
 	if (!token) {
-		if (url.pathname.startsWith("/api/")) {
-			return new Response(JSON.stringify({ error: "Unauthorized" }), {
-				status: 401,
-				headers: { "Content-Type": "application/json" },
-			});
-		}
-
-		return createAuthRedirect(url);
+		return isApiRoute ? jsonError(401, "Unauthorized") : createAuthRedirect(url);
 	}
 
 	try {
-		context.locals.user = await verifyCloudflareAccessToken({
-			token,
-			teamDomain,
-			policyAud,
-		});
+		const verified = await verifyCloudflareAccessToken({ token, teamDomain, policyAud });
+		context.locals.user = verified.user;
+		// Held so pages that display the session do not have to verify a second
+		// time, which would cost another JWKS lookup per render.
+		context.locals.accessClaims = verified.claims;
 		return next();
 	} catch (error) {
 		console.error("Cloudflare Access JWT validation failed:", error);
-
-		if (!url.pathname.startsWith("/api/")) {
-			return createAuthRedirect(url);
-		}
-
-		return new Response("Unauthorized", { status: 403 });
+		// A token that fails verification is not an authenticated caller, so this
+		// is 401 rather than 403 on both the API and page paths.
+		return isApiRoute ? jsonError(401, "Unauthorized") : createAuthRedirect(url);
 	}
 });
+
+export const onRequest = sequence(localeMiddleware, authMiddleware);

@@ -1,22 +1,8 @@
 import type { APIRoute } from "astro";
+import { getSafeRedirectTarget } from "@/lib/auth-redirect";
 
 export const prerender = false;
 
-const fallbackPath = "/dashboard/";
-
-function getSafeRedirectTarget(value: string | null): string {
-	if (!value || !value.startsWith("/")) {
-		return fallbackPath;
-	}
-
-	if (value.startsWith("//") || value === "/auth" || value.startsWith("/auth?")) {
-		return fallbackPath;
-	}
-
-	return value;
-}
-
 export const GET: APIRoute = ({ url, redirect }) => {
-	const redirectTarget = getSafeRedirectTarget(url.searchParams.get("redirect"));
-	return redirect(redirectTarget);
+	return redirect(getSafeRedirectTarget(url.searchParams.get("redirect"), url));
 };

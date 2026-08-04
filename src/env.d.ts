@@ -56,6 +56,11 @@ declare namespace App {
 		} | null;
 		siteCountry: string | null;
 		siteDefaultLang: "zh" | "en" | "ja";
-		cfContext: ExecutionContext;
+		/**
+		 * The verified Access claims behind `user`, kept so a page can show the
+		 * session without verifying the token a second time. Null when the caller
+		 * authenticated with an API token or the local dev bypass.
+		 */
+		accessClaims: import("./lib/cloudflare-access").CloudflareAccessClaims | null;
 	}
 }
