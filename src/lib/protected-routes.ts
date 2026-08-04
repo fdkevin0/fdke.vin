@@ -1,3 +1,9 @@
+// Workers has URLPattern natively; Astro's build-time prerender runs this
+// same module under plain Node, which may not (Cloudflare's pinned build
+// Node lacks it as of Node 22). The polyfill only patches globalThis when
+// the global is missing, so this is a no-op wherever URLPattern already
+// exists.
+import "urlpattern-polyfill";
 import type { ApiScope } from "@/lib/api/tokens/scopes";
 
 /**
