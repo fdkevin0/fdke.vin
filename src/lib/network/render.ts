@@ -152,6 +152,22 @@ function formatCountry(code: string | null, name: string | null): string | null 
 	return name ? `${code} ${name}` : code;
 }
 
+const COUNTRY_CODE = /^[A-Za-z]{2}$/;
+
+/** "GB" → "United Kingdom". Cloudflare hands back the ISO code; a reader wants the name. */
+export function countryName(code: string | null): string | null {
+	if (!code || !COUNTRY_CODE.test(code)) return code;
+	return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+}
+
+/** "GB" → 🇬🇧, via the regional-indicator trick — no flag asset to ship or cache. */
+export function countryFlag(code: string | null): string {
+	if (!code || !COUNTRY_CODE.test(code)) return "";
+	return String.fromCodePoint(
+		...[...code.toUpperCase()].map((char) => 127397 + char.charCodeAt(0)),
+	);
+}
+
 /** Left-aligned label column, sized to the widest label present. */
 function formatTable(rows: [string, string | null][]): string {
 	const present = rows.filter((row): row is [string, string] => row[1] !== null && row[1] !== "");

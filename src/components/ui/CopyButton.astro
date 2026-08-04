@@ -1,0 +1,87 @@
+---
+/**
+ * An icon-only copy-to-clipboard control, styled for the tool-workbench
+ * system. `data-tool-copy` is its own marker rather than reusing
+ * `data-copy-value` as the selector: CodePanel and FediverseBlock already
+ * put that same payload attribute on their own copy buttons, and a bare
+ * `[data-copy-value]` selector would bind this component's handler onto
+ * theirs too if both ever render on one page.
+ */
+interface Props {
+	value: string;
+	label: string;
+	size?: "sm" | "lg";
+}
+
+const { value, label, size = "sm" } = Astro.props as Props;
+---
+
+<button
+	type="button"
+	data-tool-copy
+	data-copy-value={value}
+	class:list={["tool-copy", { "tool-copy--lg": size === "lg" }]}
+	aria-label={`Copy ${label}`}
+>
+	<svg
+		aria-hidden="true"
+		focusable="false"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		stroke-width="1.75"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+	>
+		<rect x="9" y="9" width="12" height="12" rx="2"></rect>
+		<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+	</svg>
+</button>
+
+<script>
+	const CHECK_ICON =
+		'<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>';
+
+	// One shared live region serves every copy button on the page, created on
+	// demand so a page using this component doesn't have to remember to add it.
+	function copyStatus(): HTMLElement {
+		const existing = document.querySelector<HTMLElement>("[data-copy-status]");
+		if (existing) return existing;
+
+		const el = document.createElement("p");
+		el.dataset.copyStatus = "";
+		el.setAttribute("aria-live", "polite");
+		el.className = "sr-only";
+		document.body.appendChild(el);
+		return el;
+	}
+
+	for (const button of document.querySelectorAll<HTMLButtonElement>("[data-tool-copy]")) {
+		if (button.dataset.copyBound === "true") continue;
+		button.dataset.copyBound = "true";
+
+		const idleMarkup = button.innerHTML;
+		const idleLabel = button.getAttribute("aria-label") ?? "Copy";
+
+		button.addEventListener("click", async () => {
+			const value = button.dataset.copyValue;
+			if (!value) return;
+
+			try {
+				await navigator.clipboard.writeText(value);
+			} catch {
+				return;
+			}
+
+			button.innerHTML = CHECK_ICON;
+			button.dataset.copied = "true";
+			button.setAttribute("aria-label", "Copied");
+			copyStatus().textContent = `${idleLabel.replace(/^Copy /, "")} copied`;
+			window.setTimeout(() => {
+				button.innerHTML = idleMarkup;
+				button.dataset.copied = "false";
+				button.setAttribute("aria-label", idleLabel);
+			}, 1200);
+		});
+	}
+</script>
