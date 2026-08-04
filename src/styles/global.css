@@ -311,6 +311,55 @@
 
 	/* Every workbench page leads with one headline value under the lede, ruled off
 	   from it. The rule and its spacing belong to the system, not to each page. */
+	/* An icon button that copies its data-copy-value, sized for a detail row by
+	   default and bumped to --lg where it sits next to the hero readout. */
+	.tool-copy {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 1.75rem;
+		height: 1.75rem;
+		border: 1px solid var(--tool-line);
+		border-radius: 6px;
+		color: var(--tool-muted);
+		touch-action: manipulation;
+		transition:
+			border-color 160ms ease,
+			color 160ms ease;
+	}
+
+	.tool-copy svg {
+		width: 0.9rem;
+		height: 0.9rem;
+	}
+
+	.tool-copy:hover {
+		border-color: var(--tool-teal);
+		color: var(--tool-teal);
+	}
+
+	.tool-copy:focus-visible {
+		outline: 2px solid var(--tool-teal);
+		outline-offset: 2px;
+	}
+
+	.tool-copy[data-copied="true"] {
+		border-color: var(--tool-green);
+		color: var(--tool-green);
+	}
+
+	.tool-copy--lg {
+		width: 2.25rem;
+		height: 2.25rem;
+		border-radius: 8px;
+	}
+
+	.tool-copy--lg svg {
+		width: 1.1rem;
+		height: 1.1rem;
+	}
+
 	.tool-hero-readout {
 		border-top: 1px solid var(--tool-line);
 		padding-top: 1rem;

@@ -11,7 +11,26 @@ export const prerender = false;
 // part the reader came for. See docs/adr/0006.
 const connection = readConnection(Astro.request);
 
-const location = [connection.city, connection.region, connection.country]
+/** "GB" → "United Kingdom". Cloudflare hands back the ISO code; a reader wants the name. */
+function countryName(code: string | null): string | null {
+	if (!code) return null;
+	try {
+		return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+	} catch {
+		return code;
+	}
+}
+
+/** "GB" → 🇬🇧, via the regional-indicator trick — no flag asset to ship or cache. */
+function countryFlag(code: string | null): string {
+	if (!code || !/^[A-Za-z]{2}$/.test(code)) return "";
+	return String.fromCodePoint(
+		...[...code.toUpperCase()].map((char) => 127397 + char.charCodeAt(0)),
+	);
+}
+
+const flag = countryFlag(connection.country);
+const location = [connection.city, connection.region, countryName(connection.country)]
 	.filter(Boolean)
 	.join(", ");
 
@@ -20,7 +39,7 @@ const location = [connection.city, connection.region, connection.country]
 // carries the rest of the handshake — how — with no field said twice.
 const identity = [
 	connection.ipVersion ? `IPv${connection.ipVersion}` : null,
-	location || null,
+	location ? `${flag ? `${flag} ` : ""}${location}` : null,
 	connection.colo ? `via ${connection.colo}` : null,
 ]
 	.filter(Boolean)
@@ -67,9 +86,31 @@ const lookupHost = LOOKUP_HOST;
 				{
 					connection.ip ? (
 						<>
-							<p class="tool-readout mt-2" translate="no">
-								{connection.ip}
-							</p>
+							<div class="mt-2 flex flex-wrap items-center gap-2">
+								<p class="tool-readout" translate="no">
+									{connection.ip}
+								</p>
+								<button
+									type="button"
+									class="tool-copy tool-copy--lg"
+									data-copy-value={connection.ip}
+									aria-label="Copy IP address"
+								>
+									<svg
+										aria-hidden="true"
+										focusable="false"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.75"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<rect x="9" y="9" width="12" height="12" rx="2"></rect>
+										<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+									</svg>
+								</button>
+							</div>
 							{identity && <p class="tool-note mt-2">{identity}</p>}
 						</>
 					) : (
@@ -79,37 +120,58 @@ const lookupHost = LOOKUP_HOST;
 					)
 				}
 			</div>
-		</div>
-
-		{
-			presentRows.length > 0 && (
-				<div class="tool-panel">
-					<div class="tool-panel-head mb-3">
-						<h2 class="tool-panel-title">Connection Detail</h2>
-						<p class="tool-source">This Request</p>
+			{
+				presentRows.length > 0 && (
+					<div class="border-t border-[var(--tool-line)] pt-4">
+						<div class="mb-3 flex items-center justify-between gap-2">
+							<p class="tool-field-label">Connection Detail</p>
+							<p class="tool-source">This Request</p>
+						</div>
+						<dl class="tool-rows">
+							{presentRows.map((row) => (
+								<div class="tool-row">
+									<dt>{row.label}</dt>
+									<dd class="flex items-center justify-between gap-2" translate="no">
+										<span class="min-w-0 truncate">{row.value}</span>
+										<button
+											type="button"
+											class="tool-copy"
+											data-copy-value={row.value}
+											aria-label={`Copy ${row.label}`}
+										>
+											<svg
+												aria-hidden="true"
+												focusable="false"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.75"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											>
+												<rect x="9" y="9" width="12" height="12" rx="2"></rect>
+												<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+											</svg>
+										</button>
+									</dd>
+								</div>
+							))}
+						</dl>
+						<p class="tool-note mt-3">
+							From this request alone — no lookup, nothing stored. Same data from a terminal:{" "}
+							<code translate="no">curl {lookupHost}?detail=1</code>
+						</p>
 					</div>
-					<dl class="tool-rows">
-						{presentRows.map((row) => (
-							<div class="tool-row">
-								<dt>{row.label}</dt>
-								<dd translate="no">{row.value}</dd>
-							</div>
-						))}
-					</dl>
-					<p class="tool-note mt-4">
-						From this request alone — no lookup, nothing stored. Same data from a terminal:{" "}
-						<code translate="no">curl {lookupHost}?detail=1</code>
-					</p>
-				</div>
-			)
-		}
+				)
+			}
+		</div>
 
 		<network-panels
 			data-country={connection.country ?? ""}
 			data-lookup-host={lookupHost}
-			class="block space-y-5"
+			class="grid gap-5 md:grid-cols-2"
 		>
-			<div class="tool-panel">
+			<div class="tool-panel md:col-span-2">
 				<div class="tool-panel-head">
 					<h2 class="tool-panel-title">Look Up an Address</h2>
 					<p class="tool-source">Radar</p>
@@ -167,7 +229,7 @@ const lookupHost = LOOKUP_HOST;
 				</div>
 			</div>
 
-			<div class="tool-panel">
+			<div class="tool-panel md:col-span-2">
 				<div class="tool-panel-head">
 					<h2 class="tool-panel-title">Routing</h2>
 					<p class="tool-source">Radar</p>
@@ -178,7 +240,7 @@ const lookupHost = LOOKUP_HOST;
 				</div>
 			</div>
 
-			<div class="tool-panel">
+			<div class="tool-panel md:col-span-2">
 				<div class="tool-panel-head">
 					<h2 class="tool-panel-title">Rankings &amp; Attacks</h2>
 					<p class="tool-source">Radar</p>
@@ -191,6 +253,8 @@ const lookupHost = LOOKUP_HOST;
 				</div>
 			</div>
 		</network-panels>
+
+		<p data-copy-status aria-live="polite" class="sr-only"></p>
 	</section>
 </PageLayout>
 
@@ -489,4 +553,40 @@ const lookupHost = LOOKUP_HOST;
 	}
 
 	customElements.define("network-panels", NetworkPanelsElement);
+
+	// Every copyable field on the page — the hero address and each detail row —
+	// carries its value in data-copy-value, so one listener covers all of them
+	// regardless of where in the DOM they sit.
+	const CHECK_ICON =
+		'<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>';
+
+	// The icon swap alone isn't reliably announced by screen readers, so a
+	// shared live region carries the same "Copied" feedback out loud.
+	const copyStatus = document.querySelector<HTMLElement>("[data-copy-status]");
+
+	for (const button of document.querySelectorAll<HTMLButtonElement>("[data-copy-value]")) {
+		const idleMarkup = button.innerHTML;
+		const idleLabel = button.getAttribute("aria-label") ?? "Copy";
+
+		button.addEventListener("click", async () => {
+			const value = button.dataset.copyValue;
+			if (!value) return;
+
+			try {
+				await navigator.clipboard.writeText(value);
+			} catch {
+				return;
+			}
+
+			button.innerHTML = CHECK_ICON;
+			button.dataset.copied = "true";
+			button.setAttribute("aria-label", "Copied");
+			if (copyStatus) copyStatus.textContent = `${idleLabel.replace(/^Copy /, "")} copied`;
+			window.setTimeout(() => {
+				button.innerHTML = idleMarkup;
+				button.dataset.copied = "false";
+				button.setAttribute("aria-label", idleLabel);
+			}, 1200);
+		});
+	}
 </script>
