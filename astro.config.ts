@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import cloudflare from "@astrojs/cloudflare";
 // Rehype plugins
-import { rehypeHeadingIds } from "@astrojs/markdown-remark";
+import { rehypeHeadingIds, unified } from "@astrojs/markdown-remark";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 import tailwind from "@tailwindcss/vite";
@@ -71,37 +71,39 @@ export default defineConfig({
 	],
 
 	markdown: {
-		rehypePlugins: [
-			rehypeAdmonitions,
-			rehypeHeadingIds,
-			[rehypeAutolinkHeadings, { behavior: "wrap", properties: { className: ["not-prose"] } }],
-			[
-				rehypeExternalLinks,
-				{
-					rel: ["noreferrer", "noopener"],
-					target: "_blank",
-				},
+		processor: unified({
+			rehypePlugins: [
+				rehypeAdmonitions,
+				rehypeHeadingIds,
+				[rehypeAutolinkHeadings, { behavior: "wrap", properties: { className: ["not-prose"] } }],
+				[
+					rehypeExternalLinks,
+					{
+						rel: ["noreferrer", "noopener"],
+						target: "_blank",
+					},
+				],
+				rehypeUnwrapImages,
 			],
-			rehypeUnwrapImages,
-		],
-		remarkPlugins: [
-			remarkReadingTime,
-			remarkDirective,
-			remarkGithubCard,
-			[
-				remarkAdmonition,
-				{
-					defaultElement: "aside",
-					defaultProperties: { className: ["admonition"] },
-					types: admonitionTypes,
-				},
+			remarkPlugins: [
+				remarkReadingTime,
+				remarkDirective,
+				remarkGithubCard,
+				[
+					remarkAdmonition,
+					{
+						defaultElement: "aside",
+						defaultProperties: { className: ["admonition"] },
+						types: admonitionTypes,
+					},
+				],
 			],
-		],
-		remarkRehype: {
-			footnoteLabelProperties: {
-				className: [""],
+			remarkRehype: {
+				footnoteLabelProperties: {
+					className: [""],
+				},
 			},
-		},
+		}),
 	},
 
 	vite: {
