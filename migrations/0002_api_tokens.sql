@@ -1,3 +1,4 @@
+-- Migration 0002: API tokens and audit events.
 CREATE TABLE IF NOT EXISTS api_tokens (
 	id TEXT PRIMARY KEY,
 	owner_uid TEXT NOT NULL,

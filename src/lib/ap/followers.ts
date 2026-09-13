@@ -10,25 +10,6 @@ import type { ApEnv } from "@/lib/ap/runtime";
 
 const FOLLOWER_COLUMNS = "actor_id, inbox_url, shared_inbox_url, created_at";
 
-let ensureSchemaPromise: Promise<void> | null = null;
-
-/** Create the `ap_followers` table if absent. Idempotent, cached per isolate. */
-async function ensureFollowerSchema(env: ApEnv): Promise<void> {
-	if (!ensureSchemaPromise) {
-		ensureSchemaPromise = (async () => {
-			await env.DATABASE.prepare(
-				`CREATE TABLE IF NOT EXISTS ap_followers (
-					actor_id TEXT PRIMARY KEY,
-					inbox_url TEXT NOT NULL,
-					shared_inbox_url TEXT,
-					created_at TEXT NOT NULL
-				)`,
-			).run();
-		})();
-	}
-	return ensureSchemaPromise;
-}
-
 interface ApFollowerRow {
 	actor_id: string;
 	inbox_url: string;
@@ -41,7 +22,6 @@ export async function addFollower(
 	env: ApEnv,
 	input: { actorId: string; inboxUrl: string; sharedInboxUrl: string | null },
 ): Promise<void> {
-	await ensureFollowerSchema(env);
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_followers (actor_id, inbox_url, shared_inbox_url, created_at)
 		 VALUES (?1, ?2, ?3, ?4)
@@ -55,13 +35,11 @@ export async function addFollower(
 
 /** Remove a follower by actor id (an `Undo(Follow)`). No-op if not present. */
 export async function removeFollower(env: ApEnv, actorId: string): Promise<void> {
-	await ensureFollowerSchema(env);
 	await env.DATABASE.prepare("DELETE FROM ap_followers WHERE actor_id = ?1").bind(actorId).run();
 }
 
 /** Total number of followers, for the followers collection's `totalItems`. */
 export async function countFollowers(env: ApEnv): Promise<number> {
-	await ensureFollowerSchema(env);
 	const row = await env.DATABASE.prepare("SELECT COUNT(*) AS total FROM ap_followers").first<{
 		total: number;
 	}>();
@@ -70,7 +48,6 @@ export async function countFollowers(env: ApEnv): Promise<number> {
 
 /** List follower actor ids newest-first (for the followers collection `items`). */
 export async function listFollowerIds(env: ApEnv): Promise<string[]> {
-	await ensureFollowerSchema(env);
 	const result = await env.DATABASE.prepare(
 		"SELECT actor_id FROM ap_followers ORDER BY created_at DESC",
 	).all<{ actor_id: string }>();
@@ -83,7 +60,6 @@ export async function listFollowerIds(env: ApEnv): Promise<string[]> {
  * shared inboxes collapsed so one server receives a single POST.
  */
 export async function listDeliveryInboxes(env: ApEnv): Promise<string[]> {
-	await ensureFollowerSchema(env);
 	const result = await env.DATABASE.prepare(
 		`SELECT ${FOLLOWER_COLUMNS} FROM ap_followers`,
 	).all<ApFollowerRow>();

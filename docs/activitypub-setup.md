@@ -25,15 +25,15 @@ npx wrangler queues create ap-delivery-queue
 # R2 bucket for channel-post photos (AP-3), if not already created.
 npx wrangler r2 bucket create ap-storage
 
-# Apply the AP D1 schema. The app also creates these tables lazily on first
-# use, but applying explicitly avoids a cold-start race and documents intent.
-npx wrangler d1 execute DATABASE --remote --file scripts/d1/activitypub.sql
+# Apply every pending versioned D1 migration.
+pnpm wrangler d1 migrations apply DATABASE --remote
 ```
 
 `ap_notes`, `ap_note_attachments`, `ap_followers`, `ap_interactions` (inbound
 replies/likes/announces, AP-7), `ap_blocklist` (dropped domains, AP-7/AP-8), and
 `ap_note_deliveries` (per-inbox delivery status, AP-8) all live in the `DATABASE`
-D1 binding. Note migration (AP-1) is separate — see `scripts/d1/migrate-notes.mjs`.
+D1 binding. Wrangler records applied files in `d1_migrations`; application requests
+never run schema DDL.
 
 ---
 

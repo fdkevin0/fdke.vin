@@ -50,7 +50,8 @@
 		{
 			"binding": "DATABASE",
 			"database_name": "DATABASE",
-			"database_id": "c623d6ec-3353-4ef3-8218-5d677125dcd9"
+			"database_id": "c623d6ec-3353-4ef3-8218-5d677125dcd9",
+			"migrations_dir": "migrations"
 		}
 	],
 	"durable_objects": {

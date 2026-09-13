@@ -4,25 +4,8 @@ import type { ApEnv } from "@/lib/ap/runtime";
  * The domain blocklist (issues AP-7, AP-8): hosts whose inbound Activities the
  * inbox drops. Enforced in {@link ./inbox} via {@link isDomainBlocked} and
  * managed from the Access-protected dashboard. The canonical schema lives in
- * `scripts/d1/activitypub.sql`.
+ * `migrations/0001_activitypub.sql`.
  */
-
-let ensureSchemaPromise: Promise<void> | null = null;
-
-async function ensureBlocklistSchema(env: ApEnv): Promise<void> {
-	if (!ensureSchemaPromise) {
-		ensureSchemaPromise = (async () => {
-			await env.DATABASE.prepare(
-				`CREATE TABLE IF NOT EXISTS ap_blocklist (
-					domain TEXT PRIMARY KEY,
-					reason TEXT,
-					created_at TEXT NOT NULL
-				)`,
-			).run();
-		})();
-	}
-	return ensureSchemaPromise;
-}
 
 /** A blocklist entry as the dashboard reads it. */
 export interface BlockedDomain {
@@ -51,7 +34,6 @@ export function domainOf(actorId: string): string | null {
 export async function isDomainBlocked(env: ApEnv, actorId: string): Promise<boolean> {
 	const domain = domainOf(actorId);
 	if (!domain) return false;
-	await ensureBlocklistSchema(env);
 	const row = await env.DATABASE.prepare("SELECT 1 AS hit FROM ap_blocklist WHERE domain = ?1")
 		.bind(domain)
 		.first<{ hit: number }>();
@@ -60,7 +42,6 @@ export async function isDomainBlocked(env: ApEnv, actorId: string): Promise<bool
 
 /** List blocked domains, newest-first. */
 export async function listBlockedDomains(env: ApEnv): Promise<BlockedDomain[]> {
-	await ensureBlocklistSchema(env);
 	const result = await env.DATABASE.prepare(
 		"SELECT domain, reason, created_at FROM ap_blocklist ORDER BY created_at DESC",
 	).all<{ domain: string; reason: string | null; created_at: string }>();
@@ -81,7 +62,6 @@ export async function addBlockedDomain(
 ): Promise<string | null> {
 	const domain = domainOf(input.domain);
 	if (!domain) return null;
-	await ensureBlocklistSchema(env);
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_blocklist (domain, reason, created_at)
 		 VALUES (?1, ?2, ?3)
@@ -95,6 +75,5 @@ export async function addBlockedDomain(
 /** Remove a domain from the blocklist. No-op if absent. */
 export async function removeBlockedDomain(env: ApEnv, domain: string): Promise<void> {
 	const normalized = domainOf(domain) ?? domain.toLowerCase();
-	await ensureBlocklistSchema(env);
 	await env.DATABASE.prepare("DELETE FROM ap_blocklist WHERE domain = ?1").bind(normalized).run();
 }

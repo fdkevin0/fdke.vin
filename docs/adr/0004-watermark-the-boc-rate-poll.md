@@ -54,13 +54,9 @@ currency's row, and the thing the poll actually decides about is the whole
 - The cadence drops from `*/2` to `*/15` (`BOC_POLL_CRON` and `triggers.crons`
   must stay in sync). At ~3 rounds a day this cannot miss one; it only bounds how
   stale a stored round can be, by 15 minutes.
-- The table is created lazily by the poller as well as by
-  `scripts/d1/exchange.sql`, matching the `ap_*` modules — but only on the
-  **write** path. A `*/15` cron mostly gets a cold isolate, so ensuring the
-  schema on the read path would put a `CREATE TABLE IF NOT EXISTS` in front of
-  nearly every poll and double the statement count it exists to cut. The read
-  instead treats its own failure as "no watermark", which degrades to the
-  pre-watermark behaviour and is repaired by the next write.
+- The table and index are installed by `migrations/0003_exchange.sql`; poll requests
+  never run schema DDL. The read treats failure as "no watermark", which degrades
+  to the pre-watermark behaviour until the migration is applied.
 
 ## Consequences
 

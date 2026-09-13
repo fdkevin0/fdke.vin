@@ -9,14 +9,14 @@ Accepted
 ## Context
 
 "RSS" names two unrelated things in this codebase: the site's own feeds
-(`src/lib/rss.ts`, the `rss.xml` routes) and the feed *aggregator*
+(`src/lib/rss.ts`, the `rss.xml` routes) and the feed _aggregator_
 (`src/lib/feed`, a D1 + Durable Object + queues + Workers AI feed reader).
 An architecture review proposed renaming the aggregator's D1 tables
 (`rss_feeds`, `rss_feed_items`, and related) to drop the collision.
 
 ## Decision
 
-Rename only the setup script (`scripts/d1/feed-aggregator.sql`) and keep the
+Name the setup migration `migrations/0004_feed_aggregator.sql` and keep the
 production D1 table names as they are.
 
 ## Consequences

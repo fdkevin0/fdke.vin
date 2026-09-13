@@ -59,29 +59,7 @@ interface FeedReadingRow {
 	summary: string | null;
 }
 
-let ensureFeedSchemaPromise: Promise<void> | null = null;
-
-async function ensureFeedSchema(env: FeedEnv): Promise<void> {
-	if (!ensureFeedSchemaPromise) {
-		ensureFeedSchemaPromise = (async () => {
-			try {
-				await env.DATABASE.prepare(
-					"ALTER TABLE rss_feeds ADD COLUMN ai_translation_enabled INTEGER NOT NULL DEFAULT 1",
-				).run();
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				if (!message.includes("duplicate column name") && !message.includes("already exists")) {
-					throw error;
-				}
-			}
-		})();
-	}
-
-	return ensureFeedSchemaPromise;
-}
-
 export async function listFeedSources(env: FeedEnv): Promise<FeedSource[]> {
-	await ensureFeedSchema(env);
 	const result = await env.DATABASE.prepare(
 		`SELECT id, title, feed_url, site_url, is_active, ai_translation_enabled, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email
@@ -93,7 +71,6 @@ export async function listFeedSources(env: FeedEnv): Promise<FeedSource[]> {
 }
 
 export async function listActiveFeedSources(env: FeedEnv): Promise<FeedSource[]> {
-	await ensureFeedSchema(env);
 	const result = await env.DATABASE.prepare(
 		`SELECT id, title, feed_url, site_url, is_active, ai_translation_enabled, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email
@@ -110,7 +87,6 @@ export async function createFeedSource(
 	input: FeedSourceInput,
 	user: CloudflareAccessUser,
 ): Promise<FeedSource> {
-	await ensureFeedSchema(env);
 	const now = new Date().toISOString();
 	const id = crypto.randomUUID();
 
@@ -194,7 +170,6 @@ export async function deleteFeedSource(env: FeedEnv, id: string): Promise<boolea
 }
 
 export async function getFeedSourceById(env: FeedEnv, id: string): Promise<FeedSource | null> {
-	await ensureFeedSchema(env);
 	const row = await env.DATABASE.prepare(
 		`SELECT id, title, feed_url, site_url, is_active, ai_translation_enabled, last_fetched_at, last_error,
 		 created_at, updated_at, created_by_email, updated_by_email

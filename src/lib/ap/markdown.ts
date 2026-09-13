@@ -10,7 +10,7 @@ import rehypeExternalLinks from "rehype-external-links";
  * smartypants, external-link hardening) but drops Shiki syntax highlighting —
  * Notes have no fenced code, and Shiki pulls WASM that is heavier than the
  * free Worker bundle can spare. The processor is created once per isolate and
- * reused, matching the feed subsystem's `ensureFeedSchema` caching convention.
+ * reused across Note rendering and delivery.
  */
 let processorPromise: Promise<MarkdownRenderer> | null = null;
 

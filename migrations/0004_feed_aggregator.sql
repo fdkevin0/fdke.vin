@@ -1,3 +1,4 @@
+-- Migration 0004: feed aggregator sources, items, and ingest runs.
 CREATE TABLE IF NOT EXISTS rss_feeds (
 	id TEXT PRIMARY KEY,
 	title TEXT NOT NULL,

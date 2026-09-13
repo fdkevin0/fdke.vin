@@ -14,10 +14,6 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeExternalLinks from "rehype-external-links";
 import rehypeUnwrapImages from "rehype-unwrap-images";
 // Remark plugins
-import { remarkAdmonition } from "remark-admonition";
-import remarkDirective from "remark-directive"; /* Handle ::: directives as nodes */
-import { admonitionTypes, rehypeAdmonitions } from "./src/plugins/rehype-admonitions";
-import { remarkGithubCard } from "./src/plugins/remark-github-card";
 import { remarkReadingTime } from "./src/plugins/remark-reading-time";
 import { siteConfig } from "./src/site.config";
 
@@ -73,7 +69,6 @@ export default defineConfig({
 	markdown: {
 		processor: unified({
 			rehypePlugins: [
-				rehypeAdmonitions,
 				rehypeHeadingIds,
 				[rehypeAutolinkHeadings, { behavior: "wrap", properties: { className: ["not-prose"] } }],
 				[
@@ -85,19 +80,7 @@ export default defineConfig({
 				],
 				rehypeUnwrapImages,
 			],
-			remarkPlugins: [
-				remarkReadingTime,
-				remarkDirective,
-				remarkGithubCard,
-				[
-					remarkAdmonition,
-					{
-						defaultElement: "aside",
-						defaultProperties: { className: ["admonition"] },
-						types: admonitionTypes,
-					},
-				],
-			],
+			remarkPlugins: [remarkReadingTime],
 			remarkRehype: {
 				footnoteLabelProperties: {
 					className: [""],
@@ -130,7 +113,6 @@ export default defineConfig({
 				"json-canon",
 				"jsonld",
 				"structured-field-values",
-				"urlpattern-polyfill",
 			],
 		},
 		resolve: {

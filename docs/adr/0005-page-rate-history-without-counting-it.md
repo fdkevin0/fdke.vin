@@ -32,10 +32,8 @@ Two changes, one to the schema and one to the response.
 sort and the `start`/`end` range something to work on. Verified by query plan: the
 scan-plus-temp-B-tree becomes an index scan, and the range becomes a `SEARCH`.
 The currency-filtered call the UI actually makes is unaffected — it still uses the
-primary key. The index is ensured from the poll's write path
-(`ensureExchangeSchema`), not the read path, because the poll is the only code
-that touches this table on a schedule and a read-path DDL would sit in front of
-every API request.
+primary key. The index is installed by the versioned D1 migration, so requests only
+perform application queries.
 
 **Drop `total` and `totalPages` from the response**, in favour of reading
 `pageSize + 1` rows and reporting the extra one as `hasNextPage`. This removes
@@ -72,7 +70,7 @@ D1 stand-in both test files use now lives in `src/lib/testing/fake-d1.ts`.
   poll skips that path whenever the watermark says the round is already stored, so
   the index lands whenever BOC next publishes — hours later. That is acceptable
   because it is a performance fix on a path nothing in this repo calls, and the
-  read is correct either way. Running `scripts/d1/exchange.sql` puts it in place
+  read is correct either way. Applying `migrations/0003_exchange.sql` puts it in place
   immediately for anyone who does not want to wait.
 - `boc_rate_history` still grows ~44k rows/year with nothing pruning or rolling it
   up. Deep `OFFSET` paging still walks the rows it skips; at this size neither is

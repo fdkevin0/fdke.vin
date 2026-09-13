@@ -17,7 +17,6 @@ Personal website built with Astro.
 - `src/components`: shared UI and utility components
 - `src/layouts`: page and post layouts
 - `src/content`: live content collections for posts, notes, and tags
-- `src/content.bak`: archived theme example content kept for reference only
 - `public`: static assets such as icons and social cards
 
 ## Commands
@@ -38,8 +37,6 @@ Create content in these directories:
 - `src/content/post`
 - `src/content/note`
 - `src/content/tag`
-
-The site currently ships without theme sample posts in production content. If you want reference material, use `src/content.bak` as an archive and copy only the pieces you actually want to keep.
 
 ## Personalization checklist
 

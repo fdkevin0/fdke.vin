@@ -7,7 +7,7 @@ import type { Interaction, InteractionCounts, InteractionKind } from "@/lib/ap/t
  * Note; likes/announces render as counts. Rows are removed on `Undo` (matched by
  * `activity_id`) and on `Delete` (matched by `object_id`); the author can hide a
  * reply from the dashboard (issue AP-8). Canonical schema in
- * `scripts/d1/activitypub.sql`.
+ * `migrations/0001_activitypub.sql`.
  */
 
 const COLUMNS =
@@ -28,47 +28,6 @@ interface ApInteractionRow {
 	published_at: string | null;
 	created_at: string;
 	hidden: number;
-}
-
-let ensureSchemaPromise: Promise<void> | null = null;
-
-async function ensureInteractionSchema(env: ApEnv): Promise<void> {
-	if (!ensureSchemaPromise) {
-		ensureSchemaPromise = (async () => {
-			await env.DATABASE.prepare(
-				`CREATE TABLE IF NOT EXISTS ap_interactions (
-					id TEXT PRIMARY KEY,
-					activity_id TEXT,
-					note_id TEXT NOT NULL,
-					kind TEXT NOT NULL,
-					actor_id TEXT NOT NULL,
-					actor_name TEXT,
-					actor_handle TEXT,
-					actor_avatar_url TEXT,
-					object_id TEXT,
-					content TEXT,
-					url TEXT,
-					published_at TEXT,
-					created_at TEXT NOT NULL,
-					hidden INTEGER NOT NULL DEFAULT 0
-				)`,
-			).run();
-			await env.DATABASE.prepare(
-				"CREATE INDEX IF NOT EXISTS idx_ap_interactions_note ON ap_interactions(note_id, kind)",
-			).run();
-			await env.DATABASE.prepare(
-				"CREATE INDEX IF NOT EXISTS idx_ap_interactions_activity ON ap_interactions(activity_id)",
-			).run();
-			await env.DATABASE.prepare(
-				"CREATE INDEX IF NOT EXISTS idx_ap_interactions_object ON ap_interactions(object_id)",
-			).run();
-			await env.DATABASE.prepare(
-				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_interactions_unique
-				 ON ap_interactions(note_id, actor_id, kind, object_id)`,
-			).run();
-		})();
-	}
-	return ensureSchemaPromise;
 }
 
 function mapRow(row: ApInteractionRow): Interaction {
@@ -110,7 +69,6 @@ export interface InsertInteractionInput {
  * duplicated.
  */
 export async function insertInteraction(env: ApEnv, input: InsertInteractionInput): Promise<void> {
-	await ensureInteractionSchema(env);
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_interactions (${COLUMNS})
 		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 0)
@@ -149,7 +107,6 @@ export async function removeInteraction(
 		objectId: string | null;
 	},
 ): Promise<void> {
-	await ensureInteractionSchema(env);
 	if (match.activityId) {
 		const byActivity = await env.DATABASE.prepare(
 			"DELETE FROM ap_interactions WHERE activity_id = ?1",
@@ -169,7 +126,6 @@ export async function removeInteraction(
 
 /** Remove interactions referencing a deleted remote object (a `Delete` of a reply). */
 export async function deleteInteractionsByObject(env: ApEnv, objectId: string): Promise<void> {
-	await ensureInteractionSchema(env);
 	await env.DATABASE.prepare("DELETE FROM ap_interactions WHERE object_id = ?1")
 		.bind(objectId)
 		.run();
@@ -177,7 +133,6 @@ export async function deleteInteractionsByObject(env: ApEnv, objectId: string): 
 
 /** Visible (non-hidden) replies to a Note, oldest-first (thread order). */
 export async function listRepliesForNote(env: ApEnv, noteId: string): Promise<Interaction[]> {
-	await ensureInteractionSchema(env);
 	const result = await env.DATABASE.prepare(
 		`SELECT ${COLUMNS} FROM ap_interactions
 		 WHERE note_id = ?1 AND kind = 'reply' AND hidden = 0
@@ -193,7 +148,6 @@ export async function countInteractionsForNote(
 	env: ApEnv,
 	noteId: string,
 ): Promise<InteractionCounts> {
-	await ensureInteractionSchema(env);
 	const result = await env.DATABASE.prepare(
 		`SELECT kind, COUNT(*) AS total
 		 FROM ap_interactions
@@ -222,7 +176,6 @@ export async function interactionCountsForNotes(
 ): Promise<Map<string, InteractionCounts>> {
 	const map = new Map<string, InteractionCounts>();
 	if (noteIds.length === 0) return map;
-	await ensureInteractionSchema(env);
 	const placeholders = noteIds.map((_, i) => `?${i + 1}`).join(", ");
 	const result = await env.DATABASE.prepare(
 		`SELECT note_id, kind, COUNT(*) AS total
@@ -244,7 +197,6 @@ export async function interactionCountsForNotes(
 
 /** All interactions for a Note including hidden ones, newest-first (dashboard moderation). */
 export async function listInteractionsForNote(env: ApEnv, noteId: string): Promise<Interaction[]> {
-	await ensureInteractionSchema(env);
 	const result = await env.DATABASE.prepare(
 		`SELECT ${COLUMNS} FROM ap_interactions
 		 WHERE note_id = ?1
@@ -261,7 +213,6 @@ export async function setInteractionHidden(
 	id: string,
 	hidden: boolean,
 ): Promise<boolean> {
-	await ensureInteractionSchema(env);
 	const result = await env.DATABASE.prepare("UPDATE ap_interactions SET hidden = ?2 WHERE id = ?1")
 		.bind(id, hidden ? 1 : 0)
 		.run();
@@ -270,7 +221,6 @@ export async function setInteractionHidden(
 
 /** Permanently delete a stored interaction (dashboard "remove"). */
 export async function deleteInteraction(env: ApEnv, id: string): Promise<boolean> {
-	await ensureInteractionSchema(env);
 	const result = await env.DATABASE.prepare("DELETE FROM ap_interactions WHERE id = ?1")
 		.bind(id)
 		.run();
@@ -279,6 +229,5 @@ export async function deleteInteraction(env: ApEnv, id: string): Promise<boolean
 
 /** Delete all interactions targeting a Note (when the Note itself is deleted). */
 export async function deleteInteractionsForNote(env: ApEnv, noteId: string): Promise<void> {
-	await ensureInteractionSchema(env);
 	await env.DATABASE.prepare("DELETE FROM ap_interactions WHERE note_id = ?1").bind(noteId).run();
 }

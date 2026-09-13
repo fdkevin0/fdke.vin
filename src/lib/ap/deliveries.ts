@@ -5,35 +5,10 @@ import type { ApEnv } from "@/lib/ap/runtime";
  * Per-inbox {@link Delivery} status tracking (issue AP-8). Each follower inbox a
  * Note is delivered to gets one row, moved `pending` → `delivered`/`failed` as
  * the queue processes it. The dashboard aggregates these into a Note's overall
- * federation status. Canonical schema in `scripts/d1/activitypub.sql`.
+ * federation status. Canonical schema in `migrations/0001_activitypub.sql`.
  */
 
 export type DeliveryStatus = "pending" | "delivered" | "failed";
-
-let ensureSchemaPromise: Promise<void> | null = null;
-
-async function ensureDeliverySchema(env: ApEnv): Promise<void> {
-	if (!ensureSchemaPromise) {
-		ensureSchemaPromise = (async () => {
-			await env.DATABASE.prepare(
-				`CREATE TABLE IF NOT EXISTS ap_note_deliveries (
-					note_id TEXT NOT NULL,
-					inbox_url TEXT NOT NULL,
-					kind TEXT NOT NULL,
-					status TEXT NOT NULL,
-					attempts INTEGER NOT NULL DEFAULT 0,
-					last_error TEXT,
-					updated_at TEXT NOT NULL,
-					PRIMARY KEY (note_id, inbox_url)
-				)`,
-			).run();
-			await env.DATABASE.prepare(
-				"CREATE INDEX IF NOT EXISTS idx_ap_note_deliveries_note ON ap_note_deliveries(note_id)",
-			).run();
-		})();
-	}
-	return ensureSchemaPromise;
-}
 
 /** Aggregated delivery status for one Note. */
 export interface NoteDeliveryStatus {
@@ -48,7 +23,6 @@ export async function recordDeliveryPending(
 	env: ApEnv,
 	input: { noteId: string; inboxUrl: string; kind: DeliveryKind },
 ): Promise<void> {
-	await ensureDeliverySchema(env);
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_note_deliveries (note_id, inbox_url, kind, status, attempts, last_error, updated_at)
 		 VALUES (?1, ?2, ?3, 'pending', 0, NULL, ?4)
@@ -68,7 +42,6 @@ export async function recordDeliveryResult(
 	env: ApEnv,
 	input: { noteId: string; inboxUrl: string; kind: DeliveryKind; ok: boolean; error?: string },
 ): Promise<void> {
-	await ensureDeliverySchema(env);
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_note_deliveries (note_id, inbox_url, kind, status, attempts, last_error, updated_at)
 		 VALUES (?1, ?2, ?3, ?4, 1, ?5, ?6)
@@ -101,7 +74,6 @@ export async function deliveryStatusForNotes(
 ): Promise<Map<string, NoteDeliveryStatus>> {
 	const map = new Map<string, NoteDeliveryStatus>();
 	if (noteIds.length === 0) return map;
-	await ensureDeliverySchema(env);
 	const placeholders = noteIds.map((_, i) => `?${i + 1}`).join(", ");
 	const result = await env.DATABASE.prepare(
 		`SELECT note_id, status, COUNT(*) AS total

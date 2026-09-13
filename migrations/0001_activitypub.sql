@@ -1,4 +1,4 @@
--- ActivityPub Notes (see CONTEXT.md "Federation" and docs/adr/0002-*).
+-- Migration 0001: ActivityPub Notes (see CONTEXT.md "Federation" and docs/adr/0002-*).
 -- A Note is a D1 row keyed by an opaque, time-sortable ULID (the Note id).
 
 CREATE TABLE IF NOT EXISTS ap_notes (

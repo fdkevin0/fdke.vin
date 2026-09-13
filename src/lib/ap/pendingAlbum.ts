@@ -5,42 +5,8 @@ import type { ApEnv } from "@/lib/ap/runtime";
  * see CONTEXT.md "Pending album"). Each arriving Album photo is written here
  * durably before the webhook responds 200; finalization reads a group's rows,
  * decides wait-vs-finalize (the pure logic in `./album.ts`), and on finalize
- * deletes them. Canonical schema in `scripts/d1/activitypub.sql`.
+ * deletes them. Canonical schema in `migrations/0001_activitypub.sql`.
  */
-
-let ensureSchemaPromise: Promise<void> | null = null;
-
-async function ensurePendingAlbumSchema(env: ApEnv): Promise<void> {
-	if (!ensureSchemaPromise) {
-		ensureSchemaPromise = (async () => {
-			await env.DATABASE.prepare(
-				`CREATE TABLE IF NOT EXISTS ap_pending_album_photos (
-					id TEXT PRIMARY KEY,
-					group_id TEXT NOT NULL,
-					chat_id INTEGER NOT NULL,
-					message_id INTEGER NOT NULL,
-					file_id TEXT NOT NULL,
-					file_unique_id TEXT NOT NULL,
-					media_type TEXT NOT NULL,
-					width INTEGER NOT NULL,
-					height INTEGER NOT NULL,
-					content TEXT NOT NULL DEFAULT '',
-					publish_date TEXT NOT NULL,
-					arrived_at TEXT NOT NULL
-				)`,
-			).run();
-			await env.DATABASE.prepare(
-				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_pending_album_photos_message
-				 ON ap_pending_album_photos(chat_id, message_id)`,
-			).run();
-			await env.DATABASE.prepare(
-				`CREATE INDEX IF NOT EXISTS idx_ap_pending_album_photos_group
-				 ON ap_pending_album_photos(chat_id, group_id)`,
-			).run();
-		})();
-	}
-	return ensureSchemaPromise;
-}
 
 interface ApPendingAlbumPhotoRow {
 	id: string;
@@ -120,7 +86,6 @@ export async function upsertPendingAlbumPhoto(
 	env: ApEnv,
 	input: InsertPendingAlbumPhotoInput,
 ): Promise<void> {
-	await ensurePendingAlbumSchema(env);
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_pending_album_photos
 		 (id, group_id, chat_id, message_id, file_id, file_unique_id, media_type, width, height, content, publish_date, arrived_at)
@@ -157,7 +122,6 @@ export async function listPendingAlbumPhotos(
 	chatId: number,
 	groupId: string,
 ): Promise<PendingAlbumPhoto[]> {
-	await ensurePendingAlbumSchema(env);
 	const result = await env.DATABASE.prepare(
 		`SELECT id, group_id, chat_id, message_id, file_id, file_unique_id, media_type, width, height, content, publish_date, arrived_at
 		 FROM ap_pending_album_photos WHERE chat_id = ?1 AND group_id = ?2`,
@@ -176,7 +140,6 @@ export async function listPendingAlbumPhotos(
  */
 export async function deletePendingAlbumPhotosByIds(env: ApEnv, ids: string[]): Promise<void> {
 	if (ids.length === 0) return;
-	await ensurePendingAlbumSchema(env);
 	const placeholders = ids.map((_, i) => `?${i + 1}`).join(", ");
 	await env.DATABASE.prepare(`DELETE FROM ap_pending_album_photos WHERE id IN (${placeholders})`)
 		.bind(...ids)

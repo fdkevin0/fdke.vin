@@ -11,96 +11,6 @@ const NOTE_COLUMNS = "id, title, content, summary, published_at, updated_at, cre
 const ATTACHMENT_COLUMNS =
 	"id, note_id, r2_key, url, media_type, name, width, height, position, telegram_message_id";
 
-let ensureSchemaPromise: Promise<void> | null = null;
-
-/**
- * Create the `ap_notes` and `ap_note_attachments` tables if they do not exist.
- * Idempotent and cached per isolate, mirroring the feed subsystem's
- * `ensureFeedSchema`. The canonical schema lives in `scripts/d1/activitypub.sql`.
- */
-async function ensureNoteSchema(env: ApEnv): Promise<void> {
-	if (!ensureSchemaPromise) {
-		ensureSchemaPromise = (async () => {
-			await env.DATABASE.prepare(
-				`CREATE TABLE IF NOT EXISTS ap_notes (
-					id TEXT PRIMARY KEY,
-					title TEXT,
-					content TEXT NOT NULL,
-					summary TEXT,
-					published_at TEXT NOT NULL,
-					updated_at TEXT NOT NULL,
-					created_at TEXT NOT NULL,
-					source TEXT NOT NULL DEFAULT 'migration',
-					telegram_chat_id INTEGER,
-					telegram_message_id INTEGER
-				)`,
-			).run();
-			// Add the Telegram columns to pre-existing tables (issue AP-3, AP-11).
-			// SQLite has no `ADD COLUMN IF NOT EXISTS`, so tolerate the
-			// duplicate-column error on databases already carrying them.
-			await addColumnIfMissing(env, "ap_notes", "telegram_chat_id INTEGER");
-			await addColumnIfMissing(env, "ap_notes", "telegram_message_id INTEGER");
-			await addColumnIfMissing(env, "ap_notes", "telegram_media_group_id TEXT");
-			await env.DATABASE.prepare(
-				"CREATE INDEX IF NOT EXISTS idx_ap_notes_published_at ON ap_notes(published_at)",
-			).run();
-			await env.DATABASE.prepare(
-				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_notes_telegram
-				 ON ap_notes(telegram_chat_id, telegram_message_id)
-				 WHERE telegram_chat_id IS NOT NULL`,
-			).run();
-			await env.DATABASE.prepare(
-				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_notes_telegram_group
-				 ON ap_notes(telegram_chat_id, telegram_media_group_id)
-				 WHERE telegram_media_group_id IS NOT NULL`,
-			).run();
-			await env.DATABASE.prepare(
-				`CREATE TABLE IF NOT EXISTS ap_note_attachments (
-					id TEXT PRIMARY KEY,
-					note_id TEXT NOT NULL REFERENCES ap_notes(id) ON DELETE CASCADE,
-					r2_key TEXT NOT NULL,
-					url TEXT NOT NULL,
-					media_type TEXT NOT NULL,
-					name TEXT,
-					width INTEGER,
-					height INTEGER,
-					position INTEGER NOT NULL DEFAULT 0,
-					telegram_message_id INTEGER
-				)`,
-			).run();
-			await addColumnIfMissing(env, "ap_note_attachments", "telegram_message_id INTEGER");
-			await env.DATABASE.prepare(
-				"CREATE INDEX IF NOT EXISTS idx_ap_note_attachments_note ON ap_note_attachments(note_id, position)",
-			).run();
-			// One row per (Note, R2 object), so re-appending the same photo (a
-			// retried finalize, a redelivered straggler) is a no-op (issue AP-11).
-			await env.DATABASE.prepare(
-				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_note_attachments_r2key
-				 ON ap_note_attachments(note_id, r2_key)`,
-			).run();
-			// One attachment per (Note, authoring Album message), so editing a
-			// photo within an already-finalized Album replaces it in place
-			// instead of appending a duplicate (issue AP-11).
-			await env.DATABASE.prepare(
-				`CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_note_attachments_message
-				 ON ap_note_attachments(note_id, telegram_message_id)
-				 WHERE telegram_message_id IS NOT NULL`,
-			).run();
-		})();
-	}
-	return ensureSchemaPromise;
-}
-
-async function addColumnIfMissing(env: ApEnv, table: string, columnDef: string): Promise<void> {
-	try {
-		await env.DATABASE.prepare(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`).run();
-	} catch (error) {
-		if (!/duplicate column name/i.test(error instanceof Error ? error.message : String(error))) {
-			throw error;
-		}
-	}
-}
-
 function mapNoteRow(row: ApNoteRow): Note {
 	return {
 		id: row.id,
@@ -115,7 +25,6 @@ function mapNoteRow(row: ApNoteRow): Note {
 
 /** Insert a Note, or replace it if the id already exists (idempotent migration). */
 export async function upsertNote(env: ApEnv, row: ApNoteRow): Promise<void> {
-	await ensureNoteSchema(env);
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_notes (${NOTE_COLUMNS})
 		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
@@ -142,7 +51,6 @@ export async function upsertNote(env: ApEnv, row: ApNoteRow): Promise<void> {
 
 /** Fetch a single Note by its ULID, or null if none exists. */
 export async function getNoteById(env: ApEnv, id: string): Promise<Note | null> {
-	await ensureNoteSchema(env);
 	const row = await env.DATABASE.prepare(`SELECT ${NOTE_COLUMNS} FROM ap_notes WHERE id = ?1`)
 		.bind(id)
 		.first<ApNoteRow>();
@@ -151,7 +59,6 @@ export async function getNoteById(env: ApEnv, id: string): Promise<Note | null> 
 
 /** List Notes newest-first (by published date). */
 export async function listNotes(env: ApEnv): Promise<Note[]> {
-	await ensureNoteSchema(env);
 	const result = await env.DATABASE.prepare(
 		`SELECT ${NOTE_COLUMNS} FROM ap_notes ORDER BY published_at DESC, id DESC`,
 	).all<ApNoteRow>();
@@ -160,7 +67,6 @@ export async function listNotes(env: ApEnv): Promise<Note[]> {
 
 /** Total number of Notes, for pagination metadata. */
 export async function countNotes(env: ApEnv): Promise<number> {
-	await ensureNoteSchema(env);
 	const row = await env.DATABASE.prepare("SELECT COUNT(*) AS total FROM ap_notes").first<{
 		total: number;
 	}>();
@@ -176,7 +82,6 @@ export async function listNotesPage(
 	env: ApEnv,
 	opts: { limit: number; offset: number },
 ): Promise<Note[]> {
-	await ensureNoteSchema(env);
 	const result = await env.DATABASE.prepare(
 		`SELECT ${NOTE_COLUMNS} FROM ap_notes
 		 ORDER BY published_at DESC, id DESC
@@ -206,7 +111,6 @@ export interface InsertNoteInput {
 
 /** Insert a brand-new Note (fails on id conflict — callers pick a fresh ULID). */
 export async function insertNote(env: ApEnv, input: InsertNoteInput): Promise<void> {
-	await ensureNoteSchema(env);
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_notes
 		 (id, title, content, summary, published_at, updated_at, created_at, source, telegram_chat_id, telegram_message_id, telegram_media_group_id)
@@ -234,7 +138,6 @@ export async function updateNoteContent(
 	id: string,
 	fields: { content: string; summary: string | null; updatedAt: string },
 ): Promise<void> {
-	await ensureNoteSchema(env);
 	await env.DATABASE.prepare(
 		"UPDATE ap_notes SET content = ?2, summary = ?3, updated_at = ?4 WHERE id = ?1",
 	)
@@ -248,7 +151,6 @@ export async function findNoteIdByTelegramMessage(
 	chatId: number,
 	messageId: number,
 ): Promise<string | null> {
-	await ensureNoteSchema(env);
 	const row = await env.DATABASE.prepare(
 		"SELECT id FROM ap_notes WHERE telegram_chat_id = ?1 AND telegram_message_id = ?2",
 	)
@@ -268,7 +170,6 @@ export async function findNoteIdByTelegramMediaGroup(
 	chatId: number,
 	groupId: string,
 ): Promise<string | null> {
-	await ensureNoteSchema(env);
 	const row = await env.DATABASE.prepare(
 		"SELECT id FROM ap_notes WHERE telegram_chat_id = ?1 AND telegram_media_group_id = ?2",
 	)
@@ -284,7 +185,6 @@ export async function findNoteIdByTelegramMediaGroup(
  * deleted explicitly rather than relying on the FK cascade, which D1 leaves off.
  */
 export async function deleteNote(env: ApEnv, id: string): Promise<boolean> {
-	await ensureNoteSchema(env);
 	const [, result] = await env.DATABASE.batch([
 		env.DATABASE.prepare("DELETE FROM ap_note_attachments WHERE note_id = ?1").bind(id),
 		env.DATABASE.prepare("DELETE FROM ap_notes WHERE id = ?1").bind(id),
@@ -312,7 +212,6 @@ export async function replaceNoteAttachments(
 	noteId: string,
 	attachments: InsertAttachmentInput[],
 ): Promise<void> {
-	await ensureNoteSchema(env);
 	const statements = [
 		env.DATABASE.prepare("DELETE FROM ap_note_attachments WHERE note_id = ?1").bind(noteId),
 		...attachments.map((a, position) =>
@@ -340,7 +239,6 @@ export async function upsertNoteAttachmentByMessage(
 	telegramMessageId: number,
 	attachment: InsertAttachmentInput,
 ): Promise<void> {
-	await ensureNoteSchema(env);
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_note_attachments (${ATTACHMENT_COLUMNS})
 		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8,
@@ -369,7 +267,6 @@ export async function upsertNoteAttachmentByMessage(
 
 /** List a Note's attachments in display order. */
 export async function listNoteAttachments(env: ApEnv, noteId: string): Promise<NoteAttachment[]> {
-	await ensureNoteSchema(env);
 	const result = await env.DATABASE.prepare(
 		`SELECT ${ATTACHMENT_COLUMNS} FROM ap_note_attachments WHERE note_id = ?1 ORDER BY position ASC`,
 	)

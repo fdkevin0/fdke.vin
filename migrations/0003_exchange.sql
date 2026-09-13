@@ -1,4 +1,4 @@
--- Bank of China exchange-rate history, appended by the BOC poll cron
+-- Migration 0003: Bank of China exchange-rate history, appended by the BOC poll cron
 -- (src/lib/api/exchange/poll.ts) and read by /api/exchange/* and /tools/exchange.
 --
 -- The (currency, pub_time) primary key is the backstop that makes a repeat write
@@ -34,9 +34,6 @@ CREATE INDEX IF NOT EXISTS idx_boc_rate_history_pub_time ON boc_rate_history(pub
 -- watermark would skip that round forever and the missing currencies would never
 -- be stored.
 --
--- The poller creates this table lazily too (src/lib/api/exchange/poll.ts), so a
--- deploy that lands before this script runs still works; the CREATE here is what
--- gives the schema an owner in this repo.
 CREATE TABLE IF NOT EXISTS boc_poll_state (
 	id INTEGER PRIMARY KEY CHECK (id = 1),
 	last_pub_time TEXT NOT NULL,
