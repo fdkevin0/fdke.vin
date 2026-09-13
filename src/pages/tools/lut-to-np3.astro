@@ -1,6 +1,5 @@
 ---
 import PageLayout from "@/layouts/Base.astro";
-import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut-to-np3";
 ---
 
 <PageLayout
@@ -23,8 +22,8 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 			</p>
 		</div>
 
-		<lut-to-np3-tool class="block">
-			<div class="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+		<div class="block" data-lut-to-np3>
+			<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
 				<form class="tool-panel space-y-5" data-tool-form>
 					<div class="grid gap-4 sm:grid-cols-2">
 						<label class="space-y-2">
@@ -48,31 +47,6 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 								placeholder="ConvertedLUT…"
 								type="text"
 							/>
-						</label>
-					</div>
-
-					<div class="grid gap-4 sm:grid-cols-2">
-						<label class="space-y-2">
-							<span class="tool-field-label">Input Space</span>
-							<select class="tool-select" autocomplete="off" name="inputSpace">
-								<option value="auto">Auto detect</option>
-								{
-									Object.entries(supportedInputSpaceLabels).map(([value, label]) => (
-										<option value={value}>{label}</option>
-									))
-								}
-							</select>
-						</label>
-						<label class="space-y-2">
-							<span class="tool-field-label">Gamma</span>
-							<select class="tool-select" autocomplete="off" name="gamma">
-								<option value="auto">Auto detect</option>
-								{
-									Object.entries(supportedGammaLabels).map(([value, label]) => (
-										<option value={value}>{label}</option>
-									))
-								}
-							</select>
 						</label>
 					</div>
 
@@ -112,65 +86,40 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 						</p>
 					</div>
 
-					<div class="flex flex-wrap gap-3">
-						<button class="tool-button" data-inspect type="button"> Inspect LUT </button>
-						<button class="tool-button tool-button-primary" data-convert type="submit">
-							Generate NP3
-						</button>
-					</div>
+					<button class="tool-button tool-button-primary" data-convert type="submit">
+						Generate NP3
+					</button>
 				</form>
 
-				<div class="tool-panel space-y-4">
-					<div class="space-y-2">
-						<p class="tool-field-label">Inspection</p>
-						<div class="space-y-2 text-sm leading-relaxed" data-inspection-panel>
-							<p class="tool-lede">Upload a LUT and inspect its metadata before conversion.</p>
-						</div>
-					</div>
-					<div class="space-y-2">
-						<p class="tool-field-label">Status</p>
-						<div class="tool-status p-3 text-sm" data-status aria-live="polite" role="status">
-							Waiting for input.
-						</div>
+				<div class="tool-panel space-y-2">
+					<p class="tool-field-label">Status</p>
+					<div class="tool-status p-3 text-sm" data-status aria-live="polite" role="status">
+						Waiting for input.
 					</div>
 				</div>
 			</div>
-		</lut-to-np3-tool>
+		</div>
 	</section>
 </PageLayout>
 
 <script>
-	// The title comes out of a file the reader picked, so it is never trusted as
-	// markup on the way back into the panel.
-	import { escapeHtml } from "@/utils/html";
+	const root = document.querySelector("[data-lut-to-np3]");
+	if (root instanceof HTMLElement) {
+		const form = root.querySelector("[data-tool-form]");
+		const status = root.querySelector("[data-status]");
 
-	class LutToNp3Tool extends HTMLElement {
-		connectedCallback() {
-			const form = this.querySelector("[data-tool-form]");
-			const inspectButton = this.querySelector("[data-inspect]");
-			const status = this.querySelector("[data-status]");
-			const inspectionPanel = this.querySelector("[data-inspection-panel]");
-
-			if (
-				!(form instanceof HTMLFormElement) ||
-				!(status instanceof HTMLElement) ||
-				!(inspectionPanel instanceof HTMLElement)
-			) {
-				return;
-			}
-
+		if (form instanceof HTMLFormElement && status instanceof HTMLElement) {
 			const setStatus = (message: string, isError = false) => {
 				status.textContent = message;
 				status.classList.toggle("tool-status--danger", isError);
 			};
 
 			const fileInput = form.querySelector('input[name="file"]');
-			const nameInput = form.querySelector('input[name="name"]');
 			const convertButton = form.querySelector("[data-convert]");
 
 			// A slider with no readout hides the value it is setting.
 			const grayWeight = form.querySelector('input[name="grayWeight"]');
-			const grayWeightOutput = this.querySelector("[data-gray-weight-output]");
+			const grayWeightOutput = root.querySelector("[data-gray-weight-output]");
 			if (grayWeight instanceof HTMLInputElement && grayWeightOutput instanceof HTMLElement) {
 				const syncGrayWeight = () => {
 					grayWeightOutput.textContent = Number(grayWeight.value).toFixed(2);
@@ -179,112 +128,28 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 				grayWeight.addEventListener("input", syncGrayWeight);
 			}
 
-			// Both buttons drive the same endpoint, so neither stays clickable while
-			// the other is mid-flight.
 			const setBusy = (busy: boolean) => {
-				for (const button of [inspectButton, convertButton]) {
-					if (button instanceof HTMLButtonElement) button.disabled = busy;
-				}
+				if (convertButton instanceof HTMLButtonElement) convertButton.disabled = busy;
 			};
-
-			const renderInspection = (payload: {
-				title?: string | null;
-				size?: number;
-				detectedInputSpace?: string | null;
-				detectedGamma?: string | null;
-				warnings?: string[];
-			}) => {
-				const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
-				const rows: [string, string][] = [
-					["Title", payload.title || "Untitled"],
-					["3D size", String(payload.size || "Unknown")],
-					["Detected input space", payload.detectedInputSpace || "Unknown"],
-					["Detected gamma", payload.detectedGamma || "Unknown"],
-				];
-				inspectionPanel.innerHTML = `
-					<dl class="tool-rows">
-						${rows
-							.map(
-								([label, value]) => `
-								<div class="tool-row">
-									<dt>${label}</dt>
-									<dd>${escapeHtml(value)}</dd>
-								</div>`,
-							)
-							.join("")}
-					</dl>
-					${
-						warnings.length > 0
-							? `<div class="tool-status tool-status--warn p-3 text-xs">${warnings
-									.map(escapeHtml)
-									.join("<br>")}</div>`
-							: `<p class="tool-note">No metadata warnings were detected.</p>`
-					}
-				`;
-				if (nameInput instanceof HTMLInputElement && !nameInput.value && payload.title) {
-					nameInput.value = String(payload.title)
-						.replace(/[^A-Za-z0-9 _-]+/gu, "")
-						.slice(0, 19);
-				}
-			};
-
-			const buildFormData = (action: "inspect" | "convert") => {
-				const data = new FormData(form);
-				data.set("action", action);
-				return data;
-			};
-
-			const send = async (action: "inspect" | "convert") => {
-				const file = fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : null;
-				if (!file) {
-					setStatus("Select a .cube file first.", true);
-					return null;
-				}
-
-				setStatus(action === "inspect" ? "Inspecting LUT…" : "Generating NP3…");
-				const response = await fetch("/api/tools/lut-to-np3", {
-					body: buildFormData(action),
-					method: "POST",
-				});
-
-				if (!response.ok) {
-					let message = "Request failed.";
-					try {
-						const payload = (await response.json()) as { error?: string };
-						message = payload.error || message;
-					} catch {}
-					throw new Error(message);
-				}
-				return response;
-			};
-
-			inspectButton?.addEventListener("click", async () => {
-				setBusy(true);
-				try {
-					const response = await send("inspect");
-					if (!response) return;
-					const payload = (await response.json()) as {
-						title?: string | null;
-						size?: number;
-						detectedInputSpace?: string | null;
-						detectedGamma?: string | null;
-						warnings?: string[];
-					};
-					renderInspection(payload);
-					setStatus("Inspection complete.");
-				} catch (error) {
-					setStatus(error instanceof Error ? error.message : "Inspection failed.", true);
-				} finally {
-					setBusy(false);
-				}
-			});
 
 			form.addEventListener("submit", async (event) => {
 				event.preventDefault();
+				const file = fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : null;
+				if (!file) {
+					setStatus("Select a .cube file first.", true);
+					return;
+				}
 				setBusy(true);
+				setStatus("Generating NP3…");
 				try {
-					const response = await send("convert");
-					if (!response) return;
+					const response = await fetch("/api/tools/lut-to-np3", {
+						body: new FormData(form),
+						method: "POST",
+					});
+					if (!response.ok) {
+						const payload = (await response.json().catch(() => ({}))) as { error?: string };
+						throw new Error(payload.error || "Conversion failed.");
+					}
 					const blob = await response.blob();
 					const contentDisposition = response.headers.get("Content-Disposition") || "";
 					const match = contentDisposition.match(/filename="([^"]+)"/u);
@@ -305,9 +170,5 @@ import { supportedGammaLabels, supportedInputSpaceLabels } from "@/lib/tools/lut
 				}
 			});
 		}
-	}
-
-	if (!customElements.get("lut-to-np3-tool")) {
-		customElements.define("lut-to-np3-tool", LutToNp3Tool);
 	}
 </script>

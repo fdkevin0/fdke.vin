@@ -4,7 +4,11 @@ Date: 2026-07-25
 
 ## Status
 
-Accepted
+Superseded
+
+Superseded on 2026-09-14 when the exchange tool was reduced to its only production
+use case: the latest rows for one currency. The endpoint now accepts only
+`currency` and `limit` and returns the rows directly.
 
 ## Context
 

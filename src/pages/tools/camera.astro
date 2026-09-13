@@ -1,6 +1,4 @@
 ---
-import EquivalentFocalLengthCalculator from "@/components/EquivalentFocalLengthCalculator.astro";
-import HyperfocalCalculator from "@/components/HyperfocalCalculator.astro";
 import PageLayout from "@/layouts/Base.astro";
 ---
 
@@ -22,7 +20,192 @@ import PageLayout from "@/layouts/Base.astro";
 				sensor formats.
 			</p>
 		</div>
-		<HyperfocalCalculator />
-		<EquivalentFocalLengthCalculator />
+		<div class="grid gap-4 md:grid-cols-2" data-hyperfocal>
+			<form class="tool-panel space-y-4">
+				<p class="tool-field-label">Hyperfocal Distance</p>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<label class="space-y-2"
+						><span class="tool-field-label">Focal Length</span><input
+							class="tool-input"
+							inputmode="decimal"
+							min="1"
+							name="focal-length"
+							step="0.1"
+							type="number"
+							value="35"
+						/></label
+					>
+					<label class="space-y-2"
+						><span class="tool-field-label">Aperture</span><input
+							class="tool-input"
+							inputmode="decimal"
+							min="0.7"
+							name="aperture"
+							step="0.1"
+							type="number"
+							value="8"
+						/></label
+					>
+				</div>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<label class="space-y-2"
+						><span class="tool-field-label">Sensor Format</span><select
+							class="tool-select"
+							name="sensor-preset"
+							><option value="0.030">Full frame (0.030 mm CoC)</option><option value="0.020"
+								>APS-C / Super 35 (0.020 mm CoC)</option
+							><option value="0.015">Micro Four Thirds (0.015 mm CoC)</option><option value="0.011"
+								>1-inch sensor (0.011 mm CoC)</option
+							><option value="custom">Custom CoC</option></select
+						></label
+					>
+					<label class="space-y-2"
+						><span class="tool-field-label">CoC (mm)</span><input
+							class="tool-input"
+							inputmode="decimal"
+							min="0.001"
+							name="coc"
+							step="0.001"
+							type="number"
+							value="0.030"
+						/></label
+					>
+				</div>
+			</form>
+			<div class="tool-panel space-y-4">
+				<p class="tool-readout" data-output>5.14 m</p>
+				<p class="tool-lede" data-summary></p>
+				<div class="tool-status p-3 text-xs"><p>H = f² / (N × c) + f</p></div>
+			</div>
+		</div>
+
+		<div class="grid gap-4 md:grid-cols-2" data-equivalent>
+			<form class="tool-panel space-y-4">
+				<p class="tool-field-label">Equivalent Focal Length</p>
+				<label class="space-y-2"
+					><span class="tool-field-label">Focal Length</span><input
+						class="tool-input"
+						inputmode="decimal"
+						min="1"
+						name="equivalent-focal-length"
+						step="0.1"
+						type="number"
+						value="35"
+					/></label
+				>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<label class="space-y-2"
+						><span class="tool-field-label">Source Sensor</span><select
+							class="tool-select"
+							name="source-crop-factor"
+							><option value="1.5">APS-C / Super 35 (1.5x)</option><option value="1"
+								>Full frame (1.0x)</option
+							><option value="1.6">APS-C Canon (1.6x)</option><option value="2"
+								>Micro Four Thirds (2.0x)</option
+							><option value="2.7">1-inch sensor (2.7x)</option><option value="custom"
+								>Custom crop factor</option
+							></select
+						></label
+					>
+					<label class="space-y-2"
+						><span class="tool-field-label">Target Sensor</span><select
+							class="tool-select"
+							name="target-crop-factor"
+							><option value="1">Full frame (1.0x)</option><option value="1.5"
+								>APS-C / Super 35 (1.5x)</option
+							><option value="1.6">APS-C Canon (1.6x)</option><option value="2"
+								>Micro Four Thirds (2.0x)</option
+							><option value="2.7">1-inch sensor (2.7x)</option><option value="custom"
+								>Custom crop factor</option
+							></select
+						></label
+					>
+				</div>
+				<label class="space-y-2"
+					><span class="tool-field-label">Custom Crop</span><input
+						class="tool-input"
+						inputmode="decimal"
+						min="0.1"
+						name="custom-crop-factor"
+						step="0.1"
+						type="number"
+						value="1"
+					/></label
+				>
+			</form>
+			<div class="tool-panel space-y-4">
+				<p class="tool-readout" data-output>52.5 mm</p>
+				<p class="tool-lede" data-summary></p>
+				<div class="tool-status p-3 text-xs">
+					Equivalent focal length = focal length × (target crop factor / source crop factor)
+				</div>
+			</div>
+		</div>
 	</section>
 </PageLayout>
+
+<script>
+	import {
+		equivalentFocalLength,
+		formatDistance,
+		formatFocalLength,
+		hyperfocalDistance,
+	} from "@/lib/tools/optics";
+
+	const hyperfocal = document.querySelector("[data-hyperfocal]");
+	if (hyperfocal instanceof HTMLElement) {
+		const form = hyperfocal.querySelector("form") as HTMLFormElement;
+		const focal = form.elements.namedItem("focal-length") as HTMLInputElement;
+		const aperture = form.elements.namedItem("aperture") as HTMLInputElement;
+		const coc = form.elements.namedItem("coc") as HTMLInputElement;
+		const preset = form.querySelector('[name="sensor-preset"]') as unknown as HTMLSelectElement;
+		const update = () => {
+			const result = hyperfocalDistance(
+				Number(focal.value),
+				Number(aperture.value),
+				Number(coc.value),
+			);
+			(hyperfocal.querySelector("[data-output]") as HTMLElement).textContent = result
+				? formatDistance(result.distanceMm)
+				: "Invalid input";
+			(hyperfocal.querySelector("[data-summary]") as HTMLElement).textContent = result
+				? `Focus at ${formatDistance(result.distanceMm)} for depth of field from roughly ${formatDistance(result.nearLimitMm)} to infinity.`
+				: "Enter positive values.";
+		};
+		preset.addEventListener("change", () => {
+			if (preset.value !== "custom") coc.value = preset.value;
+			update();
+		});
+		coc.addEventListener("input", () => {
+			preset.value = "custom";
+		});
+		form.addEventListener("input", update);
+		update();
+	}
+
+	const equivalent = document.querySelector("[data-equivalent]");
+	if (equivalent instanceof HTMLElement) {
+		const form = equivalent.querySelector("form") as HTMLFormElement;
+		const focal = form.elements.namedItem("equivalent-focal-length") as HTMLInputElement;
+		const source = form.querySelector(
+			'[name="source-crop-factor"]',
+		) as unknown as HTMLSelectElement;
+		const target = form.querySelector(
+			'[name="target-crop-factor"]',
+		) as unknown as HTMLSelectElement;
+		const custom = form.elements.namedItem("custom-crop-factor") as HTMLInputElement;
+		const factor = (select: HTMLSelectElement) =>
+			Number(select.value === "custom" ? custom.value : select.value);
+		const update = () => {
+			const result = equivalentFocalLength(Number(focal.value), factor(source), factor(target));
+			(equivalent.querySelector("[data-output]") as HTMLElement).textContent =
+				result == null ? "Invalid input" : formatFocalLength(result);
+			(equivalent.querySelector("[data-summary]") as HTMLElement).textContent =
+				result == null
+					? "Enter positive values."
+					: `${formatFocalLength(Number(focal.value))} becomes ${formatFocalLength(result)} equivalent.`;
+		};
+		form.addEventListener("input", update);
+		update();
+	}
+</script>

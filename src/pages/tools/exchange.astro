@@ -1,5 +1,4 @@
 ---
-import ExchangeRates from "@/components/ExchangeRates.astro";
 import PageLayout from "@/layouts/Base.astro";
 ---
 
@@ -14,6 +13,175 @@ import PageLayout from "@/layouts/Base.astro";
 				Switch symbols and read the latest buy, sell, cash, and middle rates in one compact board.
 			</p>
 		</div>
-		<ExchangeRates defaultCurrency="USD" limit={12} />
+		<div class="tool-panel overflow-hidden p-0" data-exchange-rates>
+			<div class="px-5 py-6 sm:px-6">
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div class="space-y-1">
+						<p class="tool-kicker">Exchange Rates / Live</p>
+						<p class="text-xl font-semibold">FX Rates Board</p>
+						<p class="tool-lede text-xs">Shows the latest 12 quotes.</p>
+					</div>
+					<div class="flex flex-wrap items-center gap-3 text-xs font-semibold">
+						<label class="flex items-center gap-2">
+							<span>Currency</span>
+							<select class="tool-select min-w-24 font-semibold" autocomplete="off" data-currency>
+								<option value="USD">USD</option>
+							</select>
+						</label>
+						<button class="tool-button" data-refresh type="button">Refresh</button>
+					</div>
+				</div>
+				<div class="mt-4 grid gap-3 sm:grid-cols-3">
+					<div class="tool-status px-3 py-3">
+						<p class="tool-field-label">Latest Mid</p>
+						<p class="text-2xl font-semibold text-[var(--tool-teal)] tabular-nums" data-mid>--</p>
+						<p class="tool-lede text-xs" data-time>--</p>
+					</div>
+					<div class="tool-status px-3 py-3">
+						<p class="tool-field-label">Buy / Sell</p>
+						<p class="text-xl font-semibold text-[var(--tool-teal)] tabular-nums" data-buy-sell>
+							--
+						</p>
+						<p class="tool-lede text-xs">Cash and spot included</p>
+					</div>
+					<div class="tool-status px-3 py-3">
+						<p class="tool-field-label">Latest Change</p>
+						<p class="text-xl font-semibold" data-change>--</p>
+						<p class="tool-lede text-xs" data-compare>Waiting to load…</p>
+					</div>
+				</div>
+			</div>
+			<div class="space-y-3 px-5 pt-3 pb-6 sm:px-6">
+				<div class="tool-status px-3 py-2 text-sm" data-status aria-live="polite" role="status">
+					Loading supported currencies…
+				</div>
+				<div class="overflow-x-auto rounded-lg border border-[var(--tool-line)]">
+					<table class="min-w-full divide-y divide-[var(--tool-line)]">
+						<thead
+							class="bg-[color-mix(in_oklab,var(--tool-paper)_86%,var(--tool-line))] text-xs tracking-wide text-[var(--tool-muted)] uppercase"
+						>
+							<tr>
+								<th class="px-4 py-3 text-left font-semibold">Time</th>
+								<th class="px-4 py-3 text-right font-semibold">Buy (Spot)</th>
+								<th class="px-4 py-3 text-right font-semibold">Buy (Cash)</th>
+								<th class="px-4 py-3 text-right font-semibold">Sell (Spot)</th>
+								<th class="px-4 py-3 text-right font-semibold">Sell (Cash)</th>
+								<th class="px-4 py-3 text-right font-semibold">Mid</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-[var(--tool-line)] text-sm" data-rates>
+							<tr><td class="px-4 py-4 text-center text-zinc-500" colspan="6">Loading…</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<p class="text-[11px] tracking-[0.22em] text-[var(--tool-muted)] uppercase" data-meta>
+					Waiting…
+				</p>
+			</div>
+		</div>
 	</section>
 </PageLayout>
+
+<script>
+	import type { BocRateRow } from "@/lib/api/exchange/boc";
+
+	const root = document.querySelector("[data-exchange-rates]");
+	if (root instanceof HTMLElement) {
+		const currency = root.querySelector("[data-currency]") as unknown as HTMLSelectElement;
+		const refresh = root.querySelector("[data-refresh]") as HTMLButtonElement;
+		const status = root.querySelector("[data-status]") as HTMLElement;
+		const rates = root.querySelector("[data-rates]") as HTMLTableSectionElement;
+		const meta = root.querySelector("[data-meta]") as HTMLElement;
+		const format = new Intl.NumberFormat("en-US", {
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 2,
+		});
+		const display = (value: number | null) => (value == null ? "--" : format.format(value));
+		const setStatus = (message: string, error = false) => {
+			status.textContent = message;
+			status.classList.toggle("tool-status--danger", error);
+		};
+
+		const render = (rows: BocRateRow[], code: string) => {
+			rates.replaceChildren();
+			if (rows.length === 0) {
+				rates.innerHTML =
+					'<tr><td class="px-4 py-4 text-center text-zinc-500" colspan="6">No data</td></tr>';
+				return;
+			}
+			for (const [index, row] of rows.entries()) {
+				const tr = document.createElement("tr");
+				tr.className =
+					index === 0
+						? "bg-accent/5 dark:bg-accent/10"
+						: "odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-900 dark:even:bg-zinc-950";
+				for (const [value, className] of [
+					[row.pubTime, "text-left font-semibold"],
+					[display(row.buyingRate), "text-right"],
+					[display(row.cashBuyingRate), "text-right"],
+					[display(row.sellingRate), "text-right"],
+					[display(row.cashSellingRate), "text-right"],
+					[display(row.middleRate), "text-right font-semibold"],
+				] as const) {
+					const td = document.createElement("td");
+					td.className = `px-4 py-3 tabular-nums ${className}`;
+					td.textContent = value;
+					tr.appendChild(td);
+				}
+				rates.appendChild(tr);
+			}
+
+			const [latest, previous] = rows;
+			const delta =
+				latest?.middleRate != null && previous?.middleRate != null
+					? latest.middleRate - previous.middleRate
+					: null;
+			(root.querySelector("[data-mid]") as HTMLElement).textContent = display(
+				latest?.middleRate ?? null,
+			);
+			(root.querySelector("[data-time]") as HTMLElement).textContent = latest?.pubTime ?? "--";
+			(root.querySelector("[data-buy-sell]") as HTMLElement).textContent =
+				`${display(latest?.buyingRate ?? null)} / ${display(latest?.sellingRate ?? null)}`;
+			(root.querySelector("[data-change]") as HTMLElement).textContent =
+				delta == null
+					? "--"
+					: `${delta === 0 ? "Flat" : delta > 0 ? "Up" : "Down"} ${Math.abs(delta).toFixed(2)}`;
+			(root.querySelector("[data-compare]") as HTMLElement).textContent = previous
+				? `Vs ${previous.pubTime}`
+				: "No previous tick yet";
+			meta.textContent = `${code} · Showing ${rows.length} latest`;
+		};
+
+		const loadRates = async () => {
+			const code = currency.value;
+			setStatus(`Fetching latest ${code} rates…`);
+			refresh.disabled = true;
+			try {
+				const response = await fetch(
+					`/api/exchange/rates?currency=${encodeURIComponent(code)}&limit=12`,
+				);
+				if (!response.ok) throw new Error(response.statusText);
+				render((await response.json()) as BocRateRow[], code);
+				localStorage.setItem("exchange:currency", code);
+				setStatus(`${code} rates refreshed.`);
+			} catch {
+				setStatus("Failed to fetch rates. Please try again.", true);
+			} finally {
+				refresh.disabled = false;
+			}
+		};
+
+		fetch("/api/exchange/currencies")
+			.then((response) => (response.ok ? (response.json() as Promise<string[]>) : Promise.reject()))
+			.then((codes) => {
+				const selected = localStorage.getItem("exchange:currency") ?? "USD";
+				currency.replaceChildren(
+					...codes.map((code) => new Option(code, code, false, code === selected)),
+				);
+			})
+			.catch(() => setStatus("Unable to load currencies. Using USD.", true))
+			.finally(loadRates);
+		currency.addEventListener("change", loadRates);
+		refresh.addEventListener("click", loadRates);
+	}
+</script>

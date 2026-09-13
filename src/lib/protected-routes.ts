@@ -14,7 +14,6 @@ const PROTECTED_ROUTES: { pattern: URLPattern; scope?: ApiScope }[] = [
 	{ pattern: new URLPattern({ pathname: "/api/ping{/}?" }), scope: "api.ping" },
 	{ pattern: new URLPattern({ pathname: "/api/dlsite{/*}?" }), scope: "api.dlsite.read" },
 	{ pattern: new URLPattern({ pathname: "/api/exhentai{/*}?" }), scope: "api.exhentai.read" },
-	{ pattern: new URLPattern({ pathname: "/api/emails{/*}?" }) },
 	{ pattern: new URLPattern({ pathname: "/api/feed{/*}?" }) },
 	// ActivityPub moderation APIs (issue AP-8). `/api/ap/media` stays public so
 	// proxied avatars/attachments can be served without auth.

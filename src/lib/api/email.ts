@@ -13,9 +13,6 @@ export interface EmailMetadata {
 export interface EmailSummary {
 	key: string;
 	size: number;
-	from: string;
-	to: string;
-	subject: string;
 	date: string;
 	metadata: EmailMetadata;
 }
@@ -34,9 +31,6 @@ export async function listEmails(): Promise<EmailSummary[]> {
 		return {
 			key: keyParts?.[0] || object.key,
 			size: object.size,
-			from: metadata?.from || "",
-			to: metadata?.to || "",
-			subject: metadata?.subject || "",
 			date: isValidDate ? parsedDate.toISOString() : "Unknown",
 			metadata: metadata || {
 				name: object.key,

@@ -1,6 +1,7 @@
 ---
 import { Code } from "astro:components";
 import type { ComponentProps } from "astro/types";
+import CopyButton from "./CopyButton.astro";
 
 type CodeProps = ComponentProps<typeof Code>;
 type CodeLanguage = NonNullable<CodeProps["lang"]>;
@@ -33,17 +34,7 @@ const resolvedLang: CodeLanguage = lang ?? "text";
 				) : (
 					<span />
 				)}
-				{canCopy && (
-					<button
-						type="button"
-						data-copy-button
-						data-copy-value={copyValue}
-						data-copy-label={copyLabel}
-						class="shrink-0 rounded border border-zinc-300 px-2 py-1 text-[11px] tracking-[0.18em] text-zinc-700 uppercase transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-					>
-						{copyLabel}
-					</button>
-				)}
+				{canCopy && <CopyButton value={copyValue} label={copyLabel} variant="text" />}
 			</div>
 		)
 	}
@@ -51,36 +42,6 @@ const resolvedLang: CodeLanguage = lang ?? "text";
 		<Code code={code} lang={resolvedLang} wrap={wrap} />
 	</div>
 </div>
-
-<script>
-	for (const root of document.querySelectorAll("[data-code-copy-root]")) {
-		if (!(root instanceof HTMLElement) || root.dataset.copyBound === "true") continue;
-		root.dataset.copyBound = "true";
-
-		const button = root.querySelector("[data-copy-button]");
-		if (!(button instanceof HTMLButtonElement)) continue;
-
-		const idleLabel = button.dataset.copyLabel || button.textContent || "Copy";
-
-		button.addEventListener("click", async () => {
-			const value = button.dataset.copyValue || "";
-			if (!value) return;
-
-			try {
-				await navigator.clipboard.writeText(value);
-				button.textContent = "Copied";
-				window.setTimeout(() => {
-					button.textContent = idleLabel;
-				}, 1500);
-			} catch {
-				button.textContent = "Failed";
-				window.setTimeout(() => {
-					button.textContent = idleLabel;
-				}, 1500);
-			}
-		});
-	}
-</script>
 
 <style>
 	:global([data-code-copy-root] pre) {

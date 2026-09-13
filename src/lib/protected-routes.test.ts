@@ -10,7 +10,6 @@ describe("routeNeedsAuth", () => {
 			"/api/ping",
 			"/api/dlsite/foo",
 			"/api/exhentai/bar",
-			"/api/emails",
 			"/api/feed/items",
 			"/api/ap/notes",
 			"/api/ap/notes/01ABC",

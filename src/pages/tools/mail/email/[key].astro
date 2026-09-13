@@ -1,10 +1,13 @@
 ---
-import EmailViewer from "@/components/mail/EmailViewer.astro";
+import CodePanel from "@/components/ui/CodePanel.astro";
 import Layout from "@/layouts/Base.astro";
+import { getEmailContent } from "@/lib/api/email";
 
 export const prerender = false;
 
 const { key } = Astro.params;
+const content = key ? await getEmailContent(key) : null;
+if (!content) Astro.response.status = 404;
 ---
 
 <Layout
@@ -27,7 +30,21 @@ const { key } = Astro.params;
 		</div>
 
 		<div class="tool-panel">
-			<EmailViewer emailKey={key!} />
+			{
+				content ? (
+					<CodePanel
+						title={key || "Email"}
+						code={content}
+						copyValue={content}
+						copyLabel="Copy"
+						lang="plaintext"
+					/>
+				) : (
+					<div class="tool-status tool-status--danger p-4 text-sm" role="alert">
+						Email not found.
+					</div>
+				)
+			}
 		</div>
 	</section>
 </Layout>

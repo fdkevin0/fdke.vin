@@ -26,11 +26,6 @@ export class RadarError extends Error {
 		this.status = status;
 		this.code = code;
 	}
-
-	/** True when the failure is Radar refusing load rather than rejecting input. */
-	get isThrottled(): boolean {
-		return this.status === 429 || this.status === 422;
-	}
 }
 
 /** Thrown when no Radar token is configured, so Radar-backed data is simply absent. */

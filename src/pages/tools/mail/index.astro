@@ -1,10 +1,26 @@
 ---
-import EmailList from "@/components/mail/EmailList.astro";
 import Layout from "@/layouts/Base.astro";
+import { listEmails } from "@/lib/api/email";
 
 export const prerender = false;
 
 const user = Astro.locals.user;
+
+let emails: Awaited<ReturnType<typeof listEmails>> = [];
+let error: string | null = null;
+try {
+	emails = await listEmails();
+} catch (cause) {
+	console.error("Error fetching emails:", cause);
+	error = cause instanceof Error ? cause.message : "Failed to fetch emails";
+}
+
+function formatFileSize(bytes: number): string {
+	if (bytes === 0) return "0 Bytes";
+	const units = ["Bytes", "KB", "MB", "GB"];
+	const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+	return `${Number((bytes / 1024 ** unit).toFixed(2))} ${units[unit]}`;
+}
 ---
 
 <Layout
@@ -37,7 +53,78 @@ const user = Astro.locals.user;
 		</div>
 
 		<div class="tool-panel">
-			<EmailList />
+			<div class="w-full space-y-4">
+				<div class="space-y-1">
+					<h2 class="text-lg font-semibold">Emails</h2>
+					<p class="tool-lede">Recent messages available in the email bucket.</p>
+				</div>
+				{
+					error ? (
+						<div class="tool-status tool-status--danger p-4 text-center text-sm" role="alert">
+							{error}
+						</div>
+					) : (
+						<div class="overflow-x-auto rounded-lg border border-[var(--tool-line)]">
+							<table class="min-w-full border-collapse">
+								<thead class="bg-[color-mix(in_oklab,var(--tool-paper)_86%,var(--tool-line))]">
+									<tr>
+										{["Name", "Size", "Uploaded", "Type", "From", "To", "Subject"].map((label) => (
+											<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6">
+												{label}
+											</th>
+										))}
+									</tr>
+								</thead>
+								<tbody>
+									{emails.length === 0 ? (
+										<tr>
+											<td
+												colspan="7"
+												class="px-4 py-8 text-center text-sm text-[var(--tool-muted)] md:px-6"
+											>
+												No emails found in R2 storage.
+											</td>
+										</tr>
+									) : (
+										emails.map((email) => (
+											<tr class="border-b border-[var(--tool-line)] last:border-0 hover:bg-[color-mix(in_oklab,var(--tool-paper)_82%,var(--tool-line))]">
+												<td class="px-4 py-4 align-top text-sm md:px-6">
+													<a
+														href={`/tools/mail/email/${encodeURIComponent(email.key)}`}
+														class="font-medium break-words text-[var(--tool-ink)] hover:underline"
+													>
+														{email.metadata.name || email.key}
+													</a>
+												</td>
+												<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] tabular-nums md:px-6">
+													{formatFileSize(email.size)}
+												</td>
+												<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] tabular-nums md:px-6">
+													{email.date === "Unknown"
+														? "Unknown"
+														: new Date(email.date).toLocaleString()}
+												</td>
+												<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] md:px-6">
+													{email.metadata.type || "unknown"}
+												</td>
+												<td class="px-4 py-4 align-top text-sm break-words text-[var(--tool-muted)] md:px-6">
+													{email.metadata.from || "Unknown"}
+												</td>
+												<td class="px-4 py-4 align-top text-sm break-words text-[var(--tool-muted)] md:px-6">
+													{email.metadata.to || "Unknown"}
+												</td>
+												<td class="px-4 py-4 align-top text-sm break-words text-[var(--tool-muted)] md:px-6">
+													{email.metadata.subject || "Untitled"}
+												</td>
+											</tr>
+										))
+									)}
+								</tbody>
+							</table>
+						</div>
+					)
+				}
+			</div>
 		</div>
 	</section>
 </Layout>

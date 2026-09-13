@@ -1,41 +1,46 @@
 ---
-/**
- * An icon-only copy-to-clipboard control, styled for the tool-workbench
- * system. `data-tool-copy` is its own marker rather than reusing
- * `data-copy-value` as the selector: CodePanel and FediverseBlock already
- * put that same payload attribute on their own copy buttons, and a bare
- * `[data-copy-value]` selector would bind this component's handler onto
- * theirs too if both ever render on one page.
- */
 interface Props {
 	value: string;
 	label: string;
 	size?: "sm" | "lg";
+	variant?: "icon" | "text";
 }
 
-const { value, label, size = "sm" } = Astro.props as Props;
+const { value, label, size = "sm", variant = "icon" } = Astro.props as Props;
 ---
 
 <button
 	type="button"
 	data-tool-copy
 	data-copy-value={value}
-	class:list={["tool-copy", { "tool-copy--lg": size === "lg" }]}
-	aria-label={`Copy ${label}`}
+	data-copy-variant={variant}
+	class:list={[
+		variant === "icon"
+			? "tool-copy"
+			: "shrink-0 rounded border border-zinc-300 px-2 py-1 text-[11px] tracking-[0.18em] text-zinc-700 uppercase transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800",
+		{ "tool-copy--lg": variant === "icon" && size === "lg" },
+	]}
+	aria-label={variant === "icon" ? `Copy ${label}` : label}
 >
-	<svg
-		aria-hidden="true"
-		focusable="false"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		stroke-width="1.75"
-		stroke-linecap="round"
-		stroke-linejoin="round"
-	>
-		<rect x="9" y="9" width="12" height="12" rx="2"></rect>
-		<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-	</svg>
+	{
+		variant === "text" ? (
+			label
+		) : (
+			<svg
+				aria-hidden="true"
+				focusable="false"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.75"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
+				<rect x="9" y="9" width="12" height="12" rx="2" />
+				<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+			</svg>
+		)
+	}
 </button>
 
 <script>
@@ -73,7 +78,7 @@ const { value, label, size = "sm" } = Astro.props as Props;
 				return;
 			}
 
-			button.innerHTML = CHECK_ICON;
+			button.innerHTML = button.dataset.copyVariant === "text" ? "Copied" : CHECK_ICON;
 			button.dataset.copied = "true";
 			button.setAttribute("aria-label", "Copied");
 			copyStatus().textContent = `${idleLabel.replace(/^Copy /, "")} copied`;

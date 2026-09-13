@@ -1,11 +1,3 @@
-type SupportedInputSpace = "srgb" | "nikon-srgb";
-type SupportedGamma = "srgb" | "gamma-2.2";
-
-export type InspectSelection = {
-	inputSpace: SupportedInputSpace | "auto";
-	gamma: SupportedGamma | "auto";
-};
-
 export type CubeLut = {
 	title: string | null;
 	size: number;
@@ -13,16 +5,6 @@ export type CubeLut = {
 	domainMax: [number, number, number];
 	table: Array<[number, number, number]>;
 	metadata: string[];
-};
-
-export type InspectResult = {
-	title: string | null;
-	size: number;
-	detectedInputSpace: SupportedInputSpace | null;
-	detectedGamma: SupportedGamma | null;
-	requiresManualInputSpace: boolean;
-	requiresManualGamma: boolean;
-	warnings: string[];
 };
 
 type ColorBlenderValues = {
@@ -48,7 +30,7 @@ type ConvertedProfile = {
 	colorGradingBalance: number;
 };
 
-export type ConversionOptions = InspectSelection & {
+export type ConversionOptions = {
 	name?: string;
 	grayWeight?: number;
 };
@@ -83,42 +65,15 @@ const GRADING_RANGES = [
 	["highlights", 0.82, OFFSET_COLOR_GRADING_HIGHLIGHTS],
 ] as const;
 
-const SUPPORTED_INPUT_SPACE_LABELS: Record<SupportedInputSpace, string> = {
-	srgb: "sRGB",
-	"nikon-srgb": "Nikon sRGB",
-};
-
-const SUPPORTED_GAMMA_LABELS: Record<SupportedGamma, string> = {
-	srgb: "sRGB TRC",
-	"gamma-2.2": "Gamma 2.2",
-};
-
 const TONECURVE_TEMPLATE_BASE64 =
 	"TkNQAAAAAQAAAAAEMDMxMAAAAgAAAAAUdG9uZWN1cnZlLW5vb3AAAAAAAAAAAAMAAAAAAgAgAAAEAAAAAAIAAAAABQAAAAAC/wEAAAYAAAAAAogEAAAHAAAAAAKCBAAACAAAAAAC/wQAAAkAAAAAAv8EAAAKAAAAAAL/BAAACwAAAAAC/wQAAAwAAAAAAv8AAAANAAAAAAL/AAAADgAAAAAC/wQAAA8AAAAAAv8BAAAQAAAAAAL/AQAAEQAAAAAC/wEAABIAAAAAAv8BAAATAAAAAAL/AQAAFAAAAAACgAEAABUAAAAAAv8KAAAWAAAAAAKEBAAAFwAAAAAC/wQAABgAAAAAAv8EAAAZAAAAAAIBAQAAGgAAAAACAQEAABsAAAAAAgEBAAAcAAAAAAIBAQAAHQAAAAACAQEAAB4AAAAAAoABAAAfAAAAAByAgICAgICAgICAgICAgICAgICAgICAgIABAQEAAAAgAAAAABSAAICAgACAgIAAgIABAQEAsgGAAQAAAAIAAAJCSTAA/wD/AQADAACAgP//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIABAAGAAgACgAMAA4AEAASABQAFgAYABoAHAAeACAAIgAkACYAKAAqACwALgAwADIANAA2ADgAOgA8AD4AQABCAEQARgBIAEoATABOAFAAUgBUAFYAWABaAFwAXgBgAGIAZABmAGgAagBsAG4AcAByAHQAdgB4AHoAfAB+AIAAggCEAIYAiACKAIwAjgCQAJIAlACWAJgAmgCcAJ4AoACiAKQApgCoAKoArACuALAAsgC0ALYAuAC6ALwAvgDAAMIAxADGAMgAygDMAM4A0ADSANQA1gDYANoA3ADeAOAA4gDkAOYA6ADqAOwA7gDwAPIA9AD2APgA+gD8AP4BAAEB/QP9Bf0H/Qn9C/0N/Q/9Ef0T/RX9F/0Z/Rv9Hf0f/SH9I/0l/Sf9Kf0r/S39L/0x/TP9Nf03/Tn9O/09/T/9Qf1D/UX9R/1J/Uv9Tf1P/VH9U/1V/Vf9Wf1b/V39X/1h/WP9Zf1n/Wn9a/1t/W/9cf1z/XX9d/15/Xv9ff1//YH9g/2F/Yf9if2L/Y39j/2R/ZP9lf2X/Zn9m/2d/Z/9of2j/aX9p/2p/av9rf2v/bH9s/21/bf9uf27/b39v/3B/cP9xf3H/cn9y/3N/c/90f3T/dX91/3Z/dv93f3f/eH94/3l/ef96f3r/e397/3x/fP99f33/fn9+/39/f/8AAAAA";
-
-export function inspectCubeLut(input: string): InspectResult {
-	const lut = parseCubeLut(input);
-	const detection = detectConstraints(lut);
-	return {
-		detectedGamma: detection.gamma,
-		detectedInputSpace: detection.inputSpace,
-		requiresManualGamma: detection.gamma === null,
-		requiresManualInputSpace: detection.inputSpace === null,
-		size: lut.size,
-		title: lut.title,
-		warnings: detection.warnings,
-	};
-}
 
 export function convertCubeToNp3(
 	input: string,
 	options: ConversionOptions,
-): { buffer: Uint8Array; filename: string; summary: InspectResult } {
+): { buffer: Uint8Array; filename: string } {
 	const lut = parseCubeLut(input);
-	const detection = detectConstraints(lut);
-	const inputSpace = resolveSelection("input space", detection.inputSpace, options.inputSpace);
-	const gamma = resolveSelection("gamma", detection.gamma, options.gamma);
-	validateSupport(lut, inputSpace, gamma, detection.warnings);
+	validateSupport(lut);
 
 	const profile = fitProfile(
 		lut,
@@ -130,15 +85,6 @@ export function convertCubeToNp3(
 	return {
 		buffer,
 		filename: `${profile.name}.NP3`,
-		summary: {
-			detectedGamma: detection.gamma,
-			detectedInputSpace: detection.inputSpace,
-			requiresManualGamma: detection.gamma === null,
-			requiresManualInputSpace: detection.inputSpace === null,
-			size: lut.size,
-			title: lut.title,
-			warnings: detection.warnings,
-		},
 	};
 }
 
@@ -197,12 +143,7 @@ function parseCubeLut(input: string): CubeLut {
 	return { domainMax, domainMin, metadata, size, table, title };
 }
 
-function detectConstraints(lut: CubeLut): {
-	inputSpace: SupportedInputSpace | null;
-	gamma: SupportedGamma | null;
-	warnings: string[];
-} {
-	const warnings: string[] = [];
+function metadataError(lut: CubeLut): string | null {
 	const knownMetadata = lut.metadata
 		.filter((line) => {
 			const lowered = line.toLowerCase();
@@ -219,21 +160,12 @@ function detectConstraints(lut: CubeLut): {
 	const title = (lut.title ?? "").toLowerCase();
 	const combined = `${knownMetadata} ${title}`;
 
-	let inputSpace: SupportedInputSpace | null = null;
-	let gamma: SupportedGamma | null = null;
-
-	if (combined.includes("nikon srgb")) inputSpace = "nikon-srgb";
-	else if (combined.includes("srgb")) inputSpace = "srgb";
-	else if (combined.includes("rec.709") || combined.includes("rec709")) {
-		warnings.push("Detected Rec.709 metadata. First version only supports sRGB-like display LUTs.");
+	if (combined.includes("rec.709") || combined.includes("rec709")) {
+		return "Detected Rec.709 metadata. First version only supports sRGB-like display LUTs.";
 	}
 
-	if (combined.includes("gamma 2.2") || combined.includes("gamma2.2")) gamma = "gamma-2.2";
-	else if (combined.includes("srgb")) gamma = "srgb";
-	else if (combined.includes("gamma 2.4") || combined.includes("gamma2.4")) {
-		warnings.push(
-			"Detected gamma 2.4 metadata. First version only supports sRGB-like display LUTs.",
-		);
+	if (combined.includes("gamma 2.4") || combined.includes("gamma2.4")) {
+		return "Detected gamma 2.4 metadata. First version only supports sRGB-like display LUTs.";
 	}
 
 	if (
@@ -241,40 +173,18 @@ function detectConstraints(lut: CubeLut): {
 			(keyword) => combined.includes(keyword),
 		)
 	) {
-		warnings.push("Detected unsupported log, HDR, ACES, or scene-referred metadata.");
+		return "Detected unsupported log, HDR, ACES, or scene-referred metadata.";
 	}
 
-	return { gamma, inputSpace, warnings };
+	return null;
 }
 
-function resolveSelection<T extends string>(
-	label: string,
-	detected: T | null,
-	selected: T | "auto",
-): T {
-	if (selected !== "auto") return selected;
-	if (detected) return detected;
-	throw new Error(`Unable to determine ${label}. Please specify it manually.`);
-}
-
-function validateSupport(
-	lut: CubeLut,
-	inputSpace: SupportedInputSpace,
-	gamma: SupportedGamma,
-	warnings: string[],
-): void {
+function validateSupport(lut: CubeLut): void {
 	if (lut.domainMin.join(",") !== "0,0,0" || lut.domainMax.join(",") !== "1,1,1") {
 		throw new Error("Only unit-domain LUTs are supported: DOMAIN_MIN 0 0 0 / DOMAIN_MAX 1 1 1.");
 	}
-	if (warnings.length > 0) {
-		throw new Error(warnings[0]);
-	}
-	if (!["srgb", "nikon-srgb"].includes(inputSpace)) {
-		throw new Error("Unsupported input space.");
-	}
-	if (!["srgb", "gamma-2.2"].includes(gamma)) {
-		throw new Error("Unsupported gamma.");
-	}
+	const error = metadataError(lut);
+	if (error) throw new Error(error);
 }
 
 function fitProfile(lut: CubeLut, name: string, grayWeight: number): ConvertedProfile {
@@ -596,6 +506,3 @@ function clamp(value: number, min: number, max: number): number {
 function clampInt(value: number, min: number, max: number): number {
 	return Math.max(min, Math.min(max, Math.round(value)));
 }
-
-export const supportedInputSpaceLabels = SUPPORTED_INPUT_SPACE_LABELS;
-export const supportedGammaLabels = SUPPORTED_GAMMA_LABELS;
