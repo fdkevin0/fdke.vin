@@ -58,22 +58,6 @@ function mapRow(row: ApPendingAlbumPhotoRow): PendingAlbumPhoto {
 	};
 }
 
-/** A newly arrived Album photo to buffer. */
-export interface InsertPendingAlbumPhotoInput {
-	id: string;
-	groupId: string;
-	chatId: number;
-	messageId: number;
-	fileId: string;
-	fileUniqueId: string;
-	mediaType: string;
-	width: number;
-	height: number;
-	content: string;
-	publishDate: Date;
-	arrivedAt: Date;
-}
-
 /**
  * Buffer an Album photo, or refresh it if this `(chat, message)` is already
  * buffered — a redelivery (idempotent no-op update) or a caption edit that
@@ -82,10 +66,7 @@ export interface InsertPendingAlbumPhotoInput {
  * on an edit extends the debounce window so the corrected caption is what
  * finalizes.
  */
-export async function upsertPendingAlbumPhoto(
-	env: ApEnv,
-	input: InsertPendingAlbumPhotoInput,
-): Promise<void> {
+export async function upsertPendingAlbumPhoto(env: ApEnv, input: PendingAlbumPhoto): Promise<void> {
 	await env.DATABASE.prepare(
 		`INSERT INTO ap_pending_album_photos
 		 (id, group_id, chat_id, message_id, file_id, file_unique_id, media_type, width, height, content, publish_date, arrived_at)

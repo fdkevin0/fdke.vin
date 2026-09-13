@@ -12,57 +12,13 @@ import { z } from "zod";
  * unit-tested.
  */
 
-/** A Telegram [MessageEntity](https://core.telegram.org/bots/api#messageentity). */
-export interface TelegramMessageEntity {
-	type: string;
-	offset: number;
-	length: number;
-	/** Present on `text_link` entities. */
-	url?: string | undefined;
-	/** Present on `pre` entities. */
-	language?: string | undefined;
-}
-
-/** A Telegram [PhotoSize](https://core.telegram.org/bots/api#photosize). */
-export interface TelegramPhotoSize {
-	file_id: string;
-	file_unique_id: string;
-	width: number;
-	height: number;
-	file_size?: number | undefined;
-}
-
-/** The subset of a Telegram [Message](https://core.telegram.org/bots/api#message) we read. */
-export interface TelegramMessage {
-	message_id: number;
-	/** Unix time (seconds) the message was sent. */
-	date: number;
-	/** Unix time (seconds) the message was last edited. */
-	edit_date?: number | undefined;
-	chat: { id: number; type: string; title?: string | undefined };
-	text?: string | undefined;
-	entities?: TelegramMessageEntity[] | undefined;
-	caption?: string | undefined;
-	caption_entities?: TelegramMessageEntity[] | undefined;
-	/** Available photo sizes, smallest to largest. */
-	photo?: TelegramPhotoSize[] | undefined;
-	/** Shared by every message of an Album (a multi-photo post); absent otherwise. */
-	media_group_id?: string | undefined;
-}
-
-/** A Telegram [Update](https://core.telegram.org/bots/api#update); only channel fields matter here. */
-export interface TelegramUpdate {
-	update_id: number;
-	channel_post?: TelegramMessage | undefined;
-	edited_channel_post?: TelegramMessage | undefined;
-	[key: string]: unknown;
-}
-
 const telegramMessageEntitySchema = z.looseObject({
 	type: z.string(),
 	offset: z.number().int(),
 	length: z.number().int(),
+	/** Present on `text_link` entities. */
 	url: z.string().optional(),
+	/** Present on `pre` entities. */
 	language: z.string().optional(),
 });
 
@@ -76,22 +32,33 @@ const telegramPhotoSizeSchema = z.looseObject({
 
 const telegramMessageSchema = z.looseObject({
 	message_id: z.number().int(),
+	/** Unix time (seconds) the message was sent. */
 	date: z.number(),
+	/** Unix time (seconds) the message was last edited. */
 	edit_date: z.number().optional(),
 	chat: z.looseObject({ id: z.number(), type: z.string(), title: z.string().optional() }),
 	text: z.string().optional(),
 	entities: z.array(telegramMessageEntitySchema).optional(),
 	caption: z.string().optional(),
 	caption_entities: z.array(telegramMessageEntitySchema).optional(),
+	/** Available photo sizes, smallest to largest. */
 	photo: z.array(telegramPhotoSizeSchema).optional(),
+	/** Shared by every message of an Album (a multi-photo post); absent otherwise. */
 	media_group_id: z.string().optional(),
 });
 
-export const telegramUpdateSchema: z.ZodType<TelegramUpdate> = z.looseObject({
+export const telegramUpdateSchema = z.looseObject({
 	update_id: z.number().int(),
 	channel_post: telegramMessageSchema.optional(),
 	edited_channel_post: telegramMessageSchema.optional(),
 });
+
+/** A Telegram [MessageEntity](https://core.telegram.org/bots/api#messageentity). */
+export type TelegramMessageEntity = z.infer<typeof telegramMessageEntitySchema>;
+/** A Telegram [PhotoSize](https://core.telegram.org/bots/api#photosize). */
+export type TelegramPhotoSize = z.infer<typeof telegramPhotoSizeSchema>;
+/** A Telegram [Update](https://core.telegram.org/bots/api#update); only channel fields matter here. */
+export type TelegramUpdate = z.infer<typeof telegramUpdateSchema>;
 
 /** Config gating which channel may author Notes. */
 export interface ChannelUpdateConfig {

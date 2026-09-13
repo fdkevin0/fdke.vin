@@ -148,21 +148,13 @@ export async function countInteractionsForNote(
 	env: ApEnv,
 	noteId: string,
 ): Promise<InteractionCounts> {
-	const result = await env.DATABASE.prepare(
-		`SELECT kind, COUNT(*) AS total
-		 FROM ap_interactions
-		 WHERE note_id = ?1 AND NOT (kind = 'reply' AND hidden = 1)
-		 GROUP BY kind`,
-	)
-		.bind(noteId)
-		.all<{ kind: InteractionKind; total: number }>();
-	const counts: InteractionCounts = { replies: 0, likes: 0, announces: 0 };
-	for (const row of result.results ?? []) {
-		if (row.kind === "reply") counts.replies = row.total;
-		else if (row.kind === "like") counts.likes = row.total;
-		else if (row.kind === "announce") counts.announces = row.total;
-	}
-	return counts;
+	return (
+		(await interactionCountsForNotes(env, [noteId])).get(noteId) ?? {
+			replies: 0,
+			likes: 0,
+			announces: 0,
+		}
+	);
 }
 
 /**
