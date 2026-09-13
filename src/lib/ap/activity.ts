@@ -1,6 +1,5 @@
 import { Create, Delete, PUBLIC_COLLECTION, Tombstone, Update } from "@fedify/fedify/vocab";
-import { actorUri, followersUri } from "@/lib/ap/config";
-import { buildNoteObject, type NoteAttachment } from "@/lib/ap/serialize";
+import { buildNoteObject, type SerializeNoteOptions } from "@/lib/ap/serialize";
 import { toInstant } from "@/lib/ap/temporal";
 import type { Note } from "@/lib/ap/types";
 
@@ -19,15 +18,6 @@ export type ActivityKind = "Create" | "Update";
 /** The full set of activities the delivery queue carries about a Note. */
 export type DeliveryKind = ActivityKind | "Delete";
 
-export interface ActivityForNoteOptions {
-	/** Site origin used to build absolute ids, e.g. `https://fdke.vin`. */
-	origin: URL | string;
-	/** Rendered HTML placed in the Note's AS2 `content`. */
-	htmlContent: string;
-	/** Media attachments serialized as AS2 `Document`s on the Note. */
-	attachments?: NoteAttachment[];
-}
-
 /**
  * Build a `Create`/`Update` wrapping the Note object, attributed to the actor
  * and addressed to Public + followers.
@@ -37,39 +27,19 @@ export interface ActivityForNoteOptions {
  * (`{noteUrl}#updates/{iso}`) so each edit is a distinct activity remote servers
  * won't dedupe against the last.
  */
-export async function activityForNote(
-	kind: ActivityKind,
-	note: Note,
-	options: ActivityForNoteOptions,
-): Promise<Record<string, unknown>> {
-	const activity = buildActivityForNote(kind, note, options);
-	const json = await activity.toJsonLd();
-	return json as Record<string, unknown>;
-}
-
-/**
- * Build the `Create`/`Update` as a Fedify vocab object (the object
- * {@link activityForNote} compacts to JSON, and the outbox collection nests).
- */
 export function buildActivityForNote(
 	kind: ActivityKind,
 	note: Note,
-	options: ActivityForNoteOptions,
+	options: SerializeNoteOptions,
 ): Create | Update {
-	const object = buildNoteObject(note, {
-		origin: options.origin,
-		htmlContent: options.htmlContent,
-		...(options.attachments ? { attachments: options.attachments } : {}),
-	});
+	const object = buildNoteObject(note, options);
 	const noteUrl = new URL(`/notes/${note.id}/`, new URL(String(options.origin)));
 
-	const actor = actorUri(options.origin);
-	const followers = followersUri(options.origin);
 	const shared = {
-		actor,
+		actor: options.actorId,
 		object,
 		tos: [PUBLIC_COLLECTION],
-		ccs: [followers],
+		ccs: [options.followersUri],
 	};
 
 	return kind === "Create"
@@ -93,19 +63,17 @@ export function buildActivityForNote(
  * D1 by delivery time), so it takes the id and origin rather than a {@link Note}.
  * The activity id is stable (`{noteUrl}#delete`).
  */
-export async function deleteActivityForNote(
+export function buildDeleteActivityForNote(
 	noteId: string,
-	options: { origin: URL | string },
-): Promise<Record<string, unknown>> {
+	options: { origin: URL | string; actorId: URL; followersUri: URL },
+): Delete {
 	const base = new URL(String(options.origin));
 	const noteUrl = new URL(`/notes/${noteId}/`, base);
-	const activity = new Delete({
+	return new Delete({
 		id: new URL("#delete", noteUrl),
-		actor: actorUri(options.origin),
+		actor: options.actorId,
 		object: new Tombstone({ id: noteUrl }),
 		tos: [PUBLIC_COLLECTION],
-		ccs: [followersUri(options.origin)],
+		ccs: [options.followersUri],
 	});
-	const json = await activity.toJsonLd();
-	return json as Record<string, unknown>;
 }

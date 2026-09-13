@@ -25,15 +25,17 @@ npx wrangler queues create ap-delivery-queue
 # R2 bucket for channel-post photos (AP-3), if not already created.
 npx wrangler r2 bucket create ap-storage
 
+# KV namespace for Fedify caches and inbox idempotency.
+npx wrangler kv namespace create AP_FEDIFY_KV
+
 # Apply every pending versioned D1 migration.
 pnpm wrangler d1 migrations apply DATABASE --remote
 ```
 
-`ap_notes`, `ap_note_attachments`, `ap_followers`, `ap_interactions` (inbound
-replies/likes/announces, AP-7), `ap_blocklist` (dropped domains, AP-7/AP-8), and
-`ap_note_deliveries` (per-inbox delivery status, AP-8) all live in the `DATABASE`
-D1 binding. Wrangler records applied files in `d1_migrations`; application requests
-never run schema DDL.
+The ActivityPub business tables (`ap_notes`, `ap_note_attachments`, `ap_followers`,
+`ap_interactions`, and `ap_blocklist`) live in the `DATABASE` D1 binding. Fedify's
+protocol state lives in `AP_FEDIFY_KV`. Wrangler records applied D1 files in
+`d1_migrations`; application requests never run schema DDL.
 
 ---
 

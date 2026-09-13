@@ -117,7 +117,7 @@ A genuine edit changes the canonical Note state; changes to Telegram transport m
 _Avoid_: event, message
 
 **Inbox / Outbox**:
-The Actor's two AS2 collections. The **inbox** (`/inbox`) receives Activities from remote servers — every request is HTTP-Signature-verified before processing. The **outbox** exposes the Actor's own emitted Activities, including backfilled Notes (which appear but are never delivered).
+The Actor's two AS2 collections. The shared **inbox** (`/inbox`) receives Activities from remote servers — Fedify verifies every request before queued processing. The **outbox** (`/users/fdkevin/outbox`) exposes the Actor's own emitted Activities, including backfilled Notes (which appear but are never delivered).
 _Avoid_: feed (collides with Site feed / Feed aggregator)
 
 **Follower**:
@@ -129,7 +129,7 @@ A remote reaction to a Note ingested via the inbox — a reply (`Create(Note)` i
 _Avoid_: comment, reaction, engagement
 
 **Delivery**:
-Signing an outbound Activity and POSTing it to each Follower's (deduped shared) inbox via `ap-delivery-queue`, with retry/backoff. Deliveries only ever originate from live authoring — backfilled Notes are not delivered. Per-inbox delivery status (`pending`/`delivered`/`failed`) is tracked in `ap_note_deliveries` and aggregated into a Note's dashboard status.
+Fedify signs an outbound Activity and fans it out to Followers through `ap-delivery-queue`, preferring shared inboxes and relying on Cloudflare Queue retries. Deliveries only ever originate from live authoring — backfilled Notes are not delivered. Fedify keeps its cache and inbox idempotency state in the `AP_FEDIFY_KV` Cloudflare KV namespace; business records remain in D1.
 The target Followers are those present when the Activity originates; a Follower added later does not receive an earlier Activity.
 _Avoid_: fan-out (that's the mechanism), push, broadcast
 

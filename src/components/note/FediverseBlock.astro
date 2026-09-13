@@ -1,7 +1,8 @@
 ---
 import { Icon } from "astro-icon/components";
-import { AP_DOMAIN, AP_ORIGIN, AP_USERNAME } from "@/lib/ap/config";
+import { AP_USERNAME } from "@/lib/ap/config";
 import type { Note } from "@/lib/ap/types";
+import { siteConfig } from "@/site.config";
 
 /**
  * Small, unobtrusive Fediverse block on a Note detail page (issue AP-11): the
@@ -15,8 +16,8 @@ type Props = {
 
 const { note } = Astro.props;
 
-const permalink = new URL(`/notes/${note.id}/`, AP_ORIGIN).toString();
-const handle = `@${AP_USERNAME}@${AP_DOMAIN}`;
+const permalink = new URL(`/notes/${note.id}/`, siteConfig.url).toString();
+const handle = `@${AP_USERNAME}@${new URL(siteConfig.url).host}`;
 ---
 
 <section
@@ -29,7 +30,7 @@ const handle = `@${AP_USERNAME}@${AP_DOMAIN}`;
 		data-fediverse-copy-button
 		data-copy-value={permalink}
 		data-copy-label="Copy link"
-		class="inline-flex items-center gap-1.5 hover:text-accent"
+		class="hover:text-accent inline-flex items-center gap-1.5"
 	>
 		<Icon aria-hidden="true" class="h-4 w-4" focusable="false" name="mdi:content-copy" />
 		Copy link
@@ -39,7 +40,7 @@ const handle = `@${AP_USERNAME}@${AP_DOMAIN}`;
 		data-fediverse-copy-button
 		data-copy-value={handle}
 		data-copy-label={handle}
-		class="inline-flex items-center gap-1.5 hover:text-accent"
+		class="hover:text-accent inline-flex items-center gap-1.5"
 	>
 		<Icon aria-hidden="true" class="h-4 w-4" focusable="false" name="mdi:content-copy" />
 		{handle}

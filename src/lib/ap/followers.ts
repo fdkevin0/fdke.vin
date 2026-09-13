@@ -1,11 +1,11 @@
+import type { Recipient } from "@fedify/fedify/vocab";
 import type { ApEnv } from "@/lib/ap/runtime";
 
 /**
  * D1-backed {@link Follower} store: remote actors that have sent an accepted
  * `Follow`. Each row records the follower's actor id, its personal `inbox`, and
- * its (optional) shared `endpoints.sharedInbox`. Delivery fans out to the shared
- * inbox where present, deduped across followers on the same server — so one POST
- * reaches every follower on a big instance. See CONTEXT.md "Follower" / "Delivery".
+ * its (optional) shared `endpoints.sharedInbox`. Fedify consumes these rows as
+ * recipients and handles shared-inbox fan-out. See CONTEXT.md "Follower" / "Delivery".
  */
 
 const FOLLOWER_COLUMNS = "actor_id, inbox_url, shared_inbox_url, created_at";
@@ -46,42 +46,14 @@ export async function countFollowers(env: ApEnv): Promise<number> {
 	return row?.total ?? 0;
 }
 
-/** List follower actor ids newest-first (for the followers collection `items`). */
-export async function listFollowerIds(env: ApEnv): Promise<string[]> {
-	const result = await env.DATABASE.prepare(
-		"SELECT actor_id FROM ap_followers ORDER BY created_at DESC",
-	).all<{ actor_id: string }>();
-	return (result.results ?? []).map((r) => r.actor_id);
-}
-
-/**
- * The deduplicated set of inbox URLs to deliver an activity to: each follower's
- * shared inbox where it has one, otherwise its personal inbox, with duplicate
- * shared inboxes collapsed so one server receives a single POST.
- */
-export async function listDeliveryInboxes(env: ApEnv): Promise<string[]> {
+/** List followers in Fedify's native recipient shape. */
+export async function listFollowers(env: ApEnv): Promise<Recipient[]> {
 	const result = await env.DATABASE.prepare(
 		`SELECT ${FOLLOWER_COLUMNS} FROM ap_followers`,
 	).all<ApFollowerRow>();
-	return dedupeDeliveryInboxes(
-		(result.results ?? []).map((row) => ({
-			inboxUrl: row.inbox_url,
-			sharedInboxUrl: row.shared_inbox_url,
-		})),
-	);
-}
-
-/**
- * Collapse a set of followers to the inboxes to deliver to: each follower's
- * shared inbox where present (so one POST serves every follower on that server),
- * otherwise its personal inbox, deduplicated. Pure — unit-tested.
- */
-export function dedupeDeliveryInboxes(
-	followers: { inboxUrl: string; sharedInboxUrl: string | null }[],
-): string[] {
-	const inboxes = new Set<string>();
-	for (const follower of followers) {
-		inboxes.add(follower.sharedInboxUrl ?? follower.inboxUrl);
-	}
-	return [...inboxes];
+	return (result.results ?? []).map((row) => ({
+		id: new URL(row.actor_id),
+		inboxId: new URL(row.inbox_url),
+		endpoints: { sharedInbox: row.shared_inbox_url ? new URL(row.shared_inbox_url) : null },
+	}));
 }

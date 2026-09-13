@@ -1,7 +1,7 @@
 {
 	"main": "./src/worker.ts",
 	"name": "fdkevin",
-	"compatibility_date": "2026-03-17",
+	"compatibility_date": "2026-09-14",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
 		"directory": "./dist",
@@ -44,6 +44,12 @@
 			"binding": "AP_BUCKET",
 			"bucket_name": "ap-storage",
 			"preview_bucket_name": "ap-storage"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "AP_FEDIFY_KV",
+			"id": "84840071fc014e6eb6ccb814b509c035"
 		}
 	],
 	"d1_databases": [

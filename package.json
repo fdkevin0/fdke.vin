@@ -25,6 +25,7 @@
 		"@astrojs/mdx": "^8.0.1",
 		"@astrojs/rss": "^4.0.19",
 		"@astrojs/sitemap": "^3.7.4",
+		"@fedify/cfworkers": "2.3.6",
 		"@fedify/fedify": "2.3.6",
 		"@js-temporal/polyfill": "^0.5.1",
 		"@resvg/resvg-wasm": "^2.6.2",

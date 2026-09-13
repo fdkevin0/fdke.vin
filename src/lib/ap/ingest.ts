@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { type AlbumNoteInput, decideAlbumFinalization } from "@/lib/ap/album";
-import { enqueueAlbumFinalizeCheck, enqueueNoteDelivery } from "@/lib/ap/delivery";
+import { ALBUM_DEBOUNCE_MS, type AlbumNoteInput, decideAlbumFinalization } from "@/lib/ap/album";
+import { sendNoteActivity } from "@/lib/ap/federation";
 import {
 	deletePendingAlbumPhotosByIds,
 	listPendingAlbumPhotos,
@@ -77,7 +77,7 @@ export async function applyChannelUpdate(
 			updatedAt,
 		});
 		await storePhotoAttachment(env, existingId, result.photo);
-		await enqueueNoteDelivery(env, { kind: "Update", noteId: existingId });
+		await sendNoteActivity(env, "Update", existingId);
 		return { action: "updated", noteId: existingId };
 	}
 
@@ -96,7 +96,7 @@ export async function applyChannelUpdate(
 		telegramMediaGroupId: null,
 	});
 	await storePhotoAttachment(env, noteId, result.photo);
-	await enqueueNoteDelivery(env, { kind: "Create", noteId });
+	await sendNoteActivity(env, "Create", noteId);
 	return { action: "created", noteId };
 }
 
@@ -177,7 +177,10 @@ async function applyAlbumMessage(
 			arrivedAt: new Date(),
 		});
 	}
-	await enqueueAlbumFinalizeCheck(env, { chatId: message.chatId, groupId });
+	await env.AP_DELIVERY_QUEUE.send(
+		{ kind: "AlbumFinalize", chatId: message.chatId, groupId } satisfies AlbumFinalizeMessage,
+		{ delaySeconds: Math.ceil(ALBUM_DEBOUNCE_MS / 1000) },
+	);
 	return { action: "buffered" };
 }
 
@@ -205,7 +208,7 @@ async function attachStragglerPhoto(
 		const attachment = await downloadAndStorePhoto(env, noteId, message.photo);
 		await upsertNoteAttachmentByMessage(env, noteId, message.messageId, attachment);
 	}
-	await enqueueNoteDelivery(env, { kind: "Update", noteId });
+	await sendNoteActivity(env, "Update", noteId);
 }
 
 /**
@@ -282,7 +285,7 @@ async function finalizeAlbumGroup(env: ApEnv, input: AlbumNoteInput): Promise<In
 		await upsertNoteAttachmentByMessage(env, noteId, messageId, attachment);
 	}
 
-	await enqueueNoteDelivery(env, { kind: isNew ? "Create" : "Update", noteId });
+	await sendNoteActivity(env, isNew ? "Create" : "Update", noteId);
 	return { action: isNew ? "created" : "updated", noteId };
 }
 

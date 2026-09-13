@@ -4,14 +4,12 @@ import Note from "@/components/note/Note.astro";
 import NoteInteractions from "@/components/note/NoteInteractions.astro";
 import NotesListing from "@/components/note/NotesListing.astro";
 import PageLayout from "@/layouts/Base.astro";
-import { acceptsActivityPub } from "@/lib/ap/accept";
 import {
 	countInteractionsForNote,
 	interactionCountsForNotes,
 	listRepliesForNote,
 } from "@/lib/ap/interactions";
 import { renderNoteMarkdown } from "@/lib/ap/markdown";
-import { negotiateNoteActivity } from "@/lib/ap/negotiate";
 import { getApEnv } from "@/lib/ap/runtime";
 import { countNotes, getNoteById, listNoteAttachments, listNotesPage } from "@/lib/ap/storage";
 import type {
@@ -27,7 +25,6 @@ export const prerender = false;
 const slugParam = Astro.params.slug;
 const isListing = slugParam === undefined || /^\d+$/.test(slugParam ?? "");
 
-const origin = import.meta.env.SITE;
 const env = await getApEnv();
 
 type ListingData = {
@@ -84,29 +81,10 @@ if (isListing) {
 	const note = await getNoteById(env, slugParam as string);
 
 	if (!note) {
-		// AS2 fetchers get a bare 404 (they act on the status, not an HTML body);
-		// browsers get the styled 404 page. `X-Astro-Reroute: no` opts out of
-		// Astro's default "render the /404 page for any null-body 404 response",
-		// which would otherwise swap our empty body for the styled HTML page.
-		if (acceptsActivityPub(Astro.request.headers.get("accept"))) {
-			return new Response(null, {
-				status: 404,
-				headers: { Vary: "Accept", "X-Astro-Reroute": "no" },
-			});
-		}
 		return Astro.rewrite("/404");
 	}
 
 	const attachments = await listNoteAttachments(env, note.id);
-
-	// ActivityPub content negotiation: AS2 clients get the Note object,
-	// browsers get the SSR HTML page at the same canonical URL.
-	const activity = await negotiateNoteActivity(note, {
-		accept: Astro.request.headers.get("accept"),
-		origin,
-		attachments,
-	});
-	if (activity) return activity;
 
 	const [html, replies, counts] = await Promise.all([
 		renderNoteMarkdown(note.content),

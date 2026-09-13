@@ -15,16 +15,6 @@ import { sha256Hex } from "@/lib/crypto";
 /** Prefix media is served from (mirrors the Telegram ingest pipeline). */
 const MEDIA_PATH = "/api/ap/media/";
 
-/** The R2 members used here (the repo's ambient R2 type is narrowed elsewhere). */
-interface AvatarBucket {
-	head(key: string): Promise<unknown | null>;
-	put(
-		key: string,
-		value: ArrayBuffer,
-		options?: { httpMetadata?: { contentType?: string } },
-	): Promise<unknown>;
-}
-
 const EXT_BY_TYPE: Record<string, string> = {
 	"image/jpeg": "jpg",
 	"image/jpg": "jpg",
@@ -51,7 +41,6 @@ export async function proxyRemoteImage(
 	}
 	if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
 
-	const bucket = env.AP_BUCKET as unknown as AvatarBucket;
 	const hash = await sha256Hex(sourceUrl);
 
 	try {
@@ -64,10 +53,10 @@ export async function proxyRemoteImage(
 		const ext = EXT_BY_TYPE[contentType] ?? "bin";
 		const key = `avatars/${hash}.${ext}`;
 
-		const existing = await bucket.head(key).catch(() => null);
+		const existing = await env.AP_BUCKET.head(key).catch(() => null);
 		if (!existing) {
 			const bytes = await res.arrayBuffer();
-			await bucket.put(key, bytes, { httpMetadata: { contentType } });
+			await env.AP_BUCKET.put(key, bytes, { httpMetadata: { contentType } });
 		}
 		return `${MEDIA_PATH}${key}`;
 	} catch {

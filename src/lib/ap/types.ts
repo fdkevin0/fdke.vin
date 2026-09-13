@@ -46,21 +46,8 @@ export interface NoteAttachment {
 }
 
 /**
- * A unit of {@link Delivery} work on `ap-delivery-queue`: sign one Note's
- * Create/Update activity and POST it to one follower inbox. One message is
- * enqueued per deduped inbox when a Note is authored/edited in Telegram.
- */
-export interface ApDeliveryMessage {
-	kind: "Create" | "Update" | "Delete";
-	/** The Note whose activity to deliver. */
-	noteId: string;
-	/** The (shared or personal) follower inbox to POST to. */
-	inboxUrl: string;
-}
-
-/**
  * A debounced check of whether a Pending album (issue AP-11) should finalize,
- * carried on `ap-delivery-queue` alongside {@link ApDeliveryMessage} and
+ * carried on `ap-delivery-queue` alongside Fedify's opaque queue messages and
  * distinguished by `kind`. Enqueued with a delay on every Album photo arrival;
  * on consumption the group finalizes if quiet, or the check is a no-op
  * otherwise (see CONTEXT.md "Finalization").
@@ -70,9 +57,6 @@ export interface AlbumFinalizeMessage {
 	chatId: number;
 	groupId: string;
 }
-
-/** The union of message kinds carried on `ap-delivery-queue`. */
-export type ApQueueMessage = ApDeliveryMessage | AlbumFinalizeMessage;
 
 /** The kind of a remote {@link Interaction} with one of our Notes. */
 export type InteractionKind = "reply" | "like" | "announce";

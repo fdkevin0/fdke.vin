@@ -23,7 +23,7 @@ make the file-based model untenable:
    ActivityStreams 2.0 JSON to Fediverse fetchers, which requires the request.
 
 Federation also needs runtime state that has no place in git: followers,
-inbound interactions, and delivery status.
+inbound interactions, protocol caches, and inbox idempotency keys.
 
 Building a complete ActivityPub protocol stack from scratch (WebFinger, HTTP
 Signatures, Actor JSON-LD, inbox/outbox, delivery fan-out) is ~3000–5000 lines
@@ -56,10 +56,10 @@ code (HTTP Signatures verification, key management, delivery retry/fan-out).
 - The ActivityPub protocol layer uses **Fedify** (`@fedify/fedify` +
   `@fedify/cfworkers`) instead of hand-rolled WebFinger, HTTP Signatures,
   Actor JSON-LD, inbox/outbox, and delivery.
-- **Actor & WebFinger**: Fedify's `setActorDispatcher` returns a `Person` for
+- **Actor & WebFinger**: Fedify's `setActorDispatcher` returns an `Application` for
   the single actor. WebFinger is auto-handled — no custom `.well-known` route.
-- **Key management**: `setKeyPairsDispatcher` stores/generates RSA + Ed25519
-  keypairs. Fedify auto-signs outgoing Activities and auto-verifies incoming
+- **Key management**: `setKeyPairsDispatcher` exposes the RSA keypair stored in
+  the `AP_RSA_PRIVATE_KEY` secret. Fedify auto-signs outgoing Activities and auto-verifies incoming
   signatures across draft-cavage, RFC 9421, Linked Data, and FEP-8b32.
 - **Inbox**: `setInboxListeners` with chained `.on(Follow)` / `.on(Like)` /
   `.on(Announce)` / `.on(Create)` handlers. Signature verification, activity
@@ -71,10 +71,9 @@ code (HTTP Signatures verification, key management, delivery retry/fan-out).
 - **Content negotiation**: Fedify middleware inspects the `Accept` header —
   `application/activity+json` requests for `/notes/{id}` return the AS2 Note
   object; browser requests pass through to Astro for SSR HTML rendering.
-- **Integration path**: `@fedify/astro` (Astro middleware) OR `@fedify/hono`
-  (Hono adapter mounted in `src/worker.ts`) — final choice depends on
-  compatibility testing with `@astrojs/cloudflare`. Both paths coexist with
-  the existing Cloudflare Access + API token middleware.
+- **Integration path**: the custom Worker entry calls `Federation.fetch()`
+  before Astro and falls through to Astro for non-protocol requests. This keeps
+  framework adapters out of the request pipeline.
 - Business data stays in **existing D1 tables** (`ap_notes`) and additional
   `ap_followers` / `ap_interactions` tables. Fedify owns no data model — it
   reads through dispatcher callbacks. The existing `src/lib/ap/storage.ts`,
@@ -96,11 +95,11 @@ code (HTTP Signatures verification, key management, delivery retry/fan-out).
   (rejects unverifiable Activities with 401), `rehype-sanitize` on remote
   content, R2-proxied avatars, and a D1 domain blocklist.
 - **New infrastructure**: D1 `ap_*` tables, an `ap-delivery-queue` (Cloudflare
-  Queue), an RSA keypair secret (Cloudflare secret), a KV namespace or D1 table
-  for Fedify's `KvStore`, and a Telegram webhook — all consistent with existing
+  Queue), an RSA keypair secret (Cloudflare secret), the `AP_FEDIFY_KV`
+  Cloudflare KV namespace for Fedify's cache/idempotency state, and a Telegram webhook — all consistent with existing
   Cloudflare-native patterns (see ADR-0001's feed aggregator).
-- **New dependencies**: `@fedify/fedify`, `@fedify/cfworkers`, and either
-  `@fedify/astro` or `@fedify/hono`. All MIT-licensed. Bundle size impact on
+- **New dependencies**: `@fedify/fedify` and `@fedify/cfworkers`. Both are
+  MIT-licensed. Bundle size impact on
   the Workers 1MB free-tier limit must be verified during integration.
 - **Lock-in risk is low**: Fedify speaks standard ActivityPub. If the project
   outgrows it, the data model (ULIDs, D1 tables) and the protocol surface

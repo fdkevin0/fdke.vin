@@ -1,10 +1,11 @@
 import { DurableObject } from "cloudflare:workers";
 import { handle } from "@astrojs/cloudflare/handler";
+import type { Message as FedifyMessage } from "@fedify/fedify";
 import { z } from "zod";
 import { AP_DELIVERY_QUEUE_NAME } from "@/lib/ap/config";
-import { processDeliveryMessage } from "@/lib/ap/delivery";
+import { createFederation, processFederationMessage } from "@/lib/ap/federation";
 import { processAlbumFinalizeMessage } from "@/lib/ap/ingest";
-import type { ApQueueMessage } from "@/lib/ap/types";
+import type { AlbumFinalizeMessage } from "@/lib/ap/types";
 import { BOC_POLL_CRON, pollBocRates } from "@/lib/api/exchange/poll";
 import { getErrorMessage } from "@/lib/api/http";
 import { processAiMessage } from "@/lib/feed/ai";
@@ -76,7 +77,12 @@ export default {
 			});
 		}
 
-		return handle(request, env, ctx);
+		const federation = await createFederation(env);
+		return federation.fetch(request, {
+			contextData: env,
+			onNotFound: (fallbackRequest) => handle(fallbackRequest, env, ctx),
+			onNotAcceptable: (fallbackRequest) => handle(fallbackRequest, env, ctx),
+		});
 	},
 	async scheduled(controller, env, _ctx): Promise<void> {
 		// Two crons share this handler; `controller.cron` is the expression that fired.
@@ -106,11 +112,11 @@ export default {
 					const body = message.body as FeedAiMessage;
 					await processAiMessage(env, body.itemId);
 				} else if (batch.queue === AP_DELIVERY_QUEUE_NAME) {
-					const body = message.body as ApQueueMessage;
-					if (body.kind === "AlbumFinalize") {
-						await processAlbumFinalizeMessage(env, body);
+					const body = message.body as FedifyMessage | AlbumFinalizeMessage;
+					if ("kind" in body && body.kind === "AlbumFinalize") {
+						await processAlbumFinalizeMessage(env, body as AlbumFinalizeMessage);
 					} else {
-						await processDeliveryMessage(env, body);
+						await processFederationMessage(env, body as FedifyMessage);
 					}
 				}
 				message.ack();

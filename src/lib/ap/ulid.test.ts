@@ -1,5 +1,6 @@
+import { decodeTime } from "ulid";
 import { describe, expect, it } from "vitest";
-import { decodeUlidTime, ulid } from "@/lib/ap/ulid";
+import { ulid } from "@/lib/ap/ulid";
 
 const CROCKFORD = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 
@@ -14,9 +15,9 @@ describe("ulid", () => {
 		expect(earlier < later).toBe(true);
 	});
 
-	it("round-trips the timestamp via decodeUlidTime", () => {
+	it("round-trips the timestamp", () => {
 		const t = 1_700_000_000_000;
-		expect(decodeUlidTime(ulid(t))).toBe(t);
+		expect(decodeTime(ulid(t))).toBe(t);
 	});
 
 	it("keeps ids unique and time-preserving within the same millisecond", () => {
@@ -24,7 +25,7 @@ describe("ulid", () => {
 		const ids = Array.from({ length: 50 }, () => ulid(t));
 		expect(new Set(ids).size).toBe(ids.length);
 		for (const id of ids) {
-			expect(decodeUlidTime(id)).toBe(t);
+			expect(decodeTime(id)).toBe(t);
 		}
 	});
 });

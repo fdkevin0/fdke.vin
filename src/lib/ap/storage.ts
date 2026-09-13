@@ -24,31 +24,6 @@ function mapNoteRow(row: ApNoteRow): Note {
 }
 
 /** Insert a Note, or replace it if the id already exists (idempotent migration). */
-export async function upsertNote(env: ApEnv, row: ApNoteRow): Promise<void> {
-	await env.DATABASE.prepare(
-		`INSERT INTO ap_notes (${NOTE_COLUMNS})
-		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-		 ON CONFLICT(id) DO UPDATE SET
-		   title = excluded.title,
-		   content = excluded.content,
-		   summary = excluded.summary,
-		   published_at = excluded.published_at,
-		   updated_at = excluded.updated_at,
-		   source = excluded.source`,
-	)
-		.bind(
-			row.id,
-			row.title,
-			row.content,
-			row.summary,
-			row.published_at,
-			row.updated_at,
-			row.created_at,
-			row.source,
-		)
-		.run();
-}
-
 /** Fetch a single Note by its ULID, or null if none exists. */
 export async function getNoteById(env: ApEnv, id: string): Promise<Note | null> {
 	const row = await env.DATABASE.prepare(`SELECT ${NOTE_COLUMNS} FROM ap_notes WHERE id = ?1`)
@@ -181,7 +156,7 @@ export async function findNoteIdByTelegramMediaGroup(
 /**
  * Delete a Note and its attachment rows (issue AP-8). Returns whether a Note was
  * removed. Federation of the `Delete(Tombstone)` and cleanup of interactions are
- * the caller's responsibility (the dashboard delete endpoint). Attachments are
+ * the caller's responsibility (the dashboard action). Attachments are
  * deleted explicitly rather than relying on the FK cascade, which D1 leaves off.
  */
 export async function deleteNote(env: ApEnv, id: string): Promise<boolean> {
