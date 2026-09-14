@@ -114,6 +114,15 @@ describe("the caller's own connection", () => {
 		expect(response.status).toBe(302);
 		expect(response.headers.get("Location")).toBe(TOOL_PAGE_URL);
 	});
+
+	it("sends browser lookups to their direct tool URL", async () => {
+		const response = await handleLookupHostRequest(get("/1.1.1.1", { Accept: "text/html" }), {
+			token: "t",
+		});
+
+		expect(response.status).toBe(302);
+		expect(response.headers.get("Location")).toBe(`${TOOL_PAGE_URL}/1.1.1.1`);
+	});
 });
 
 describe("address lookup", () => {

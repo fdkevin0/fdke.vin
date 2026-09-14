@@ -50,10 +50,6 @@ export interface LookupHostContext {
 	waitUntil?: ((promise: Promise<unknown>) => void) | undefined;
 }
 
-export function isLookupHost(hostname: string): boolean {
-	return hostname === LOOKUP_HOST;
-}
-
 /**
  * Serve one request to the lookup host.
  *
@@ -96,12 +92,12 @@ export async function handleLookupHostRequest(
 	if (!target) return usageResponse();
 
 	if (format === "html") {
-		const page = new URL(TOOL_PAGE_URL);
-		page.searchParams.set("q", target.kind === "ip" ? target.ip : target.hostname);
+		const value = target.kind === "ip" ? target.ip : target.hostname;
+		const page = new URL(`${TOOL_PAGE_URL}/${encodeURIComponent(value)}`);
 		return Response.redirect(page.toString(), 302);
 	}
 
-	return lookupResponse(request, url, target, format === "json", detail, context);
+	return lookupResponse(request, target, format === "json", detail, context);
 }
 
 function connectionResponse(connection: Connection, asJson: boolean, detail: boolean): Response {
@@ -122,15 +118,15 @@ function connectionResponse(connection: Connection, asJson: boolean, detail: boo
 	);
 }
 
-async function lookupResponse(
+/** Shared cached lookup response for the curl host and the network page. */
+export async function lookupResponse(
 	request: Request,
-	url: URL,
 	target: LookupTarget,
 	asJson: boolean,
 	detail: boolean,
 	context: LookupHostContext,
 ): Promise<Response> {
-	const cacheKey = buildCacheKey(url, target, asJson, detail);
+	const cacheKey = buildCacheKey(new URL(request.url), target, asJson, detail);
 	const cached = await context.cache?.match(cacheKey);
 	if (cached) return cached;
 

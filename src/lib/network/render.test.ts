@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildConnection } from "@/lib/network/connection";
 import type { IpProfile } from "@/lib/network/profile";
 import {
+	addressView,
 	negotiateFormat,
 	renderConnectionLine,
 	renderConnectionTable,
@@ -34,6 +35,35 @@ const profile: IpProfile = {
 	asnCountry: "US",
 	detail: null,
 };
+
+it("uses the same address card shape without carrying connection fields into IP profiles", () => {
+	const own = addressView(connection);
+	expect(own.ip).toBe(connection.ip);
+	expect(own.identity).toContain("Glasgow");
+	expect(own.rows).toContainEqual(["TLS", "TLSv1.3"]);
+	expect(own.rows).toContainEqual(["ASN", "AS786 Jisc Services Limited"]);
+	const remote = addressView({
+		...profile,
+		detail: {
+			registry: "APNIC",
+			website: "cloudflare.com",
+			estimatedUsers: 0,
+			confidenceLevel: null,
+			relatedAsns: [{ asn: 209242, name: null }],
+		},
+	});
+	expect(remote.ip).toBe("1.1.1.1");
+	expect(remote.identity).toBe("IPv4 · 🇦🇺 Australia");
+	expect(remote.rows).toEqual([
+		["ASN", "AS13335 CLOUDFLARENET"],
+		["Org", "Cloudflare, Inc."],
+		["Registry", "APNIC"],
+		["Website", "cloudflare.com"],
+		["Est. users", "0"],
+		["Related", "AS209242"],
+	]);
+	expect(addressView(buildConnection("", {}))).toEqual({ ip: "", identity: "", rows: [] });
+});
 
 describe("negotiateFormat", () => {
 	const accept = (value: string) => new Headers({ Accept: value });

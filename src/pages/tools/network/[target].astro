@@ -1,0 +1,16 @@
+---
+export const prerender = false;
+
+const segment = Astro.params.target;
+if (!segment) return Astro.rewrite("/404");
+let target = segment;
+try {
+	target = decodeURIComponent(segment);
+} catch {
+	// Leave malformed escapes to the existing lookup validation.
+}
+
+const page = new URL("/tools/network", Astro.url);
+page.searchParams.set("q", target);
+return Astro.rewrite(new Request(page, Astro.request));
+---

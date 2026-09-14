@@ -14,7 +14,7 @@ import { processFeedFetchMessage } from "@/lib/feed/ingest";
 import type { FeedEnv } from "@/lib/feed/runtime";
 import type { FeedAiMessage, FeedFetchMessage } from "@/lib/feed/types";
 import { FEED_COORDINATOR_NAME, RSS_AI_QUEUE_NAME, RSS_FETCH_QUEUE_NAME } from "@/lib/feed/types";
-import { handleLookupHostRequest, isLookupHost } from "@/lib/network/handler";
+import { handleLookupHostRequest, LOOKUP_HOST } from "@/lib/network/handler";
 
 const startRunSchema = z.object({
 	trigger: z.enum(["cron", "manual", "alarm"]).optional().default("manual"),
@@ -69,7 +69,7 @@ export default {
 		// of the site's pipeline — no auth, no i18n, no page routing — and it is
 		// the one endpoint here that scripts poll. See `docs/adr/0006`.
 		const { hostname } = new URL(request.url);
-		if (isLookupHost(hostname)) {
+		if (hostname === LOOKUP_HOST) {
 			return handleLookupHostRequest(request, {
 				token: env.RADAR_API_TOKEN,
 				cache: edgeCache(),

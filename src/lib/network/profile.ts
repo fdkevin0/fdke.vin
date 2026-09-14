@@ -36,7 +36,6 @@ export interface IpProfileDetail {
 interface RadarIpResult {
 	ip?: {
 		ip?: string;
-		ipVersion?: string;
 		location?: string;
 		locationName?: string;
 		asn?: number;
@@ -48,12 +47,7 @@ interface RadarIpResult {
 
 interface RadarAsnResult {
 	asn?: {
-		asn?: number;
 		confidenceLevel?: number;
-		country?: string;
-		countryName?: string;
-		name?: string;
-		orgName?: string;
 		source?: string;
 		website?: string;
 		related?: { asn?: number; name?: string }[];

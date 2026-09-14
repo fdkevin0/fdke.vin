@@ -1,54 +1,55 @@
 ---
+import { env } from "cloudflare:workers";
 import CopyButton from "@/components/ui/CopyButton.astro";
 import PageLayout from "@/layouts/Base.astro";
 import { readConnection } from "@/lib/network/connection";
-import { LOOKUP_HOST } from "@/lib/network/handler";
-import { countryFlag, countryName } from "@/lib/network/render";
+import { LOOKUP_HOST, lookupResponse } from "@/lib/network/handler";
+import type { IpProfile } from "@/lib/network/profile";
+import { addressView } from "@/lib/network/render";
+import { parseIp, parseLookupTarget } from "@/lib/network/target";
 
 export const prerender = false;
 
-// The connection panel is rendered server-side because it needs no upstream
-// call: every field is already attached to this request. The Radar-backed
-// groups below load afterwards, so a slow or throttled Radar never delays the
-// part the reader came for. See docs/adr/0006.
 const connection = readConnection(Astro.request);
+const query = Astro.url.searchParams.get("q")?.trim() ?? "";
+const target = query ? parseLookupTarget(encodeURIComponent(query)) : null;
+const ownAddress = !query || (target?.kind === "ip" && target.ip === parseIp(connection.ip));
+let cards = ownAddress ? [addressView(connection)] : [];
+let error = "";
+Astro.response.headers.set("Cache-Control", "no-store");
 
-const flag = countryFlag(connection.country);
-const location = [connection.city, connection.region, countryName(connection.country)]
-	.filter(Boolean)
-	.join(", ");
-
-// The address is the one thing a reader opens this page for, so it leads as the
-// readout and takes its own supporting line — who and where. The panel below
-// carries the rest of the handshake — how — with no field said twice.
-const identity = [
-	connection.ipVersion ? `IPv${connection.ipVersion}` : null,
-	location ? `${flag ? `${flag} ` : ""}${location}` : null,
-	connection.colo ? `via ${connection.colo}` : null,
-]
-	.filter(Boolean)
-	.join(" · ");
-
-const rows: { label: string; value: string | null }[] = [
-	{ label: "Timezone", value: connection.timezone },
-	{
-		label: "ASN",
-		value: connection.asn
-			? `AS${connection.asn}${connection.asOrganization ? ` · ${connection.asOrganization}` : ""}`
-			: null,
-	},
-	{ label: "Protocol", value: connection.httpProtocol },
-	{ label: "TLS", value: connection.tlsVersion },
-	{
-		label: "RTT",
-		value: connection.clientTcpRttMs === null ? null : `${connection.clientTcpRttMs} ms`,
-	},
-];
-
-const presentRows = rows.filter(
-	(row): row is { label: string; value: string } => row.value !== null,
-);
-const lookupHost = LOOKUP_HOST;
+if (!ownAddress) {
+	if (!target) {
+		error = "Enter a valid IPv4 address, IPv6 address, or hostname.";
+		Astro.response.status = 400;
+	} else {
+		try {
+			// Reuse the curl host's validation result, cache and Radar error handling.
+			const response = await lookupResponse(
+				new Request(`https://${LOOKUP_HOST}/`),
+				target,
+				true,
+				true,
+				{
+					token: env.RADAR_API_TOKEN,
+					cache: (caches as unknown as { default?: Cache }).default,
+				},
+			);
+			if (!response.ok) {
+				error = ((await response.json()) as { error: string }).error;
+				Astro.response.status = response.status;
+				const retryAfter = response.headers.get("Retry-After");
+				if (retryAfter) Astro.response.headers.set("Retry-After", retryAfter);
+			} else {
+				const result = (await response.json()) as IpProfile | { profiles: IpProfile[] };
+				cards = ("profiles" in result ? result.profiles : [result]).map(addressView);
+			}
+		} catch {
+			error = "Lookup failed. Please try again.";
+			Astro.response.status = 502;
+		}
+	}
+}
 ---
 
 <PageLayout
@@ -67,80 +68,14 @@ const lookupHost = LOOKUP_HOST;
 				What the edge sees when you connect, what Radar knows about any address, and how the
 				Internet around you is behaving.
 			</p>
-			<div class="tool-hero-readout">
-				<p class="tool-field-label">Your Address</p>
-				{
-					connection.ip ? (
-						<>
-							<div class="mt-2 flex flex-wrap items-center gap-2">
-								<p class="tool-readout" translate="no">
-									{connection.ip}
-								</p>
-								<CopyButton value={connection.ip} label="IP address" size="lg" />
-							</div>
-							{identity && <p class="tool-note mt-2">{identity}</p>}
-						</>
-					) : (
-						<p class="tool-lede mt-2">
-							No edge data on this request — this page is being served outside Cloudflare.
-						</p>
-					)
-				}
-			</div>
-			{
-				presentRows.length > 0 && (
-					<div class="border-t border-[var(--tool-line)] pt-4">
-						<div class="mb-3 flex items-center justify-between gap-2">
-							<p class="tool-field-label">Connection Detail</p>
-							<p class="tool-source">This Request</p>
-						</div>
-						<dl class="tool-rows">
-							{presentRows.map((row) => (
-								<div class="tool-row">
-									<dt>{row.label}</dt>
-									<dd class="flex items-center justify-between gap-2" translate="no">
-										<span class="min-w-0 truncate">{row.value}</span>
-										<CopyButton value={row.value} label={row.label} />
-									</dd>
-								</div>
-							))}
-						</dl>
-						<p class="tool-note mt-3">
-							From this request alone — no lookup, nothing stored. Same data from a terminal:{" "}
-							<code translate="no">curl {lookupHost}?detail=1</code>
-						</p>
-					</div>
-				)
-			}
-		</div>
-
-		<!--
-			md:col-span-2 marks the panels whose content needs the full row: Look Up
-			is a form, Routing and Rankings hold variable-length lists (Rankings also
-			nests its own sm:grid-cols-2). Adoption and Health are the only pair of
-			similarly-shaped label/value comparisons, so they're the ones left at
-			half width to sit side by side. A new panel defaults to half width —
-			give it md:col-span-2 too unless it's a similarly compact comparison.
-		-->
-		<network-panels
-			data-country={connection.country ?? ""}
-			data-lookup-host={lookupHost}
-			class="grid gap-5 md:grid-cols-2"
-		>
-			<div class="tool-panel md:col-span-2">
-				<div class="tool-panel-head">
-					<h2 class="tool-panel-title">Look Up an Address</h2>
-					<p class="tool-source">Radar</p>
-				</div>
-				<p class="tool-note mt-1 mb-4">
-					An address or a hostname. Country-level only — Radar does not geolocate finer.
-				</p>
-				<form data-lookup-form class="flex flex-wrap gap-2">
-					<label class="sr-only" for="network-lookup">Address or hostname</label>
+			<form method="get" action="/tools/network" class="space-y-2">
+				<label class="tool-field-label" for="network-lookup">Look Up an Address</label>
+				<div class="flex flex-wrap gap-2">
 					<input
 						id="network-lookup"
 						name="q"
 						type="text"
+						value={query}
 						autocomplete="off"
 						autocapitalize="off"
 						autocorrect="off"
@@ -148,15 +83,83 @@ const lookupHost = LOOKUP_HOST;
 						placeholder="1.1.1.1 or github.com…"
 						class="tool-input min-w-0 flex-1"
 					/>
-					<button type="submit" class="tool-button" data-lookup-submit> Look Up </button>
-				</form>
-				<pre
-					data-lookup-result
-					aria-live="polite"
-					class="tool-status mt-4 hidden overflow-x-auto p-3 text-xs">
-				</pre>
-			</div>
+					<button type="submit" class="tool-button">Look Up</button>
+					{
+						query && (
+							<a href="/tools/network" class="tool-button">
+								Your Address
+							</a>
+						)
+					}
+				</div>
+			</form>
+			{
+				error ? (
+					<p role="alert" class="tool-status p-3">
+						{error}
+					</p>
+				) : cards.length === 0 ? (
+					<p class="tool-note">No A or AAAA records found for {query}.</p>
+				) : (
+					cards.map((card) => (
+						<div class="space-y-4" data-address-card>
+							<div class="tool-hero-readout">
+								<p class="tool-field-label">{ownAddress ? "Your Address" : "Address"}</p>
+								{card.ip ? (
+									<>
+										<div class="mt-2 flex flex-wrap items-center gap-2">
+											<p class="tool-readout break-all" translate="no">
+												{card.ip}
+											</p>
+											<CopyButton value={card.ip} label="IP address" size="lg" />
+										</div>
+										{card.identity && <p class="tool-note mt-2">{card.identity}</p>}
+									</>
+								) : (
+									<p class="tool-lede mt-2">
+										Your address is unavailable. Enter an IP address above to look it up.
+									</p>
+								)}
+							</div>
+							{card.rows.length > 0 && (
+								<div class="border-t border-[var(--tool-line)] pt-4">
+									<div class="mb-3 flex items-center justify-between gap-2">
+										<p class="tool-field-label">Address Detail</p>
+										<p class="tool-source">{ownAddress ? "This Request" : "Radar"}</p>
+									</div>
+									<dl class="tool-rows">
+										{card.rows.map(([label, value]) => (
+											<div class="tool-row">
+												<dt>{label}</dt>
+												<dd class="flex items-center justify-between gap-2" translate="no">
+													<span class="min-w-0 break-words">{value}</span>
+													<CopyButton value={value} label={label} />
+												</dd>
+											</div>
+										))}
+									</dl>
+								</div>
+							)}
+						</div>
+					))
+				)
+			}
+			{
+				!error && cards.length > 0 && (
+					<p class="tool-note">
+						{ownAddress
+							? "From this request alone — no lookup, nothing stored."
+							: "Country-level location. TLS and RTT are only available for your own connection."}{" "}
+						<code translate="no">
+							curl {LOOKUP_HOST}
+							{ownAddress ? "" : `/${encodeURIComponent(query)}`}?detail=1
+						</code>
+					</p>
+				)
+			}
+		</div>
 
+		<network-panels data-country={connection.country ?? ""} class="grid gap-5 md:grid-cols-2">
 			<div class="tool-panel">
 				<div class="tool-panel-head">
 					<h2 class="tool-panel-title">
@@ -237,13 +240,10 @@ const lookupHost = LOOKUP_HOST;
 
 	class NetworkPanelsElement extends HTMLElement {
 		#country = "";
-		#lookupHost = "";
 
 		connectedCallback() {
 			this.#country = this.dataset.country ?? "";
-			this.#lookupHost = this.dataset.lookupHost ?? "";
 
-			this.#bindLookup();
 			// The groups are independent: one failing must not blank the others,
 			// so each loads and reports on its own.
 			void this.#loadAdoption();
@@ -266,7 +266,7 @@ const lookupHost = LOOKUP_HOST;
 		 * nothing", which reads differently from a failure and is said so.
 		 */
 		async #loadGroup<T>(selector: string, url: string, render: (data: T) => string) {
-			const target = this.#el(selector);
+			const target = this.querySelector<HTMLElement>(selector);
 			if (!target) return;
 
 			try {
@@ -360,67 +360,6 @@ const lookupHost = LOOKUP_HOST;
 						: `<div class="grid gap-6 sm:grid-cols-2">${sections.join("")}</div>`;
 				},
 			);
-		}
-
-		#el<T extends HTMLElement>(selector: string): T | null {
-			return this.querySelector<T>(selector);
-		}
-
-		#bindLookup() {
-			const form = this.#el<HTMLFormElement>("[data-lookup-form]");
-			const output = this.#el<HTMLPreElement>("[data-lookup-result]");
-			const input = this.#el<HTMLInputElement>("#network-lookup");
-			if (!form || !output || !input) return;
-
-			// A ?q= lands here from the lookup host, which redirects browsers
-			// rather than serving them plain text.
-			const initial = new URLSearchParams(window.location.search).get("q");
-			if (initial) {
-				input.value = initial;
-				void this.#lookup(initial, output);
-			}
-
-			form.addEventListener("submit", (event) => {
-				event.preventDefault();
-				const query = input.value.trim();
-				if (!query) return;
-
-				// A result is worth linking to, so the address it describes lives in
-				// the URL — the same ?q= this page already reads on load.
-				const url = new URL(window.location.href);
-				url.searchParams.set("q", query);
-				window.history.replaceState(null, "", url);
-
-				void this.#lookup(query, output);
-			});
-		}
-
-		async #lookup(query: string, output: HTMLPreElement) {
-			const submit = this.#el<HTMLButtonElement>("[data-lookup-submit]");
-			// Both button states are written outright: reading the current label to
-			// restore it later goes wrong the moment the ?q= autoload is still in
-			// flight when the reader submits, which would pin it to "Looking Up…".
-			const setBusy = (busy: boolean) => {
-				if (!submit) return;
-				submit.disabled = busy;
-				submit.textContent = busy ? "Looking Up…" : "Look Up";
-			};
-
-			output.classList.remove("hidden");
-			output.textContent = "Looking up…";
-			setBusy(true);
-
-			try {
-				const response = await fetch(
-					`https://${this.#lookupHost}/${encodeURIComponent(query)}?detail=1`,
-					{ headers: { Accept: "text/plain" } },
-				);
-				output.textContent = (await response.text()).trimEnd() || "No result.";
-			} catch {
-				output.textContent = "Lookup failed. Check the address and try again.";
-			} finally {
-				setBusy(false);
-			}
 		}
 
 		#loadAdoption() {

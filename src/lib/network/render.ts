@@ -3,6 +3,44 @@ import type { IpProfile } from "@/lib/network/profile";
 
 export type ResponseFormat = "text" | "json" | "html";
 
+/** One address card for live connections and Radar profiles; absent fields stay absent. */
+export function addressView(address: Connection | IpProfile) {
+	const connection = "colo" in address ? address : null;
+	const profile = "detail" in address ? address : null;
+	const detail = profile?.detail;
+	const location = [
+		connection?.city,
+		connection?.region,
+		profile?.countryName ?? countryName(address.country),
+	]
+		.filter(Boolean)
+		.join(", ");
+	const identity = [
+		address.ipVersion ? `IPv${address.ipVersion}` : null,
+		location ? [countryFlag(address.country), location].filter(Boolean).join(" ") : null,
+		connection?.colo ? `via ${connection.colo}` : null,
+	]
+		.filter(Boolean)
+		.join(" · ");
+	const rows: [string, string | null | undefined][] = [
+		["Timezone", connection?.timezone],
+		["ASN", formatAsn(address.asn, connection?.asOrganization ?? profile?.asnName ?? null)],
+		["Org", profile?.asnOrgName],
+		["Protocol", connection?.httpProtocol],
+		["TLS", connection?.tlsVersion],
+		["RTT", connection?.clientTcpRttMs != null ? `${connection.clientTcpRttMs} ms` : null],
+		["Registry", detail?.registry],
+		["Website", detail?.website],
+		["Est. users", detail?.estimatedUsers?.toLocaleString("en-US")],
+		["Related", detail?.relatedAsns.map((entry) => `AS${entry.asn}`).join(", ")],
+	];
+	return {
+		ip: address.ip,
+		identity,
+		rows: rows.filter((row): row is [string, string] => row[1] != null && row[1] !== ""),
+	};
+}
+
 /**
  * Pick a representation from the request alone.
  *

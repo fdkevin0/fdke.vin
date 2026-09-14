@@ -10,7 +10,10 @@
 const DOH_URL = "https://1.1.1.1/dns-query";
 
 /** A and AAAA, so a hostname lookup reports both families in one answer. */
-const RECORD_TYPES = ["A", "AAAA"] as const;
+const RECORD_TYPES = [
+	["A", 1],
+	["AAAA", 28],
+] as const;
 
 interface DohAnswer {
 	name?: string;
@@ -22,12 +25,6 @@ interface DohResponse {
 	Status?: number;
 	Answer?: DohAnswer[];
 }
-
-/** DNS RR type numbers for the records we ask for. */
-const RECORD_TYPE_NUMBERS: Record<(typeof RECORD_TYPES)[number], number> = {
-	A: 1,
-	AAAA: 28,
-};
 
 export interface ResolveOptions {
 	fetchImpl?: typeof fetch | undefined;
@@ -47,7 +44,7 @@ export async function resolveHostname(
 	const doFetch = options.fetchImpl ?? fetch;
 
 	const answers = await Promise.all(
-		RECORD_TYPES.map(async (type) => {
+		RECORD_TYPES.map(async ([type, number]) => {
 			const url = new URL(DOH_URL);
 			url.searchParams.set("name", hostname);
 			url.searchParams.set("type", type);
@@ -59,7 +56,7 @@ export async function resolveHostname(
 
 			const body = (await response.json().catch(() => null)) as DohResponse | null;
 			return (body?.Answer ?? [])
-				.filter((answer) => answer.type === RECORD_TYPE_NUMBERS[type])
+				.filter((answer) => answer.type === number)
 				.map((answer) => answer.data)
 				.filter((data): data is string => typeof data === "string");
 		}),
