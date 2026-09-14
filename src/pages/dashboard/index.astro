@@ -12,68 +12,13 @@ const user = Astro.locals.user;
 		description: "Private dashboard for managing feed operations and internal API access.",
 	}}
 >
-	<section class="space-y-6">
-		<div class="space-y-3">
-			<p class="text-[11px] tracking-[0.42em] text-zinc-500 uppercase dark:text-zinc-400">
-				Dashboard
-			</p>
-			<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-				<div class="space-y-3">
-					<h1 class="title text-2xl">Dashboard</h1>
-				</div>
-				{
-					user && (
-						<div class="rounded border border-zinc-200 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
-							Signed in as{" "}
-							<span class="font-medium text-zinc-900 dark:text-zinc-100">{user.email}</span>
-						</div>
-					)
-				}
-			</div>
-		</div>
-
-		<div class="space-y-4">
-			<div class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
-				<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-					<div class="space-y-1">
-						<h2 class="text-lg font-semibold">Feed Management</h2>
-					</div>
-					<a
-						href="/dashboard/feed"
-						class="rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-					>
-						Open
-					</a>
-				</div>
-			</div>
-
-			<div class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
-				<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-					<div class="space-y-1">
-						<h2 class="text-lg font-semibold">Notes &amp; Federation</h2>
-					</div>
-					<a
-						href="/dashboard/notes"
-						class="rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-					>
-						Open
-					</a>
-				</div>
-			</div>
-
-			<div class="rounded border border-zinc-200 p-4 md:p-5 dark:border-zinc-800">
-				<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-					<div class="space-y-1">
-						<h2 class="text-lg font-semibold">API Management</h2>
-					</div>
-					<a
-						href="/dashboard/api-management"
-						class="rounded border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm text-white transition hover:bg-zinc-700 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-					>
-						Open
-					</a>
-				</div>
-			</div>
-		</div>
+	<section class="space-y-8">
+		<h1 class="title">Dashboard</h1>
+		{user && <p class="text-global-text/75">Signed in as {user.email}</p>}
+		<ul class="space-y-4" role="list">
+			<li><a class="cactus-link" href="/dashboard/feed">Feed management</a></li>
+			<li><a class="cactus-link" href="/dashboard/notes">Notes &amp; federation</a></li>
+			<li><a class="cactus-link" href="/dashboard/api-management">API management</a></li>
+		</ul>
 	</section>
 </Layout>

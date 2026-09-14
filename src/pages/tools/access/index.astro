@@ -94,16 +94,13 @@ const statusRows: { label: string; value: string | null }[] = claims
 		description: "View your Cloudflare Zero Trust authentication status and JWT claims.",
 	}}
 >
-	<section class="tool-workbench space-y-5">
-		<div class="tool-hero space-y-4">
+	<section class="tool-workbench space-y-8">
+		<div class="space-y-4">
 			<p class="tool-kicker">
-				<a href="/tools/" class="hover:underline">Tools</a> / Access
+				<a href="/tools/" class="cactus-link">Tools</a> / Access
 			</p>
-			<h1 class="tool-title">Cloudflare Access</h1>
-			<p class="tool-lede max-w-2xl">
-				The Zero Trust session behind this page: who the edge signed in, which device it trusts, and
-				when the token runs out.
-			</p>
+			<h1 class="title">Cloudflare Access</h1>
+			<p class="tool-lede max-w-2xl">Inspect your Cloudflare Access session.</p>
 			{
 				claims && (
 					<div class="tool-hero-readout">

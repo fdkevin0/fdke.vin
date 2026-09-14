@@ -25,23 +25,17 @@ function formatFileSize(bytes: number): string {
 
 <Layout
 	meta={{
-		title: "Email Viewer",
+		title: "Email",
 		description: "View emails from Cloudflare R2 storage",
 	}}
 >
-	<section class="tool-workbench space-y-5">
-		<div class="tool-hero space-y-4">
+	<section class="tool-workbench space-y-8">
+		<div class="space-y-4">
 			<p class="tool-kicker">
-				<a href="/tools/" class="hover:underline">Tools</a> / Email
+				<a href="/tools/" class="cactus-link">Tools</a> / Email
 			</p>
 			<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-				<div class="space-y-3">
-					<h1 class="tool-title">Email Viewer</h1>
-					<p class="tool-lede max-w-2xl">
-						Browse routed emails stored in Cloudflare R2 and open the raw message content for
-						inspection.
-					</p>
-				</div>
+				<h1 class="title">Email</h1>
 				{
 					user && (
 						<div class="tool-status px-3 py-2 text-sm">
@@ -53,78 +47,72 @@ function formatFileSize(bytes: number): string {
 		</div>
 
 		<div class="tool-panel">
-			<div class="w-full space-y-4">
-				<div class="space-y-1">
-					<h2 class="text-lg font-semibold">Emails</h2>
-					<p class="tool-lede">Recent messages available in the email bucket.</p>
-				</div>
-				{
-					error ? (
-						<div class="tool-status tool-status--danger p-4 text-center text-sm" role="alert">
-							{error}
-						</div>
-					) : (
-						<div class="overflow-x-auto rounded-lg border border-[var(--tool-line)]">
-							<table class="min-w-full border-collapse">
-								<thead class="bg-[color-mix(in_oklab,var(--tool-paper)_86%,var(--tool-line))]">
+			{
+				error ? (
+					<div class="tool-status tool-status--danger p-4 text-center text-sm" role="alert">
+						{error}
+					</div>
+				) : (
+					<div class="overflow-x-auto rounded-lg border border-[var(--tool-line)]">
+						<table class="min-w-full border-collapse">
+							<thead class="bg-[color-mix(in_oklab,var(--tool-paper)_86%,var(--tool-line))]">
+								<tr>
+									{["Name", "Size", "Uploaded", "Type", "From", "To", "Subject"].map((label) => (
+										<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6">
+											{label}
+										</th>
+									))}
+								</tr>
+							</thead>
+							<tbody>
+								{emails.length === 0 ? (
 									<tr>
-										{["Name", "Size", "Uploaded", "Type", "From", "To", "Subject"].map((label) => (
-											<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6">
-												{label}
-											</th>
-										))}
+										<td
+											colspan="7"
+											class="px-4 py-8 text-center text-sm text-[var(--tool-muted)] md:px-6"
+										>
+											No emails found in R2 storage.
+										</td>
 									</tr>
-								</thead>
-								<tbody>
-									{emails.length === 0 ? (
-										<tr>
-											<td
-												colspan="7"
-												class="px-4 py-8 text-center text-sm text-[var(--tool-muted)] md:px-6"
-											>
-												No emails found in R2 storage.
+								) : (
+									emails.map((email) => (
+										<tr class="border-b border-[var(--tool-line)] last:border-0 hover:bg-[color-mix(in_oklab,var(--tool-paper)_82%,var(--tool-line))]">
+											<td class="px-4 py-4 align-top text-sm md:px-6">
+												<a
+													href={`/tools/mail/email/${encodeURIComponent(email.key)}`}
+													class="font-medium break-words text-[var(--tool-ink)] hover:underline"
+												>
+													{email.metadata.name || email.key}
+												</a>
+											</td>
+											<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] tabular-nums md:px-6">
+												{formatFileSize(email.size)}
+											</td>
+											<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] tabular-nums md:px-6">
+												{email.date === "Unknown"
+													? "Unknown"
+													: new Date(email.date).toLocaleString()}
+											</td>
+											<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] md:px-6">
+												{email.metadata.type || "unknown"}
+											</td>
+											<td class="px-4 py-4 align-top text-sm break-words text-[var(--tool-muted)] md:px-6">
+												{email.metadata.from || "Unknown"}
+											</td>
+											<td class="px-4 py-4 align-top text-sm break-words text-[var(--tool-muted)] md:px-6">
+												{email.metadata.to || "Unknown"}
+											</td>
+											<td class="px-4 py-4 align-top text-sm break-words text-[var(--tool-muted)] md:px-6">
+												{email.metadata.subject || "Untitled"}
 											</td>
 										</tr>
-									) : (
-										emails.map((email) => (
-											<tr class="border-b border-[var(--tool-line)] last:border-0 hover:bg-[color-mix(in_oklab,var(--tool-paper)_82%,var(--tool-line))]">
-												<td class="px-4 py-4 align-top text-sm md:px-6">
-													<a
-														href={`/tools/mail/email/${encodeURIComponent(email.key)}`}
-														class="font-medium break-words text-[var(--tool-ink)] hover:underline"
-													>
-														{email.metadata.name || email.key}
-													</a>
-												</td>
-												<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] tabular-nums md:px-6">
-													{formatFileSize(email.size)}
-												</td>
-												<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] tabular-nums md:px-6">
-													{email.date === "Unknown"
-														? "Unknown"
-														: new Date(email.date).toLocaleString()}
-												</td>
-												<td class="px-4 py-4 align-top text-sm text-[var(--tool-muted)] md:px-6">
-													{email.metadata.type || "unknown"}
-												</td>
-												<td class="px-4 py-4 align-top text-sm break-words text-[var(--tool-muted)] md:px-6">
-													{email.metadata.from || "Unknown"}
-												</td>
-												<td class="px-4 py-4 align-top text-sm break-words text-[var(--tool-muted)] md:px-6">
-													{email.metadata.to || "Unknown"}
-												</td>
-												<td class="px-4 py-4 align-top text-sm break-words text-[var(--tool-muted)] md:px-6">
-													{email.metadata.subject || "Untitled"}
-												</td>
-											</tr>
-										))
-									)}
-								</tbody>
-							</table>
-						</div>
-					)
-				}
-			</div>
+									))
+								)}
+							</tbody>
+						</table>
+					</div>
+				)
+			}
 		</div>
 	</section>
 </Layout>

@@ -55,162 +55,119 @@ if (!ownAddress) {
 <PageLayout
 	meta={{
 		title: "Network",
-		description: "Your connection as the edge sees it, and how the Internet around it looks.",
+		description: "IP address lookup and Internet health.",
 	}}
 >
-	<section class="tool-workbench space-y-5">
-		<div class="tool-hero space-y-4">
-			<p class="tool-kicker">
-				<a href="/tools/" class="hover:underline">Tools</a> / Network
-			</p>
-			<h1 class="tool-title">Network</h1>
-			<p class="tool-lede max-w-2xl">
-				What the edge sees when you connect, what Radar knows about any address, and how the
-				Internet around you is behaving.
-			</p>
-			<form method="get" action="/tools/network" class="space-y-2">
-				<label class="tool-field-label" for="network-lookup">Look Up an Address</label>
-				<div class="flex flex-wrap gap-2">
-					<input
-						id="network-lookup"
-						name="q"
-						type="text"
-						value={query}
-						autocomplete="off"
-						autocapitalize="off"
-						autocorrect="off"
-						spellcheck="false"
-						placeholder="1.1.1.1 or github.com…"
-						class="tool-input min-w-0 flex-1"
-					/>
-					<button type="submit" class="tool-button">Look Up</button>
-					{
-						query && (
-							<a href="/tools/network" class="tool-button">
-								Your Address
-							</a>
-						)
-					}
-				</div>
-			</form>
-			{
-				error ? (
-					<p role="alert" class="tool-status p-3">
-						{error}
-					</p>
-				) : cards.length === 0 ? (
-					<p class="tool-note">No A or AAAA records found for {query}.</p>
-				) : (
-					cards.map((card) => (
-						<div class="space-y-4" data-address-card>
-							<div class="tool-hero-readout">
-								<p class="tool-field-label">{ownAddress ? "Your Address" : "Address"}</p>
-								{card.ip ? (
-									<>
-										<div class="mt-2 flex flex-wrap items-center gap-2">
-											<p class="tool-readout break-all" translate="no">
-												{card.ip}
-											</p>
-											<CopyButton value={card.ip} label="IP address" size="lg" />
-										</div>
-										{card.identity && <p class="tool-note mt-2">{card.identity}</p>}
-									</>
-								) : (
-									<p class="tool-lede mt-2">
-										Your address is unavailable. Enter an IP address above to look it up.
+	<section class="tool-workbench space-y-8">
+		<header class="space-y-4">
+			<a href="/tools/" class="cactus-link text-xs">Tools</a>
+			<h1 class="title">Network</h1>
+			<p>Look up an IP address or hostname.</p>
+		</header>
+		<form method="get" action="/tools/network" class="space-y-2">
+			<label class="tool-field-label" for="network-lookup">IP or hostname</label>
+			<div class="flex flex-wrap items-center gap-3">
+				<input
+					id="network-lookup"
+					name="q"
+					type="text"
+					value={query}
+					autocomplete="off"
+					autocapitalize="off"
+					autocorrect="off"
+					spellcheck="false"
+					placeholder="1.1.1.1 or github.com"
+					class="tool-input min-w-0 flex-1"
+				/>
+				<button type="submit" class="tool-button">Look up</button>
+				{
+					query && (
+						<a href="/tools/network" class="cactus-link">
+							Your address
+						</a>
+					)
+				}
+			</div>
+		</form>
+		{
+			error ? (
+				<p role="alert">{error}</p>
+			) : cards.length === 0 ? (
+				<p>No A or AAAA records found for {query}.</p>
+			) : (
+				cards.map((card) => (
+					<section class="space-y-4" data-address-card>
+						<h2 class="text-accent-2 text-lg font-semibold">
+							{ownAddress ? "Your address" : "Address"}
+						</h2>
+						{card.ip ? (
+							<div class="space-y-2">
+								<div class="flex flex-wrap items-center gap-2">
+									<p class="text-xl break-all tabular-nums" translate="no">
+										{card.ip}
 									</p>
-								)}
-							</div>
-							{card.rows.length > 0 && (
-								<div class="border-t border-[var(--tool-line)] pt-4">
-									<div class="mb-3 flex items-center justify-between gap-2">
-										<p class="tool-field-label">Address Detail</p>
-										<p class="tool-source">{ownAddress ? "This Request" : "Radar"}</p>
-									</div>
-									<dl class="tool-rows">
-										{card.rows.map(([label, value]) => (
-											<div class="tool-row">
-												<dt>{label}</dt>
-												<dd class="flex items-center justify-between gap-2" translate="no">
-													<span class="min-w-0 break-words">{value}</span>
-													<CopyButton value={value} label={label} />
-												</dd>
-											</div>
-										))}
-									</dl>
+									<CopyButton value={card.ip} label="IP address" />
 								</div>
-							)}
-						</div>
-					))
-				)
-			}
-			{
-				!error && cards.length > 0 && (
-					<p class="tool-note">
-						{ownAddress
-							? "From this request alone — no lookup, nothing stored."
-							: "Country-level location. TLS and RTT are only available for your own connection."}{" "}
-						<code translate="no">
-							curl {LOOKUP_HOST}
-							{ownAddress ? "" : `/${encodeURIComponent(query)}`}?detail=1
-						</code>
-					</p>
-				)
-			}
-		</div>
-
-		<network-panels data-country={connection.country ?? ""} class="grid gap-5 md:grid-cols-2">
-			<div class="tool-panel min-w-0">
-				<div class="tool-panel-head">
-					<h2 class="tool-panel-title">
-						{connection.country ? `${connection.country} vs. World` : "Adoption Worldwide"}
-					</h2>
-					<p class="tool-source">Radar · 7d</p>
+								{card.identity && <p class="tool-note">{card.identity}</p>}
+							</div>
+						) : (
+							<p>Your address is unavailable. Enter an IP above.</p>
+						)}
+						{card.rows.length > 0 && (
+							<dl class="tool-rows">
+								{card.rows.map(([label, value]) => (
+									<div class="tool-row">
+										<dt>{label}</dt>
+										<dd class="flex items-center justify-between gap-2" translate="no">
+											<span class="min-w-0 break-words">{value}</span>
+											<CopyButton value={value} label={label} />
+										</dd>
+									</div>
+								))}
+							</dl>
+						)}
+					</section>
+				))
+			)
+		}
+		{
+			!error && cards.length > 0 && (
+				<div class="space-y-2">
+					{!ownAddress && (
+						<p class="tool-note">
+							Location is country-level; TLS and RTT describe your own connection only.
+						</p>
+					)}
+					<code class="block overflow-x-auto text-xs whitespace-nowrap" translate="no">
+						curl {LOOKUP_HOST}
+						{ownAddress ? "" : `/${encodeURIComponent(query)}`}?detail=1
+					</code>
 				</div>
-				<p class="tool-note mt-1 mb-4">
-					Share of HTTP traffic Cloudflare saw over the last 7 days.
-				</p>
-				<div data-adoption aria-busy="true" class="text-sm">
-					<span class="tool-lede">Loading…</span>
-				</div>
-			</div>
-
-			<div class="tool-panel min-w-0">
-				<div class="tool-panel-head">
-					<h2 class="tool-panel-title">Internet Health</h2>
-					<p class="tool-source">Radar</p>
-				</div>
-				<p class="tool-note mt-1 mb-4">
-					Verified outages are corroborated. Traffic anomalies are algorithmic and unconfirmed.
-				</p>
-				<div data-health aria-busy="true" class="text-sm">
-					<span class="tool-lede">Loading…</span>
-				</div>
-			</div>
-
-			<div class="tool-panel min-w-0 md:col-span-2">
-				<div class="tool-panel-head">
-					<h2 class="tool-panel-title">Routing</h2>
-					<p class="tool-source">Radar</p>
-				</div>
-				<p class="tool-note mt-1 mb-4">Origin hijacks and route leaks Radar detected recently.</p>
-				<div data-routing aria-busy="true" class="text-sm">
-					<span class="tool-lede">Loading…</span>
-				</div>
-			</div>
-
-			<div class="tool-panel min-w-0 md:col-span-2">
-				<div class="tool-panel-head">
-					<h2 class="tool-panel-title">Rankings &amp; Attacks</h2>
-					<p class="tool-source">Radar</p>
-				</div>
-				<p class="tool-note mt-1 mb-4">
-					Most popular and fastest-rising domains, and how attack traffic breaks down.
-				</p>
-				<div data-rankings aria-busy="true" class="text-sm">
-					<span class="tool-lede">Loading…</span>
-				</div>
-			</div>
+			)
+		}
+		<p class="tool-note">
+			Source: {ownAddress && "your connection and "}
+			<a class="cactus-link" href="https://radar.cloudflare.com/">Cloudflare Radar</a>.
+		</p>
+		<network-panels data-country={connection.country ?? ""} class="block space-y-8">
+			<section class="tool-panel space-y-4">
+				<h2 class="title text-lg">
+					Adoption <span class="text-global-text/75 text-sm font-normal">· 7 days</span>
+				</h2>
+				<div data-adoption aria-busy="true"><span class="tool-note">Loading…</span></div>
+			</section>
+			<section class="tool-panel space-y-4">
+				<h2 class="title text-lg">Internet health</h2>
+				<div data-health aria-busy="true"><span class="tool-note">Loading…</span></div>
+			</section>
+			<section class="tool-panel space-y-4">
+				<h2 class="title text-lg">Routing</h2>
+				<div data-routing aria-busy="true"><span class="tool-note">Loading…</span></div>
+			</section>
+			<section class="tool-panel space-y-4">
+				<h2 class="title text-lg">Rankings &amp; attacks</h2>
+				<div data-rankings aria-busy="true"><span class="tool-note">Loading…</span></div>
+			</section>
 		</network-panels>
 	</section>
 </PageLayout>
