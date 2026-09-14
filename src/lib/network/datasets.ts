@@ -219,6 +219,9 @@ export interface RoutingEvent {
 	detectedOrigin: string | null;
 	expectedOrigin: string | null;
 	startDate: string | null;
+	path?: string[];
+	prefixCount?: number | null;
+	finished?: boolean | null;
 }
 
 export interface RoutingSnapshot {
@@ -239,10 +242,11 @@ interface HijacksResult {
 
 interface LeaksResult {
 	events?: {
-		leaker_asn?: number;
-		origin_asn?: number;
-		leaked_prefixes?: { prefix?: string }[];
-		starttime?: string;
+		leak_asn?: number;
+		leak_seg?: number[];
+		prefix_count?: number;
+		min_ts?: string;
+		finished?: boolean;
 	}[];
 }
 
@@ -258,10 +262,10 @@ const ROUTING_LIMIT = 6;
  */
 export async function fetchRouting(options: RadarOptions): Promise<RoutingSnapshot> {
 	const [hijacks, leaks] = await Promise.all([
-		radarGet<HijacksResult>("/bgp/hijacks/events", { perPage: ROUTING_LIMIT }, options).catch(
+		radarGet<HijacksResult>("/bgp/hijacks/events", { per_page: ROUTING_LIMIT }, options).catch(
 			() => null,
 		),
-		radarGet<LeaksResult>("/bgp/leaks/events", { perPage: ROUTING_LIMIT }, options).catch(
+		radarGet<LeaksResult>("/bgp/leaks/events", { per_page: ROUTING_LIMIT }, options).catch(
 			() => null,
 		),
 	]);
@@ -277,11 +281,14 @@ export async function fetchRouting(options: RadarOptions): Promise<RoutingSnapsh
 
 	const leakEvents: RoutingEvent[] = (leaks?.events ?? []).map((event) => ({
 		kind: "leak" as const,
-		prefix: event.leaked_prefixes?.[0]?.prefix ?? null,
+		prefix: null,
 		confidence: null,
-		detectedOrigin: event.leaker_asn ? `AS${event.leaker_asn}` : null,
-		expectedOrigin: event.origin_asn ? `AS${event.origin_asn}` : null,
-		startDate: event.starttime ?? null,
+		detectedOrigin: event.leak_asn ? `AS${event.leak_asn}` : null,
+		expectedOrigin: null,
+		startDate: event.min_ts ?? null,
+		path: (event.leak_seg ?? []).map((asn) => `AS${asn}`),
+		prefixCount: event.prefix_count ?? null,
+		finished: event.finished ?? null,
 	}));
 
 	return { events: [...hijackEvents, ...leakEvents] };

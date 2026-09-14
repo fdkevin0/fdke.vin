@@ -124,7 +124,7 @@ describe("fetchRouting", () => {
 	it("labels hijacks and leaks distinctly and words the confidence score", async () => {
 		// Radar scores confidence 0–100. Reporting the raw number would imply a
 		// precision the dataset does not claim, so it is bucketed.
-		const { fetchImpl } = stubFetch((url) =>
+		const { fetchImpl, urls } = stubFetch((url) =>
 			url.includes("/hijacks/")
 				? {
 						success: true,
@@ -144,7 +144,13 @@ describe("fetchRouting", () => {
 						success: true,
 						result: {
 							events: [
-								{ leaker_asn: 4321, origin_asn: 8765, leaked_prefixes: [{ prefix: "10.0.0.0/8" }] },
+								{
+									leak_asn: 4321,
+									leak_seg: [1234, 4321, 8765],
+									prefix_count: 0,
+									min_ts: "2026-07-24T12:30:00Z",
+									finished: false,
+								},
 							],
 						},
 					},
@@ -160,7 +166,16 @@ describe("fetchRouting", () => {
 			detectedOrigin: "AS1234",
 			expectedOrigin: "AS5678",
 		});
-		expect(snapshot.events[1]).toMatchObject({ kind: "leak", confidence: null });
+		expect(snapshot.events[1]).toMatchObject({
+			kind: "leak",
+			detectedOrigin: "AS4321",
+			path: ["AS1234", "AS4321", "AS8765"],
+			prefixCount: 0,
+			startDate: "2026-07-24T12:30:00Z",
+			finished: false,
+			confidence: null,
+		});
+		for (const url of urls) expect(new URL(url).searchParams.get("per_page")).toBe("6");
 	});
 
 	it("still reports hijacks when the leak feed fails", async () => {

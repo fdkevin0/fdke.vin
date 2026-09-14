@@ -160,7 +160,7 @@ if (!ownAddress) {
 		</div>
 
 		<network-panels data-country={connection.country ?? ""} class="grid gap-5 md:grid-cols-2">
-			<div class="tool-panel">
+			<div class="tool-panel min-w-0">
 				<div class="tool-panel-head">
 					<h2 class="tool-panel-title">
 						{connection.country ? `${connection.country} vs. World` : "Adoption Worldwide"}
@@ -175,7 +175,7 @@ if (!ownAddress) {
 				</div>
 			</div>
 
-			<div class="tool-panel">
+			<div class="tool-panel min-w-0">
 				<div class="tool-panel-head">
 					<h2 class="tool-panel-title">Internet Health</h2>
 					<p class="tool-source">Radar</p>
@@ -188,7 +188,7 @@ if (!ownAddress) {
 				</div>
 			</div>
 
-			<div class="tool-panel md:col-span-2">
+			<div class="tool-panel min-w-0 md:col-span-2">
 				<div class="tool-panel-head">
 					<h2 class="tool-panel-title">Routing</h2>
 					<p class="tool-source">Radar</p>
@@ -199,7 +199,7 @@ if (!ownAddress) {
 				</div>
 			</div>
 
-			<div class="tool-panel md:col-span-2">
+			<div class="tool-panel min-w-0 md:col-span-2">
 				<div class="tool-panel-head">
 					<h2 class="tool-panel-title">Rankings &amp; Attacks</h2>
 					<p class="tool-source">Radar</p>
@@ -221,14 +221,11 @@ if (!ownAddress) {
 	// `import type` is erased at build, so this pulls no server code client-side.
 	import type {
 		AdoptionSnapshot,
-		AttackShare,
 		HealthSnapshot,
-		OutageEvent,
-		RankedDomain,
 		RankingsSnapshot,
 		RoutingSnapshot,
 	} from "@/lib/network/datasets";
-	import { escapeHtml } from "@/utils/html";
+	import { renderDataTable } from "@/lib/network/table";
 
 	// The reader's own locale decides how these dates read, so the format is
 	// resolved once here rather than hardcoded at each call site.
@@ -236,7 +233,15 @@ if (!ownAddress) {
 		day: "numeric",
 		month: "short",
 		year: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
 	});
+
+	const date = (value: string | null) => {
+		if (!value) return null;
+		const parsed = new Date(value);
+		return Number.isNaN(parsed.getTime()) ? null : dateFormat.format(parsed);
+	};
 
 	class NetworkPanelsElement extends HTMLElement {
 		#country = "";
@@ -287,30 +292,33 @@ if (!ownAddress) {
 			return this.#loadGroup<RoutingSnapshot>(
 				"[data-routing]",
 				"/api/network/routing",
-				(snapshot) => {
-					if (snapshot.events.length === 0) return "";
-
-					return `<ul class="space-y-2">${snapshot.events
-						.map((event) => {
-							const label = event.kind === "hijack" ? "Hijack" : "Leak";
-							const origins = [
-								event.detectedOrigin ? `saw ${escapeHtml(event.detectedOrigin)}` : null,
-								event.expectedOrigin ? `expected ${escapeHtml(event.expectedOrigin)}` : null,
-							]
-								.filter(Boolean)
-								.join(", ");
-							const confidence = event.confidence
-								? ` · confidence ${escapeHtml(event.confidence)}`
-								: "";
-
-							return `<li class="text-sm">
-								<span class="text-[var(--tool-ink)]">${label}</span>
-								${event.prefix ? `<span class="tabular-nums" translate="no"> ${escapeHtml(event.prefix)}</span>` : ""}
-								<div class="tool-note">${origins}${confidence}</div>
-							</li>`;
-						})
-						.join("")}</ul>`;
-				},
+				(snapshot) =>
+					renderDataTable(
+						"Origin hijacks",
+						["Prefix", "Detected ASN", "Expected ASN", "Confidence", "Started"],
+						snapshot.events
+							.filter((event) => event.kind === "hijack")
+							.map((event) => [
+								event.prefix,
+								event.detectedOrigin,
+								event.expectedOrigin,
+								event.confidence,
+								date(event.startDate),
+							]),
+					) +
+					renderDataTable(
+						"Route leaks",
+						["Leaking ASN", "Path", "Prefixes", "Started", "Status"],
+						snapshot.events
+							.filter((event) => event.kind === "leak")
+							.map((event) => [
+								event.detectedOrigin,
+								event.path?.join(" → "),
+								event.prefixCount,
+								date(event.startDate),
+								event.finished == null ? null : event.finished ? "Ended" : "Ongoing",
+							]),
+					),
 			);
 		}
 
@@ -318,47 +326,29 @@ if (!ownAddress) {
 			return this.#loadGroup<RankingsSnapshot>(
 				"[data-rankings]",
 				this.#groupUrl("rankings"),
-				(snapshot) => {
-					const domainList = (title: string, domains: RankedDomain[]) =>
-						domains.length === 0
-							? ""
-							: `<div>
-							<p class="tool-field-label mb-2">${title}</p>
-							<ol class="space-y-1 text-sm">${domains
-								.map(
-									(entry) =>
-										`<li class="flex gap-2"><span class="w-5 shrink-0 text-right tabular-nums text-[var(--tool-muted)]">${entry.rank}</span><span class="min-w-0 truncate" translate="no">${escapeHtml(entry.domain)}</span></li>`,
-								)
-								.join("")}</ol>
-						</div>`;
-
-					const shareList = (title: string, shares: AttackShare[]) =>
-						shares.length === 0
-							? ""
-							: `<div>
-							<p class="tool-field-label mb-2">${title}</p>
-							<ul class="space-y-1 text-sm">${shares
-								.map(
-									(share) =>
-										`<li class="flex justify-between gap-2"><span class="min-w-0 truncate">${escapeHtml(share.label)}</span><span class="shrink-0 tabular-nums text-[var(--tool-muted)]">${share.percentage.toFixed(1)}%</span></li>`,
-								)
-								.join("")}</ul>
-						</div>`;
-
-					const sections = [
-						domainList(
+				(snapshot) =>
+					[
+						renderDataTable(
 							snapshot.country ? `Popular · ${snapshot.country}` : "Popular",
-							snapshot.popular,
+							["Rank", "Domain"],
+							snapshot.popular.map((entry) => [entry.rank, entry.domain]),
 						),
-						domainList("Trending", snapshot.trending),
-						shareList("DDoS L3/4 by protocol", snapshot.ddosLayer3),
-						shareList("DDoS L7 by mitigation", snapshot.ddosLayer7),
-					].filter(Boolean);
-
-					return sections.length === 0
-						? ""
-						: `<div class="grid gap-6 sm:grid-cols-2">${sections.join("")}</div>`;
-				},
+						renderDataTable(
+							"Trending",
+							["Rank", "Domain"],
+							snapshot.trending.map((entry) => [entry.rank, entry.domain]),
+						),
+						renderDataTable(
+							"DDoS L3/4 by protocol",
+							["Protocol", "Share"],
+							snapshot.ddosLayer3.map((entry) => [entry.label, `${entry.percentage.toFixed(1)}%`]),
+						),
+						renderDataTable(
+							"DDoS L7 by mitigation",
+							["Mitigation", "Share"],
+							snapshot.ddosLayer7.map((entry) => [entry.label, `${entry.percentage.toFixed(1)}%`]),
+						),
+					].join(""),
 			);
 		}
 
@@ -367,81 +357,45 @@ if (!ownAddress) {
 				"[data-adoption]",
 				this.#groupUrl("adoption"),
 				(snapshot) => {
-					const rows = snapshot.metrics.filter(
-						(metric) => metric.local !== null || metric.global !== null,
+					const percent = (value: number | null) =>
+						value === null ? null : `${value.toFixed(1)}%`;
+					return renderDataTable(
+						"HTTP traffic share",
+						["Metric", ...(snapshot.country ? [snapshot.country] : []), "World"],
+						snapshot.metrics
+							.filter((metric) => metric.local !== null || metric.global !== null)
+							.map((metric) => [
+								metric.label,
+								...(snapshot.country ? [percent(metric.local)] : []),
+								percent(metric.global),
+							]),
 					);
-					if (rows.length === 0) return "";
-
-					const percent = (value: number | null) => (value === null ? "—" : `${value.toFixed(1)}%`);
-
-					return `
-					<table class="w-full text-sm">
-						<caption class="sr-only">Share of HTTP traffic by protocol and standard</caption>
-						<thead>
-							<tr class="tool-field-label">
-								<th class="py-1 text-left font-normal"><span class="sr-only">Metric</span></th>
-								${snapshot.country ? `<th class="py-1 text-right font-normal" scope="col">${snapshot.country}</th>` : ""}
-								<th class="py-1 text-right font-normal" scope="col">World</th>
-							</tr>
-						</thead>
-						<tbody>
-							${rows
-								.map(
-									(metric) => `
-								<tr class="border-t border-[var(--tool-line)]">
-									<th class="py-2 text-left font-normal text-[var(--tool-ink)]" scope="row">${metric.label}</th>
-									${snapshot.country ? `<td class="py-2 text-right tabular-nums">${percent(metric.local)}</td>` : ""}
-									<td class="py-2 text-right tabular-nums text-[var(--tool-muted)]">${percent(metric.global)}</td>
-								</tr>`,
-								)
-								.join("")}
-						</tbody>
-					</table>`;
 				},
 			);
 		}
 
 		#loadHealth() {
-			return this.#loadGroup<HealthSnapshot>("[data-health]", "/api/network/health", (snapshot) => {
-				const sections = [
+			return this.#loadGroup<HealthSnapshot>("[data-health]", "/api/network/health", (snapshot) =>
+				[
 					{ title: "Verified outages", events: snapshot.outages },
 					{ title: "Traffic anomalies · unconfirmed", events: snapshot.anomalies },
-				].filter((section) => section.events.length > 0);
-
-				return sections
-					.map(
-						(section) => `
-					<div class="mb-4 last:mb-0">
-						<p class="tool-field-label mb-2">${section.title}</p>
-						<ul class="space-y-2">
-							${section.events.map((event) => this.#renderEvent(event)).join("")}
-						</ul>
-					</div>`,
+				]
+					.map((section) =>
+						renderDataTable(
+							section.title,
+							["Location", "ASN", "Cause", "Scope", "Started", "Ended"],
+							section.events.map((event) => [
+								event.locations.join(", "),
+								event.asns.join(", "),
+								event.cause,
+								event.scope,
+								date(event.startDate),
+								event.endDate ? date(event.endDate) : "Ongoing",
+							]),
+						),
 					)
-					.join("");
-			});
-		}
-
-		#renderEvent(event: OutageEvent): string {
-			const where =
-				[...event.locations, ...event.asns].map(escapeHtml).join(" · ") || "Unspecified";
-			const detail = [event.cause, event.scope]
-				.filter(Boolean)
-				.map(String)
-				.map(escapeHtml)
-				.join(" · ");
-			const stamp = (value: string) =>
-				`<time datetime="${escapeHtml(value)}">${dateFormat.format(new Date(value))}</time>`;
-			const start = event.startDate ? stamp(event.startDate) : null;
-			const end = event.endDate ? stamp(event.endDate) : "ongoing";
-			const when = start ? `${start} → ${end}` : "";
-
-			return `
-				<li class="text-sm">
-					<span class="text-[var(--tool-ink)]">${where}</span>
-					${detail ? `<span class="text-[var(--tool-muted)]"> · ${detail}</span>` : ""}
-					${when ? `<div class="tool-note">${when}</div>` : ""}
-				</li>`;
+					.join(""),
+			);
 		}
 	}
 
