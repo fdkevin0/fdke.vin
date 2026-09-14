@@ -69,12 +69,8 @@
 
 	/* Tool controls use the same palette as the rest of Cactus. */
 	.tool-workbench {
-		--tool-paper: var(--color-global-bg);
-		--tool-ink: var(--color-global-text);
 		--tool-muted: color-mix(in oklab, var(--color-global-text) 75%, var(--color-global-bg));
 		--tool-line: color-mix(in oklab, var(--color-global-text) 20%, var(--color-global-bg));
-		--tool-teal: var(--color-accent);
-		--tool-green: var(--color-accent);
 	}
 
 	.tool-kicker,
@@ -197,11 +193,6 @@
 		color: var(--color-accent);
 	}
 
-	.tool-hero-readout {
-		border-top: 1px solid var(--tool-line);
-		padding-top: 1rem;
-	}
-
 	.tool-readout {
 		@apply text-accent-2 text-xl font-semibold tabular-nums;
 		overflow-wrap: anywhere;
@@ -209,10 +200,6 @@
 
 	.tool-status {
 		color: var(--tool-muted);
-	}
-
-	.tool-status--warn {
-		@apply border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300;
 	}
 
 	.tool-status--danger {

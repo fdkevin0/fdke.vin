@@ -26,7 +26,7 @@ function formatFileSize(bytes: number): string {
 <Layout
 	meta={{
 		title: "Email",
-		description: "View emails from Cloudflare R2 storage",
+		description: "Read routed messages.",
 	}}
 >
 	<section class="tool-workbench space-y-8">
@@ -39,7 +39,7 @@ function formatFileSize(bytes: number): string {
 				{
 					user && (
 						<div class="tool-status px-3 py-2 text-sm">
-							Logged in as <span class="font-medium text-[var(--tool-ink)]">{user.email}</span>
+							Logged in as <span class="text-global-text font-medium">{user.email}</span>
 						</div>
 					)
 				}
@@ -55,10 +55,10 @@ function formatFileSize(bytes: number): string {
 				) : (
 					<div class="overflow-x-auto rounded-lg border border-[var(--tool-line)]">
 						<table class="min-w-full border-collapse">
-							<thead class="bg-[color-mix(in_oklab,var(--tool-paper)_86%,var(--tool-line))]">
+							<thead class="bg-[color-mix(in_oklab,var(--color-global-bg)_86%,var(--tool-line))]">
 								<tr>
 									{["Name", "Size", "Uploaded", "Type", "From", "To", "Subject"].map((label) => (
-										<th class="px-4 py-3 text-left text-[11px] font-medium tracking-[0.22em] text-[var(--tool-muted)] uppercase md:px-6">
+										<th class="px-4 py-3 text-left text-sm font-medium text-[var(--tool-muted)] md:px-6">
 											{label}
 										</th>
 									))}
@@ -71,16 +71,16 @@ function formatFileSize(bytes: number): string {
 											colspan="7"
 											class="px-4 py-8 text-center text-sm text-[var(--tool-muted)] md:px-6"
 										>
-											No emails found in R2 storage.
+											No emails.
 										</td>
 									</tr>
 								) : (
 									emails.map((email) => (
-										<tr class="border-b border-[var(--tool-line)] last:border-0 hover:bg-[color-mix(in_oklab,var(--tool-paper)_82%,var(--tool-line))]">
+										<tr class="border-b border-[var(--tool-line)] last:border-0 hover:bg-[color-mix(in_oklab,var(--color-global-bg)_82%,var(--tool-line))]">
 											<td class="px-4 py-4 align-top text-sm md:px-6">
 												<a
 													href={`/tools/mail/email/${encodeURIComponent(email.key)}`}
-													class="font-medium break-words text-[var(--tool-ink)] hover:underline"
+													class="text-global-text font-medium break-words hover:underline"
 												>
 													{email.metadata.name || email.key}
 												</a>

@@ -22,33 +22,19 @@ import PageLayout from "@/layouts/Base.astro";
 					</label>
 					<button class="tool-button" data-refresh type="button">Refresh</button>
 				</div>
-				<div class="mt-4 grid gap-3 sm:grid-cols-3">
-					<div class="tool-status px-3 py-3">
-						<p class="tool-field-label">Latest Mid</p>
-						<p class="text-2xl font-semibold text-[var(--tool-teal)] tabular-nums" data-mid>--</p>
-						<p class="tool-lede text-xs" data-time>--</p>
-					</div>
-					<div class="tool-status px-3 py-3">
-						<p class="tool-field-label">Buy / Sell</p>
-						<p class="text-xl font-semibold text-[var(--tool-teal)] tabular-nums" data-buy-sell>
-							--
-						</p>
-					</div>
-					<div class="tool-status px-3 py-3">
-						<p class="tool-field-label">Latest Change</p>
-						<p class="text-xl font-semibold" data-change>--</p>
-						<p class="tool-lede text-xs" data-compare>Waiting to load…</p>
-					</div>
-				</div>
+				<p class="tool-note mt-4">
+					Mid change: <span class="text-global-text font-semibold" data-change>—</span>
+					<span data-compare></span>
+				</p>
 			</div>
 			<div class="space-y-3 pb-4">
 				<div class="tool-status px-3 py-2 text-sm" data-status aria-live="polite" role="status">
-					Loading supported currencies…
+					Loading…
 				</div>
 				<div class="overflow-x-auto rounded-lg border border-[var(--tool-line)]">
 					<table class="min-w-full divide-y divide-[var(--tool-line)]">
 						<thead
-							class="bg-[color-mix(in_oklab,var(--tool-paper)_86%,var(--tool-line))] text-xs text-[var(--tool-muted)]"
+							class="bg-[color-mix(in_oklab,var(--color-global-bg)_86%,var(--tool-line))] text-xs text-[var(--tool-muted)]"
 						>
 							<tr>
 								<th class="px-4 py-3 text-left font-semibold">Time</th>
@@ -59,12 +45,9 @@ import PageLayout from "@/layouts/Base.astro";
 								<th class="px-4 py-3 text-right font-semibold">Mid</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-[var(--tool-line)] text-sm" data-rates>
-							<tr><td class="px-4 py-4 text-center text-zinc-500" colspan="6">Loading…</td></tr>
-						</tbody>
+						<tbody class="divide-y divide-[var(--tool-line)] text-sm" data-rates></tbody>
 					</table>
 				</div>
-				<p class="text-xs text-[var(--tool-muted)]" data-meta>Waiting…</p>
 			</div>
 		</div>
 	</section>
@@ -79,7 +62,6 @@ import PageLayout from "@/layouts/Base.astro";
 		const refresh = root.querySelector("[data-refresh]") as HTMLButtonElement;
 		const status = root.querySelector("[data-status]") as HTMLElement;
 		const rates = root.querySelector("[data-rates]") as HTMLTableSectionElement;
-		const meta = root.querySelector("[data-meta]") as HTMLElement;
 		const format = new Intl.NumberFormat("en-US", {
 			minimumFractionDigits: 2,
 			maximumFractionDigits: 2,
@@ -92,11 +74,6 @@ import PageLayout from "@/layouts/Base.astro";
 
 		const render = (rows: BocRateRow[], code: string) => {
 			rates.replaceChildren();
-			if (rows.length === 0) {
-				rates.innerHTML =
-					'<tr><td class="px-4 py-4 text-center text-zinc-500" colspan="6">No data</td></tr>';
-				return;
-			}
 			for (const [index, row] of rows.entries()) {
 				const tr = document.createElement("tr");
 				tr.className = index === 0 ? "bg-accent/5 dark:bg-accent/10" : "even:bg-global-text/5";
@@ -121,20 +98,14 @@ import PageLayout from "@/layouts/Base.astro";
 				latest?.middleRate != null && previous?.middleRate != null
 					? latest.middleRate - previous.middleRate
 					: null;
-			(root.querySelector("[data-mid]") as HTMLElement).textContent = display(
-				latest?.middleRate ?? null,
-			);
-			(root.querySelector("[data-time]") as HTMLElement).textContent = latest?.pubTime ?? "--";
-			(root.querySelector("[data-buy-sell]") as HTMLElement).textContent =
-				`${display(latest?.buyingRate ?? null)} / ${display(latest?.sellingRate ?? null)}`;
 			(root.querySelector("[data-change]") as HTMLElement).textContent =
 				delta == null
 					? "--"
 					: `${delta === 0 ? "Flat" : delta > 0 ? "Up" : "Down"} ${Math.abs(delta).toFixed(2)}`;
 			(root.querySelector("[data-compare]") as HTMLElement).textContent = previous
-				? `Vs ${previous.pubTime}`
-				: "No previous tick yet";
-			meta.textContent = `${code} · Showing ${rows.length} latest`;
+				? `· vs ${previous.pubTime}`
+				: "";
+			setStatus(rows.length ? `${code} · ${rows.length} latest quotes` : `${code} · No data.`);
 		};
 
 		const loadRates = async () => {
@@ -148,7 +119,6 @@ import PageLayout from "@/layouts/Base.astro";
 				if (!response.ok) throw new Error(response.statusText);
 				render((await response.json()) as BocRateRow[], code);
 				localStorage.setItem("exchange:currency", code);
-				setStatus(`${code} rates refreshed.`);
 			} catch {
 				setStatus("Failed to fetch rates. Please try again.", true);
 			} finally {

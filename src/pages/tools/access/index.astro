@@ -101,17 +101,6 @@ const statusRows: { label: string; value: string | null }[] = claims
 			</p>
 			<h1 class="title">Cloudflare Access</h1>
 			<p class="tool-lede max-w-2xl">Inspect your Cloudflare Access session.</p>
-			{
-				claims && (
-					<div class="tool-hero-readout">
-						<p class="tool-field-label">Signed In As</p>
-						<p class="tool-readout mt-2" translate="no">
-							{claims.email}
-						</p>
-						<p class="tool-note mt-2">Token expires {expiresAt}</p>
-					</div>
-				)
-			}
 		</div>
 
 		{
@@ -150,26 +139,35 @@ const statusRows: { label: string; value: string | null }[] = claims
 								<h2 class="tool-panel-title">Device Sessions</h2>
 								<p class="tool-source">Access Identity</p>
 							</div>
-							<ul class="space-y-4" role="list">
-								{identity.device_sessions.map((session) => (
-									<li class="border-t border-[var(--tool-line)] pt-4 first:border-0 first:pt-0">
-										<dl class="tool-rows">
-											<div class="tool-row">
-												<dt>Session ID</dt>
-												<dd translate="no">{session.id}</dd>
-											</div>
-											<div class="tool-row">
-												<dt>Created</dt>
-												<dd>{formatStamp(session.created_at)}</dd>
-											</div>
-											<div class="tool-row">
-												<dt>Expires</dt>
-												<dd>{formatStamp(session.expires_at)}</dd>
-											</div>
-										</dl>
-									</li>
-								))}
-							</ul>
+							<div
+								class="focus-visible:outline-accent overflow-x-auto focus-visible:outline-2"
+								role="region"
+								aria-label="Device sessions"
+								tabindex="0"
+							>
+								<table class="w-full text-sm whitespace-nowrap tabular-nums">
+									<thead>
+										<tr>
+											{["Session ID", "Created", "Expires"].map((label) => (
+												<th scope="col" class="text-global-text/75 px-3 py-2 text-left font-medium">
+													{label}
+												</th>
+											))}
+										</tr>
+									</thead>
+									<tbody>
+										{identity.device_sessions.map((session) => (
+											<tr class="border-t border-[var(--tool-line)]">
+												<td class="px-3 py-2" translate="no">
+													{session.id}
+												</td>
+												<td class="px-3 py-2">{formatStamp(session.created_at)}</td>
+												<td class="px-3 py-2">{formatStamp(session.expires_at)}</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
 						</div>
 					)}
 

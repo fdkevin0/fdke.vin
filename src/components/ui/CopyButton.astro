@@ -15,7 +15,7 @@ const { value, label, variant = "icon" } = Astro.props as Props;
 	data-copy-variant={variant}
 	class={variant === "icon"
 		? "tool-copy"
-		: "shrink-0 rounded border border-zinc-300 px-2 py-1 text-[11px] tracking-[0.18em] text-zinc-700 uppercase transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"}
+		: "shrink-0 rounded border border-global-text/20 px-2 py-1 text-xs text-global-text hover:border-accent hover:text-accent"}
 	aria-label={variant === "icon" ? `Copy ${label}` : label}
 >
 	{

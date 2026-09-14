@@ -16,88 +16,79 @@ import PageLayout from "@/layouts/Base.astro";
 			</p>
 			<h1 class="title">LUT to NP3</h1>
 			<p class="tool-lede max-w-2xl">
-				Convert a constrained 3D <code>.cube</code> LUT into an approximate Nikon Flexible Color
-				<code>.NP3</code>. This tool targets display-referred, sRGB-like LUTs and generates an
-				editable Nikon starting point rather than an exact equivalent.
+				Convert a 3D <code>.cube</code> LUT to an editable, approximate Nikon Flexible Color <code
+					>.NP3</code
+				> profile.
 			</p>
 		</div>
 
-		<div class="block" data-lut-to-np3>
-			<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
-				<form class="tool-panel space-y-5" data-tool-form>
-					<div class="grid gap-4 sm:grid-cols-2">
-						<label class="space-y-2">
-							<span class="tool-field-label">LUT File</span>
-							<input
-								class="tool-input"
-								accept=".cube"
-								autocomplete="off"
-								name="file"
-								required
-								type="file"
-							/>
-						</label>
-						<label class="space-y-2">
-							<span class="tool-field-label">NP3 Name</span>
-							<input
-								class="tool-input"
-								autocomplete="off"
-								maxlength="19"
-								name="name"
-								placeholder="ConvertedLUT…"
-								type="text"
-							/>
-						</label>
-					</div>
-
-					<div class="space-y-2">
-						<div class="flex items-baseline justify-between gap-3">
-							<label class="tool-field-label" for="gray-weight">Gray-Axis Weighting</label>
-							<output
-								class="text-sm font-semibold text-[var(--tool-teal)] tabular-nums"
-								for="gray-weight"
-								data-gray-weight-output>0.80</output
-							>
-						</div>
+		<div data-lut-to-np3>
+			<form class="tool-panel space-y-5" data-tool-form>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<label class="space-y-2">
+						<span class="tool-field-label">LUT File</span>
 						<input
-							id="gray-weight"
-							class="w-full accent-[var(--tool-green)]"
-							aria-describedby="gray-weight-help"
+							class="tool-input"
+							accept=".cube"
 							autocomplete="off"
-							max="1"
-							min="0"
-							name="grayWeight"
-							step="0.05"
-							type="range"
-							value="0.8"
+							name="file"
+							required
+							type="file"
 						/>
-						<p class="tool-note" id="gray-weight-help">
-							Higher values push the fit toward neutral-axis tone response. Lower values let the
-							converter borrow more average RGB behavior.
-						</p>
-					</div>
-
-					<div class="tool-status p-3 text-xs leading-relaxed">
-						<p class="font-semibold">First Version Constraints</p>
-						<p class="mt-2">
-							Supported inputs are display-referred 3D <code>.cube</code> LUTs with
-							<code>DOMAIN_MIN 0 0 0</code> and <code>DOMAIN_MAX 1 1 1</code>. Log, ACES, HDR, and
-							scene-referred LUTs are rejected.
-						</p>
-					</div>
-
-					<button class="tool-button tool-button-primary" data-convert type="submit">
-						Generate NP3
-					</button>
-				</form>
-
-				<div class="tool-panel space-y-2">
-					<p class="tool-field-label">Status</p>
-					<div class="tool-status p-3 text-sm" data-status aria-live="polite" role="status">
-						Waiting for input.
-					</div>
+					</label>
+					<label class="space-y-2">
+						<span class="tool-field-label">NP3 Name</span>
+						<input
+							class="tool-input"
+							autocomplete="off"
+							maxlength="19"
+							name="name"
+							placeholder="ConvertedLUT…"
+							type="text"
+						/>
+					</label>
 				</div>
-			</div>
+
+				<div class="space-y-2">
+					<div class="flex items-baseline justify-between gap-3">
+						<label class="tool-field-label" for="gray-weight">Gray-Axis Weighting</label>
+						<output
+							class="text-accent text-sm font-semibold tabular-nums"
+							for="gray-weight"
+							data-gray-weight-output>0.80</output
+						>
+					</div>
+					<input
+						id="gray-weight"
+						class="accent-accent w-full"
+						aria-describedby="gray-weight-help"
+						autocomplete="off"
+						max="1"
+						min="0"
+						name="grayWeight"
+						step="0.05"
+						type="range"
+						value="0.8"
+					/>
+					<p class="tool-note" id="gray-weight-help">
+						Higher values push the fit toward neutral-axis tone response. Lower values let the
+						converter borrow more average RGB behavior.
+					</p>
+				</div>
+
+				<p class="tool-note">
+					Supports display-referred, sRGB-like LUTs with <code>DOMAIN_MIN 0 0 0</code>
+					and <code>DOMAIN_MAX 1 1 1</code>. Log, ACES, HDR, and scene-referred LUTs are not
+					supported.
+				</p>
+
+				<button class="tool-button tool-button-primary" data-convert type="submit">
+					Generate NP3
+				</button>
+				<p class="tool-status text-sm" data-status aria-live="polite" role="status">
+					Select a .cube file to begin.
+				</p>
+			</form>
 		</div>
 	</section>
 </PageLayout>

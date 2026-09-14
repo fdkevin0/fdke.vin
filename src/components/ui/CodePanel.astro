@@ -20,20 +20,11 @@ const canCopy = typeof copyValue === "string" && copyValue.length > 0;
 const resolvedLang: CodeLanguage = lang ?? "text";
 ---
 
-<div
-	data-code-copy-root
-	class="overflow-hidden rounded border border-zinc-200 dark:border-zinc-800"
->
+<div data-code-copy-root class="border-global-text/20 overflow-hidden rounded border">
 	{
 		(title || canCopy) && (
-			<div class="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70">
-				{title ? (
-					<p class="truncate text-[11px] tracking-[0.18em] text-zinc-500 uppercase dark:text-zinc-400">
-						{title}
-					</p>
-				) : (
-					<span />
-				)}
+			<div class="border-global-text/20 flex items-center justify-between gap-3 border-b px-3 py-2">
+				{title ? <p class="text-global-text/75 truncate text-xs">{title}</p> : <span />}
 				{canCopy && <CopyButton value={copyValue} label={copyLabel} variant="text" />}
 			</div>
 		)
