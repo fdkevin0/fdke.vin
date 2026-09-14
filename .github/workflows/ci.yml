@@ -33,9 +33,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-        # use astro check for issues
-      - name: Run Astro check
-        run: pnpm astro check
+      - name: Check types, lint, and formatting
+        run: pnpm run check
 
         # unit tests for pure modules
       - name: Run tests

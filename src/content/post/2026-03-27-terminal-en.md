@@ -7,7 +7,6 @@ tags: []
 publishDate: 2026-03-28T00:00:00Z
 ---
 
-
 I've recently been using Ghostty and Tmux as my primary terminal services, mainly on remote servers and locally on macOS. Here's a record of the configuration and some keyboard shortcuts I've used:
 
 ## [Ghostty](https://ghostty.org/)

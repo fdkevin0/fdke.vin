@@ -41,9 +41,7 @@ export interface AlbumNoteInput {
  * will finalize instead), or `finalize` with the assembled Note input.
  */
 export type AlbumFinalizationDecision =
-	| { action: "empty" }
-	| { action: "wait" }
-	| ({ action: "finalize" } & AlbumNoteInput);
+	{ action: "empty" } | { action: "wait" } | ({ action: "finalize" } & AlbumNoteInput);
 
 /**
  * Decide what a debounce check should do with a group's buffered photos.

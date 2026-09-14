@@ -47,7 +47,7 @@ Retrieve API references and limits from:
 - `pnpm run dev` (alias `start`) launches the Astro dev server with HMR.
 - `pnpm run build` produces `dist/`; run `pnpm run postbuild` afterward to generate the Pagefind search index.
 - `pnpm run preview` serves the built site for QA.
-- `pnpm run check` runs `astro check` plus `biome check` (no writes); `pnpm run lint` fixes with Biome; `pnpm run format` runs Prettier across the repo.
+- `pnpm run check` runs Astro type checks, Biome lint/import checks, and Prettier formatting checks (no writes); `pnpm run lint` fixes lint issues and organizes imports with Biome; `pnpm run format` runs Prettier across the repo.
 - After completing a task, run `pnpm astro check` to validate TypeScript and Astro component types.
 - After completing a task, always run `pnpm run build` to catch build-time and prerender issues before handing work off.
 - Run `wrangler types` after modifying `wrangler.jsonc` or `.dev.vars` to regenerate Cloudflare bindings types.
@@ -66,7 +66,6 @@ Retrieve API references and limits from:
 - Also run `pnpm run check`, `pnpm run build && pnpm run postbuild`, and `pnpm run preview` before opening a PR.
 - Manually verify new content renders with the expected frontmatter and that Pagefind still indexes posts/notes after changes.
 - When adding new utility logic, include inline docs or a temporary reproduction page under `src/pages/dev/` (remove before merging) to demonstrate behavior.
-- Before creating a commit, run `pnpm run lint` and `pnpm exec prettier . --write` so the pre-commit hook's check-only formatting validation passes.
 
 ## Content & Assets
 
@@ -79,7 +78,7 @@ Retrieve API references and limits from:
 - Use concise, imperative commit subjects (e.g., `Add note tag cards`); group related changes together.
 - When creating commits, always include a detailed commit message body that explains the key changes and intent, not just the subject line.
 - PRs should include a brief summary, linked issue (if any), local test commands run, and screenshots or gifs for visual changes/OG-image updates.
-- Before creating a commit, run `pnpm run lint` and `pnpm exec prettier . --write`, then re-stage any modified files.
+- Before creating a commit, run `pnpm run lint` and `pnpm run format`, then re-stage any modified files.
 - Ensure `pnpm run check` passes and note the Pagefind rebuild in validation steps when content or search logic changes.
 - Before creating a commit, always run `pnpm test`, `pnpm run build`, and `pnpm astro check`, and fix any failures first.
 - **Do not commit changes without explicit permission from the user.**

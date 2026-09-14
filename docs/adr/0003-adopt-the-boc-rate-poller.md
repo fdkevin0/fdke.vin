@@ -38,7 +38,7 @@ Take over the poll here and let the bot drop the feature entirely.
     second `td *` handler would append every chunk twice;
   - text chunks are **undecoded source text**, so `&nbsp;` arrives literally and
     the parser decodes character references itself.
-- Only *start* tags drive the row/cell state machine. `</td>` and `</tr>` are
+- Only _start_ tags drive the row/cell state machine. `</td>` and `</tr>` are
   optional in HTML and BOC's markup cannot be relied on to emit them.
 - **The Telegram surface is not migrated.** It is deleted from the bot and not
   rebuilt here.

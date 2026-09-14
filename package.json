@@ -13,7 +13,7 @@
 		"postbuild": "pagefind --site dist",
 		"preview": "astro preview",
 		"precheck": "pnpm run icons:build",
-		"check": "astro check && biome check",
+		"check": "astro check && biome check && prettier . --check",
 		"lint": "biome check --write",
 		"format": "prettier -w . --cache",
 		"test": "vitest run",

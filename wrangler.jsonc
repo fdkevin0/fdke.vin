@@ -5,118 +5,118 @@
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
 		"directory": "./dist",
-		"binding": "ASSETS"
+		"binding": "ASSETS",
 	},
 	"account_id": "98010e731e09a77b673ba51074dfbe1c",
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
 	"triggers": {
 		// "0 * * * *" starts the feed aggregator run; "*/15 * * * *" polls BOC exchange rates
 		// (BOC_POLL_CRON in src/lib/api/exchange/poll.ts). src/worker.ts branches on which fired.
-		"crons": ["0 * * * *", "*/15 * * * *"]
+		"crons": ["0 * * * *", "*/15 * * * *"],
 	},
 	"routes": [
 		{
 			"pattern": "fdke.vin",
-			"custom_domain": true
+			"custom_domain": true,
 		},
 		{
 			// The network lookup host. `src/worker.ts` branches on this hostname before
 			// handing the request to Astro; see src/lib/network/handler.ts and docs/adr/0006.
 			// Custom domains match exactly, so this needs its own entry rather than a wildcard.
 			"pattern": "ip.fdke.vin",
-			"custom_domain": true
-		}
+			"custom_domain": true,
+		},
 	],
 	"r2_buckets": [
 		{
 			"binding": "EMAIL_BUCKET",
 			"bucket_name": "email-storage",
-			"preview_bucket_name": "email-storage"
+			"preview_bucket_name": "email-storage",
 		},
 		{
 			"binding": "RSS_BUCKET",
 			"bucket_name": "rss-feed-storage",
-			"preview_bucket_name": "rss-feed-storage"
+			"preview_bucket_name": "rss-feed-storage",
 		},
 		{
 			"binding": "AP_BUCKET",
 			"bucket_name": "ap-storage",
-			"preview_bucket_name": "ap-storage"
-		}
+			"preview_bucket_name": "ap-storage",
+		},
 	],
 	"kv_namespaces": [
 		{
 			"binding": "AP_FEDIFY_KV",
-			"id": "84840071fc014e6eb6ccb814b509c035"
-		}
+			"id": "84840071fc014e6eb6ccb814b509c035",
+		},
 	],
 	"d1_databases": [
 		{
 			"binding": "DATABASE",
 			"database_name": "DATABASE",
 			"database_id": "c623d6ec-3353-4ef3-8218-5d677125dcd9",
-			"migrations_dir": "migrations"
-		}
+			"migrations_dir": "migrations",
+		},
 	],
 	"durable_objects": {
 		"bindings": [
 			{
 				"name": "FEED_COORDINATOR",
-				"class_name": "FeedCoordinator"
-			}
-		]
+				"class_name": "FeedCoordinator",
+			},
+		],
 	},
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": ["FeedCoordinator"]
-		}
+			"new_sqlite_classes": ["FeedCoordinator"],
+		},
 	],
 	"queues": {
 		"producers": [
 			{
 				"binding": "RSS_FETCH_QUEUE",
-				"queue": "rss-fetch-queue"
+				"queue": "rss-fetch-queue",
 			},
 			{
 				"binding": "RSS_AI_QUEUE",
-				"queue": "rss-ai-queue"
+				"queue": "rss-ai-queue",
 			},
 			{
 				"binding": "AP_DELIVERY_QUEUE",
-				"queue": "ap-delivery-queue"
-			}
+				"queue": "ap-delivery-queue",
+			},
 		],
 		"consumers": [
 			{
 				"queue": "rss-fetch-queue",
 				"max_batch_size": 10,
 				"max_batch_timeout": 5,
-				"max_retries": 5
+				"max_retries": 5,
 			},
 			{
 				"queue": "rss-ai-queue",
 				"max_batch_size": 5,
 				"max_batch_timeout": 5,
-				"max_retries": 5
+				"max_retries": 5,
 			},
 			{
 				"queue": "ap-delivery-queue",
 				"max_batch_size": 10,
 				"max_batch_timeout": 5,
-				"max_retries": 5
-			}
-		]
+				"max_retries": 5,
+			},
+		],
 	},
 	"ai": {
 		"binding": "AI",
-		"remote": true
+		"remote": true,
 	},
 	"vars": {
 		"CLOUDFLARE_TEAM_DOMAIN": "https://fdkevin.cloudflareaccess.com",
 		"CLOUDFLARE_POLICY_AUD": "7d8a99d0b638544b0ff6ae86332addf618e9e3e19e82ea470985b8dc6e629f69,b07ea8fc3d88e34abdcf2fbd9bb86037f5f67c64479b68e392646a6f01f3753b", // comma-separated for multiple audiences
-		"TELEGRAM_ALLOWED_CHAT_ID": "-1004325134604" // the author's channel/chat id. TELEGRAM_BOT_TOKEN + TELEGRAM_WEBHOOK_SECRET are secrets (wrangler secret put)
-	}
+		"TELEGRAM_ALLOWED_CHAT_ID": "-1004325134604", // the author's channel/chat id. TELEGRAM_BOT_TOKEN + TELEGRAM_WEBHOOK_SECRET are secrets (wrangler secret put)
+	},
 }
