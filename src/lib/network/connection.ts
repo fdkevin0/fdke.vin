@@ -11,7 +11,7 @@ import { ipVersion } from "@/lib/network/target";
  * A Connection exists only for the duration of the request that produced it:
  * colo, TLS version and RTT are properties of a connection, not of an address,
  * and there is no way to ask for them about an address that never connected.
- * See `docs/adr/0006`.
+ * See `docs/network.md`.
  */
 export interface Connection {
 	ip: string;

@@ -3,8 +3,8 @@
  *
  * Radar cannot do this: its DNS datasets are aggregated, anonymized trends
  * over 1.1.1.1 traffic, not a resolver — there is no Radar endpoint that
- * answers "what does this name resolve to". See `docs/cloudflare-radar-api.md`
- * §7.2. Resolution therefore goes straight to 1.1.1.1, which needs no token
+ * answers "what does this name resolve to". See `docs/network.md`.
+ * Resolution therefore goes straight to 1.1.1.1, which needs no token
  * and spends no Radar budget.
  */
 const DOH_URL = "https://1.1.1.1/dns-query";

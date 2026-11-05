@@ -7,7 +7,7 @@ import { ipVersion } from "@/lib/network/target";
  * Country-granular by nature: Radar's own glossary states its IP geolocation
  * comes from a third-party database at country resolution, and
  * `/radar/entities/ip` returns no city, region or coordinates
- * (`docs/cloudflare-radar-api.md` §3.1). Do not add city fields here by
+ * (`docs/network.md`). Do not add city fields here by
  * chaining `/radar/geolocations` — it is keyed by GeoNames id, which
  * `entities/ip` does not return, so there is no IP→city path through Radar.
  */

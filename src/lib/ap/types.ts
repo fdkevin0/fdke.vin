@@ -1,4 +1,4 @@
-/** How a Note entered the store — see CONTEXT.md "Federation". */
+/** How a Note entered the store — see docs/activitypub.md "Note identity and lifecycle". */
 export type NoteSource = "migration" | "telegram" | "dashboard";
 
 /** A Note as the application uses it (dates as `Date`, source markdown as `content`). */
@@ -50,7 +50,7 @@ export interface NoteAttachment {
  * carried on `ap-delivery-queue` alongside Fedify's opaque queue messages and
  * distinguished by `kind`. Enqueued with a delay on every Album photo arrival;
  * on consumption the group finalizes if quiet, or the check is a no-op
- * otherwise (see CONTEXT.md "Finalization").
+ * otherwise (see docs/activitypub.md "Finalization").
  */
 export interface AlbumFinalizeMessage {
 	kind: "AlbumFinalize";
@@ -62,7 +62,7 @@ export interface AlbumFinalizeMessage {
 export type InteractionKind = "reply" | "like" | "announce";
 
 /**
- * A remote reaction to a Note (see CONTEXT.md "Interaction"), ingested via the
+ * A remote reaction to a Note (see docs/activitypub.md "Interaction"), ingested via the
  * inbox. A `reply` carries sanitized HTML `content`; a `like`/`announce` renders
  * only as a count. `hidden` is set when the author moderates a stored reply.
  */

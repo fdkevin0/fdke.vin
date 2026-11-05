@@ -1,47 +1,33 @@
 # fdke.vin
 
-Personal website built with Astro.
+Personal multilingual website built with Astro and deployed to Cloudflare Workers.
 
-## What is here
+The site includes blog posts, ActivityPub notes, RSS feeds, search, and tools for exchange rates, photography, and network lookups.
 
-- Personal homepage and about page
-- Blog posts, notes, and tag pages powered by Astro content collections
-- Small utility pages, currently:
-  - exchange rate monitor
-  - camera calculators
-- RSS feeds, OG image generation, search, and optional webmentions support
+## Quick start
 
-## Project structure
+Use Node.js 24 (matching CI) and pnpm:
 
-- `src/pages`: route entrypoints
-- `src/components`: shared UI and utility components
-- `src/layouts`: page and post layouts
-- `src/content`: live content collections for posts, notes, and tags
-- `public`: static assets such as icons and social cards
-
-## Commands
-
-```bash
+```sh
 pnpm install
 pnpm run dev
-pnpm run check
-pnpm run build
-pnpm run postbuild
-pnpm run preview
 ```
 
-## Content
+For development commands, validation, and contribution conventions, see [CONTRIBUTING.md](CONTRIBUTING.md). Runtime features need the bindings and secrets described in [Cloudflare integration](docs/cloudflare.md) and the relevant feature guide.
 
-Create content in these directories:
+## Documentation
 
-- `src/content/post`
-- `src/content/note`
-- `src/content/tag`
+| Guide                                    | Read for                                                      |
+| ---------------------------------------- | ------------------------------------------------------------- |
+| [Content](docs/content.md)               | Posts, translations, tags, and content identity               |
+| [ActivityPub](docs/activitypub.md)       | Notes, federation, Telegram authoring, setup, and moderation  |
+| [Feeds](docs/feeds.md)                   | Site RSS feeds and the external feed aggregator               |
+| [Exchange rates](docs/exchange-rates.md) | BOC polling, watermark recovery, and latest-rate queries      |
+| [Network](docs/network.md)               | IP lookups, Internet snapshots, Radar, and response contracts |
+| [Cloudflare](docs/cloudflare.md)         | Runtime integration, access control, bindings, and deployment |
+| [Contributing](CONTRIBUTING.md)          | Local development, testing, issues, and documentation upkeep  |
+| [Agent instructions](AGENTS.md)          | Agent working scope and permission boundaries                 |
 
-## Personalization checklist
+## Project layout
 
-- Replace `public/icon.svg`
-- Replace `public/social-card.png`
-- Expand social links in `src/components/SocialList.astro`
-- Add real posts and notes under `src/content`
-- Update any remaining copy in page descriptions as the site evolves
+Routes live in `src/pages`, shared UI in `src/components`, shells in `src/layouts`, and styles in `src/styles`. Site metadata lives in `src/site.config.ts`; shared static assets belong in `public/`.

@@ -2,7 +2,7 @@ import type { ApEnv } from "@/lib/ap/runtime";
 
 /**
  * D1-backed buffer of not-yet-finalized {@link ./album} groups (issue AP-11,
- * see CONTEXT.md "Pending album"). Each arriving Album photo is written here
+ * see docs/activitypub.md "Pending album"). Each arriving Album photo is written here
  * durably before the webhook responds 200; finalization reads a group's rows,
  * decides wait-vs-finalize (the pure logic in `./album.ts`), and on finalize
  * deletes them. Canonical schema in `migrations/0001_activitypub.sql`.
@@ -62,7 +62,7 @@ function mapRow(row: ApPendingAlbumPhotoRow): PendingAlbumPhoto {
  * Buffer an Album photo, or refresh it if this `(chat, message)` is already
  * buffered — a redelivery (idempotent no-op update) or a caption edit that
  * arrived before the group finalized (the "same buffer-and-debounce flow" an
- * Album edit takes; see CONTEXT.md "Finalization"). Refreshing `arrivedAt`
+ * Album edit takes; see docs/activitypub.md "Finalization"). Refreshing `arrivedAt`
  * on an edit extends the debounce window so the corrected caption is what
  * finalizes.
  */

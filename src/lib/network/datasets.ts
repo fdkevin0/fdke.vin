@@ -6,7 +6,7 @@ import { type RadarOptions, radarGet } from "@/lib/network/radar";
  * Each group is one API route and one cache entry, so a cache hit costs zero
  * Radar calls for the whole group rather than one per panel.
  *
- * Response shapes here follow `docs/cloudflare-radar-api.md` §2–§3.6: every
+ * Response shapes here follow `docs/network.md`: every
  * `/summary/*` endpoint returns `result.summary_0` as a dimension→percentage
  * map, `/top/*` returns a ranked array, and the annotation endpoints return
  * dated event lists. Parsing is deliberately lenient — a dimension key that

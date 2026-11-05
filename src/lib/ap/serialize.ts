@@ -7,8 +7,8 @@ import type { Note, NoteAttachment } from "@/lib/ap/types";
  *
  * The protocol vocabulary (object construction and JSON-LD compaction) is
  * delegated to Fedify's `@fedify/fedify/vocab` classes — we only own the
- * mapping from a D1 {@link Note} row to AS2 fields (see ADR-0002, amended to
- * delegate the protocol layer to Fedify). This function is pure: given the
+ * mapping from a D1 {@link Note} row to AS2 fields (see `docs/activitypub.md`).
+ * This function is pure: given the
  * same note + options it always builds the same fields, with no I/O, so it is
  * unit-tested input→output (the `post.test.ts` style).
  */

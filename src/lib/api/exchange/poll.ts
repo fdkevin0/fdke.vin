@@ -115,9 +115,8 @@ export function isPublicationRoundStored(
  * The last round we stored, or `null` before the first poll — the one statement a
  * poll between rounds issues.
  *
- * A read failure is reported as "no watermark", which costs a full write pass the
- * primary key would absorb anyway. That keeps the poll working on a deploy that
- * lands before `boc_poll_state` exists: the write path creates it.
+ * A read failure is reported as "no watermark", which falls back to a full
+ * write pass with primary-key conflict protection (see `docs/exchange-rates.md`).
  */
 async function readPollWatermark(env: Env): Promise<PollWatermark | null> {
 	try {

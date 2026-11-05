@@ -67,7 +67,7 @@ export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		// The lookup host is answered before Astro sees the request: it uses none
 		// of the site's pipeline — no auth, no i18n, no page routing — and it is
-		// the one endpoint here that scripts poll. See `docs/adr/0006`.
+		// the one endpoint here that scripts poll. See `docs/network.md`.
 		const { hostname } = new URL(request.url);
 		if (hostname === LOOKUP_HOST) {
 			return handleLookupHostRequest(request, {

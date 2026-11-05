@@ -5,7 +5,7 @@ import type { ApEnv } from "@/lib/ap/runtime";
  * D1-backed {@link Follower} store: remote actors that have sent an accepted
  * `Follow`. Each row records the follower's actor id, its personal `inbox`, and
  * its (optional) shared `endpoints.sharedInbox`. Fedify consumes these rows as
- * recipients and handles shared-inbox fan-out. See CONTEXT.md "Follower" / "Delivery".
+ * recipients and handles shared-inbox fan-out. See docs/activitypub.md "Follower" / "Delivery".
  */
 
 const FOLLOWER_COLUMNS = "actor_id, inbox_url, shared_inbox_url, created_at";

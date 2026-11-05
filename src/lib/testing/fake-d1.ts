@@ -3,8 +3,8 @@
  *
  * It records the statements actually executed rather than storing rows, because
  * what the exchange tests assert is *how many* statements a code path issues and
- * with what bindings — see `docs/adr/0004` (the poll watermark) and
- * `docs/adr/0005` (paging without a `count(*)`).
+ * with what bindings — see `docs/exchange-rates.md` for the poll watermark
+ * and the latest-rate query without a `count(*)`.
  *
  * Rows come from `results`, which every `.all()` returns and every `.first()`
  * takes the head of, regardless of the SQL. That is enough for tests that pin

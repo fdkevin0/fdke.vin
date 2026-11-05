@@ -55,7 +55,7 @@ export interface LookupHostContext {
  *
  * This runs ahead of Astro so the endpoint does not pay for the site's request
  * pipeline — auth, i18n, page routing — none of which it uses. See
- * `docs/adr/0006`.
+ * `docs/network.md`.
  */
 export async function handleLookupHostRequest(
 	request: Request,
@@ -213,8 +213,8 @@ function cacheableResponse(body: string, asJson: boolean): Response {
 
 /**
  * The cache key is rebuilt from the parsed target rather than reused from the
- * request, so `/1.1.1.1`, `/1.1.1.1/` and `/01.1.1.1` share one entry and
- * unrelated query strings cannot multiply it.
+ * request, so `/1.1.1.1` and `/1.1.1.1/` share one entry and unrelated query
+ * strings cannot multiply it.
  */
 function buildCacheKey(url: URL, target: LookupTarget, asJson: boolean, detail: boolean): Request {
 	const key = new URL(url.origin);
@@ -228,7 +228,7 @@ function buildCacheKey(url: URL, target: LookupTarget, asJson: boolean, detail: 
  * Radar failures are reported as themselves, never retried and never masked as
  * a successful empty answer — a `429` or a `422` ("query above max cost") is
  * information the caller needs, and retrying either spends the undocumented
- * budget faster. See `docs/cloudflare-radar-api.md` §5.
+ * budget faster. See `docs/network.md`.
  */
 function radarErrorResponse(error: unknown, asJson: boolean): Response {
 	const radarError = error instanceof RadarError ? error : new RadarError("Lookup failed", 502);

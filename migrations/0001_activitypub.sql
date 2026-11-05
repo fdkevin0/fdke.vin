@@ -1,4 +1,4 @@
--- Migration 0001: ActivityPub Notes (see CONTEXT.md "Federation" and docs/adr/0002-*).
+-- Migration 0001: ActivityPub Notes (see docs/activitypub.md).
 -- A Note is a D1 row keyed by an opaque, time-sortable ULID (the Note id).
 
 CREATE TABLE IF NOT EXISTS ap_notes (
@@ -27,7 +27,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_notes_telegram_group
 	ON ap_notes(telegram_chat_id, telegram_media_group_id)
 	WHERE telegram_media_group_id IS NOT NULL;
 
--- Pending albums (see CONTEXT.md "Pending album" and issue AP-11): one row per
+-- Pending albums (see docs/activitypub.md "Pending album" and issue AP-11): one row per
 -- photo of a not-yet-finalized Album, written durably before the webhook
 -- responds 200. Finalization assembles a group's rows into one Note (deleting
 -- the rows), so a group's presence here is exactly its "not yet finalized"
@@ -83,7 +83,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_ap_note_attachments_message
 	ON ap_note_attachments(note_id, telegram_message_id)
 	WHERE telegram_message_id IS NOT NULL;
 
--- Followers (see CONTEXT.md "Follower" and issue AP-5): remote actors that sent
+-- Followers (see docs/activitypub.md "Follower" and issue AP-5): remote actors that sent
 -- an accepted Follow. Delivery fans out to shared_inbox_url where present
 -- (deduped across a server), otherwise inbox_url.
 CREATE TABLE IF NOT EXISTS ap_followers (
@@ -93,10 +93,10 @@ CREATE TABLE IF NOT EXISTS ap_followers (
 	created_at TEXT NOT NULL         -- ISO 8601
 );
 
--- Interactions (see CONTEXT.md "Interaction" and issue AP-7): remote reactions to
+-- Interactions (see docs/activitypub.md "Interaction" and issue AP-7): remote reactions to
 -- one of our Notes, ingested via the inbox. A 'reply' is a Create(Note) in-reply-to
 -- a Note (its sanitized HTML renders as a thread); a 'like'/'announce' renders as a
--- count. Rows are removed on Undo (matched by activity_id) and tombstoned on Delete
+-- count. Rows are removed on Undo (matched by activity_id) or Delete
 -- (matched by object_id). `hidden` lets the author moderate a stored reply (AP-8).
 CREATE TABLE IF NOT EXISTS ap_interactions (
 	id TEXT PRIMARY KEY,             -- ULID; our row id
@@ -130,9 +130,8 @@ CREATE TABLE IF NOT EXISTS ap_blocklist (
 	created_at TEXT NOT NULL         -- ISO 8601
 );
 
--- Per-inbox delivery status (see issue AP-8): the dashboard aggregates these into a
--- Note's federation/delivery status. Keyed by (note, inbox) so the current status of
--- the latest activity to each follower inbox is what's shown.
+-- Per-inbox delivery status (dropped in migrations/0005_drop_activitypub_delivery_status.sql
+-- after Fedify and Cloudflare Queues took over delivery state).
 CREATE TABLE IF NOT EXISTS ap_note_deliveries (
 	note_id TEXT NOT NULL,           -- the Note delivered
 	inbox_url TEXT NOT NULL,         -- the target follower inbox

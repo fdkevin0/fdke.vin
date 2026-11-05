@@ -6,7 +6,7 @@ export const RADAR_BASE_URL = "https://api.cloudflare.com/client/v4/radar";
  * signal there is — so these are passed through to the caller rather than
  * retried. Retrying a `1015` or a `2002` just spends the budget faster.
  *
- * See `docs/cloudflare-radar-api.md` §2 and §5.
+ * See `docs/network.md`.
  */
 const ERROR_CODE_STATUS: Record<number, number> = {
 	2000: 500,

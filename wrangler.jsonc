@@ -23,7 +23,7 @@
 		},
 		{
 			// The network lookup host. `src/worker.ts` branches on this hostname before
-			// handing the request to Astro; see src/lib/network/handler.ts and docs/adr/0006.
+			// handing the request to Astro; see src/lib/network/handler.ts and docs/network.md.
 			// Custom domains match exactly, so this needs its own entry rather than a wildcard.
 			"pattern": "ip.fdke.vin",
 			"custom_domain": true,

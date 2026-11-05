@@ -1,10 +1,10 @@
 import type { ApEnv } from "@/lib/ap/runtime";
 
 /**
- * The domain blocklist (issues AP-7, AP-8): hosts whose inbound Activities the
- * inbox drops. Enforced in {@link ./inbox} via {@link isDomainBlocked} and
- * managed from the Access-protected dashboard. The canonical schema lives in
- * `migrations/0001_activitypub.sql`.
+ * The domain blocklist (see docs/activitypub.md "Blocklist"): hosts whose
+ * inbound Activities the inbox drops. Enforced in {@link ./federation} via
+ * {@link isDomainBlocked} and managed from the Access-protected dashboard. The
+ * canonical schema lives in `migrations/0001_activitypub.sql`.
  */
 
 /** A blocklist entry as the dashboard reads it. */

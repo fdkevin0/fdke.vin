@@ -3,7 +3,7 @@ import type { ParsedPhoto } from "@/lib/ap/telegram";
 
 /**
  * Pure decision logic for finalizing a Pending album (issue AP-11; see
- * CONTEXT.md "Album" / "Pending album" / "Finalization"): given a group's
+ * docs/activitypub.md "Album" / "Pending album" / "Finalization"): given a group's
  * buffered rows and the current time, decide whether to wait for more quiet
  * time or finalize into a Note input. The one new pure, unit-tested seam this
  * feature adds — no I/O. The impure side (downloading photos, inserting the

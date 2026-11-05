@@ -30,7 +30,7 @@ export function readCountryParam(url: URL): string | null {
  *
  * Every group behaves identically at this layer — read once, cache the whole
  * group under one entry, and surface a Radar failure as itself rather than
- * retrying it (`docs/cloudflare-radar-api.md` §5). Only the reader, the name
+ * retrying it (`docs/network.md`). Only the reader, the name
  * and the lifetime differ, so those are the arguments.
  */
 export function radarGroupRoute<T>(
