@@ -97,23 +97,11 @@ async function translateContent(
 			json_schema: FEED_TRANSLATION_RESPONSE_SCHEMA,
 		},
 	};
-	console.log("[feed.ai] AI request", {
-		model: FEED_TRANSLATION_MODEL,
-		title,
-		url,
-		request,
-	});
 
 	const response = (await env.AI.run(FEED_TRANSLATION_MODEL as keyof AiModels, request)) as {
 		response?: string;
 		result?: { response?: string };
 	};
-	console.log("[feed.ai] AI response", {
-		model: FEED_TRANSLATION_MODEL,
-		title,
-		url,
-		response,
-	});
 	const rawResponse =
 		response?.response || response?.result?.response || JSON.stringify(response ?? {});
 	const parsed = parseAiTranslationResponse(rawResponse);

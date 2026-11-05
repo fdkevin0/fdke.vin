@@ -41,6 +41,8 @@ CREATE INDEX IF NOT EXISTS idx_rss_feed_items_published_at ON rss_feed_items(pub
 CREATE INDEX IF NOT EXISTS idx_rss_feed_items_visible_until ON rss_feed_items(visible_until);
 CREATE INDEX IF NOT EXISTS idx_rss_feed_items_ai_status ON rss_feed_items(ai_status);
 
+-- Ingest run ledger (dropped in migrations/0006_drop_unused_tables.sql;
+-- active run state lives in FeedCoordinator Durable Object storage).
 CREATE TABLE IF NOT EXISTS rss_ingest_runs (
 	id TEXT PRIMARY KEY,
 	day_utc TEXT NOT NULL,

@@ -18,24 +18,6 @@ export interface FeedSource {
 	updatedByEmail: string;
 }
 
-export interface FeedItemSummary {
-	id: string;
-	feedId: string;
-	feedTitle: string;
-	title: string;
-	titleEn: string | null;
-	url: string;
-	publishedAt: string | null;
-	visibleUntil: string | null;
-	clickCount: number;
-	sourceLanguage: string | null;
-	summary: string | null;
-	summaryEn: string | null;
-	aiStatus: string;
-	createdAt: string;
-	updatedAt: string;
-}
-
 export interface FeedReadingItem {
 	itemId: string;
 	feedId: string;
@@ -52,11 +34,9 @@ export interface FeedReadingItem {
 }
 
 export interface FeedFetchMessage {
-	runId: string;
-	dayUtc: string;
+	runId?: string;
 	feedId: string;
 	feedUrl: string;
-	feedTitle: string;
 	aiTranslationEnabled: boolean;
 }
 
@@ -66,7 +46,6 @@ export interface FeedAiMessage {
 
 export interface FeedRunState {
 	runId: string;
-	dayUtc: string;
 	total: number;
 	pending: number;
 	successCount: number;

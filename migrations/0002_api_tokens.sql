@@ -20,6 +20,7 @@ CREATE INDEX IF NOT EXISTS idx_api_tokens_owner_uid ON api_tokens(owner_uid);
 CREATE INDEX IF NOT EXISTS idx_api_tokens_token_hash ON api_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_api_tokens_revoked_at ON api_tokens(revoked_at);
 
+-- Audit event table (dropped in migrations/0006_drop_unused_tables.sql).
 CREATE TABLE IF NOT EXISTS api_token_audit_events (
 	id TEXT PRIMARY KEY,
 	token_id TEXT NOT NULL,

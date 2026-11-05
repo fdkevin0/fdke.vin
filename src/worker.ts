@@ -8,6 +8,7 @@ import { processAlbumFinalizeMessage } from "@/lib/ap/ingest";
 import type { AlbumFinalizeMessage } from "@/lib/ap/types";
 import { BOC_POLL_CRON, pollBocRates } from "@/lib/api/exchange/poll";
 import { getErrorMessage } from "@/lib/api/http";
+import { getEdgeCache } from "@/lib/cloudflare-runtime";
 import { processAiMessage } from "@/lib/feed/ai";
 import { completeRunFeed, recoverTimedOutRun, startRun } from "@/lib/feed/coordinator";
 import { processFeedFetchMessage } from "@/lib/feed/ingest";
@@ -26,17 +27,6 @@ const completeRunSchema = z.object({
 	ok: z.boolean(),
 });
 
-/**
- * The Workers-specific shared edge cache.
- *
- * `caches.default` exists at runtime but `astro check` resolves the global
- * against the DOM `CacheStorage`, which only declares `open()`. The cast names
- * what the runtime actually provides rather than widening the handler's type.
- */
-function edgeCache(): Cache {
-	return (caches as unknown as { default: Cache }).default;
-}
-
 export class FeedCoordinator extends DurableObject<FeedEnv> {
 	override async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
@@ -51,7 +41,7 @@ export class FeedCoordinator extends DurableObject<FeedEnv> {
 		if (request.method === "POST" && url.pathname === "/runs/complete") {
 			const body = completeRunSchema.safeParse(await request.json().catch(() => null));
 			if (!body.success) return Response.json({ error: "Invalid JSON body" }, { status: 400 });
-			const run = await completeRunFeed(this.ctx, this.env, body.data);
+			const run = await completeRunFeed(this.ctx, body.data);
 			return Response.json(run ?? { ignored: true }, { headers: { "Cache-Control": "no-store" } });
 		}
 
@@ -59,7 +49,7 @@ export class FeedCoordinator extends DurableObject<FeedEnv> {
 	}
 
 	override async alarm(): Promise<void> {
-		await recoverTimedOutRun(this.ctx, this.env);
+		await recoverTimedOutRun(this.ctx);
 	}
 }
 
@@ -72,7 +62,7 @@ export default {
 		if (hostname === LOOKUP_HOST) {
 			return handleLookupHostRequest(request, {
 				token: env.RADAR_API_TOKEN,
-				cache: edgeCache(),
+				cache: getEdgeCache(),
 				waitUntil: (promise) => ctx.waitUntil(promise),
 			});
 		}

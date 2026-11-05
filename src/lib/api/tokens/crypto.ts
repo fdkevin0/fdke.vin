@@ -23,5 +23,3 @@ export async function generateApiToken(): Promise<GeneratedApiToken> {
 		createdAt: new Date().toISOString(),
 	};
 }
-
-export { sha256Hex as sha256 } from "@/lib/crypto";

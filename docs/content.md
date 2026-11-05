@@ -6,7 +6,7 @@ Posts live in `src/content/post/`, one Markdown or MDX file per language. Tags l
 
 A **Post** is one language version of a blog article. Its filename follows the **Post grammar**, `{date}-{slug}-{lang}`, for example `2026-03-27-terminal-en.md`. The **Post slug** is the language-independent identity shared by translations and used in `/posts/{slug}/`. A post id includes the date and language as well as the slug; do not interchange the two.
 
-Declare `lang` to match the filename (the schema defaults omitted `lang` to `zh`). Duplicate `(slug, lang)` entries are rejected by [post validation](../src/lib/post.ts).
+Declare `lang` to match the filename (the schema defaults omitted `lang` to `zh`). [post validation](../src/lib/post.ts) enforces the `{date}-{slug}-{lang}` ID pattern (`/^\d{4}-\d{2}-\d{2}-.+-[a-z]{2,3}$/`), requires frontmatter `lang` to match the filename suffix, and rejects duplicate `(slug, lang)` entries. Posts with `draft: true` are excluded in production builds (`import.meta.env.PROD` in [src/data/post.ts](../src/data/post.ts)).
 
 ## Translation selection
 

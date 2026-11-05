@@ -39,7 +39,7 @@ const wasmPath = path.resolve("./node_modules/@resvg/resvg-wasm/index_bg.wasm");
 const iconPath = iconPathCandidates.find((candidate) => fs.existsSync(candidate));
 
 if (!iconPath) {
-	throw new Error("Missing OG icon. Run `npm run icons:build` to generate it.");
+	throw new Error("Missing OG icon. Run `pnpm run icons:build` to generate it.");
 }
 
 if (!fs.existsSync(wasmPath)) {

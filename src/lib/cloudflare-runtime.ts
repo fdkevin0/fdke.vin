@@ -24,3 +24,14 @@ export async function requireCloudflareEnv<K extends keyof Env>(...bindings: K[]
 	}
 	return env;
 }
+
+/**
+ * The Workers-specific shared edge cache (`caches.default`).
+ *
+ * `caches.default` exists at runtime, whereas `astro check` resolves the global
+ * `caches` against DOM `CacheStorage`. Centralizing the lookup avoids repeating
+ * the structural cast across handlers and routes.
+ */
+export function getEdgeCache(): Cache | undefined {
+	return (caches as unknown as { default?: Cache }).default;
+}

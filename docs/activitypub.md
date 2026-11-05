@@ -17,8 +17,8 @@ The **Note lifecycle** includes authoring, album finalization, and dashboard del
 - **Album**: A multi-photo Telegram channel post, delivered to the webhook as one message per photo sharing a `media_group_id`. Buffers as a Pending album and finalizes into a single Note carrying every photo as an attachment, delivered as one `Create`/`Update`.
 - **Pending album**: The buffered, not-yet-finalized state of an Album — one D1 row per arrived photo (`ap_pending_album_photos`), written durably before the webhook responds 200. Deleted once its Album finalizes.
 - **Finalization**: The debounced step — a ~3s-quiet-period check re-enqueued on the delivery queue after every Album photo arrival — that assembles a Pending album's rows into one Note and delivers it. Before finalization, a redelivered photo or caption edit takes the same buffer-and-debounce flow, refreshing `arrived_at` to extend the quiet window. A message or photo edit arriving after finalization (a straggler) attaches to the existing Note in place with a follow-up `Update` instead of re-finalizing.
-- **Activity**: A `Create`, `Update`, or `Delete` the Actor emits about a Note (post → `Create`, channel edit → `Update`, dashboard removal → `Delete(Tombstone)`). Inbound Activities the inbox accepts additionally include `Follow`/`Undo`, `Like`, and `Announce`.
-- **Inbox / Outbox**: The Actor's two AS2 collections. The shared **inbox** (`/inbox`) receives Activities from remote servers — Fedify verifies every request before queued processing. The **outbox** (`/users/fdkevin/outbox`) lists `Create` activities reconstructed from current Notes, including backfilled Notes (`source = 'migration'`, which appear in the outbox but are never delivered).
+- **Activity**: A `Create`, `Update`, or `Delete` the Actor emits about a Note (post → `Create`, channel edit → `Update`, dashboard removal → `Delete(Tombstone)`). Inbound Activities the inbox accepts additionally include reply `Create(Note)`, `Follow`/`Undo`, `Like`, `Announce`, and `Delete`.
+- **Inbox / Outbox**: The Actor's two AS2 collections. The shared **inbox** (`/inbox` and `/users/fdkevin/inbox`) receives Activities from remote servers — Fedify verifies every request before queued processing. The **outbox** (`/users/fdkevin/outbox`) lists `Create` activities reconstructed from current Notes, including backfilled Notes (`source = 'migration'`, which appear in the outbox but are never delivered). The actor document is served at `/users/fdkevin` (aliased at `/actor`) and followers at `/users/fdkevin/followers`.
 - **Follower**: A remote Actor that has sent an accepted `Follow`. Stored in D1 (`ap_followers`) with its personal and optional shared inbox URL; the delivery fan-out targets Followers.
 - **Interaction**: A remote reaction to a Note ingested via the inbox — a reply (`Create(Note)` in-reply-to), a `Like`, or an `Announce` (boost). Replies render as a sanitized thread under the Note; Likes and Announces render as counts.
 - **Delivery**: Fedify signs an outbound Activity and fans it out to Followers present when the Activity originates through `ap-delivery-queue`, preferring shared inboxes and relying on Cloudflare Queue retries. Delivery originates from live Note lifecycle changes — backfilled Notes are not delivered, and a Follower added later does not receive earlier Activities. Fedify keeps its cache and inbox idempotency state in `AP_FEDIFY_KV`; business records remain in D1.
@@ -26,9 +26,9 @@ The **Note lifecycle** includes authoring, album finalization, and dashboard del
 
 ## Design and storage
 
-Runtime authoring and content negotiation require D1-backed SSR Notes instead of Markdown content collections. Fedify owns protocol verification, signing, discovery, and queued delivery, with media stored in `AP_BUCKET`. The custom Worker entry runs federation before falling through to Astro.
+Runtime authoring and content negotiation require D1-backed SSR Notes instead of Markdown content collections. Fedify owns protocol verification, signing, discovery, and queued delivery, with media stored in `AP_BUCKET` (`notes/{noteId}/{fileUniqueId}.jpg` for channel photos and `avatars/{sha256}.{ext}` for cached remote actor avatars, served at `/api/ap/media/[...key]`). The custom Worker entry runs federation before falling through to Astro.
 
-Activity ids distinguish retries from edits: `Create` uses `{noteUrl}#create`, `Update` includes the updated timestamp, and `Delete` uses `{noteUrl}#delete`. The outbox reconstructs `Create` activities from current Notes; it is not an audit log of edits and deletions.
+Activity ids distinguish retries from edits: `Create` uses `{noteUrl}#create`, `Update` uses `{noteUrl}#updates/{updatedDateISO}`, `Delete` uses `{noteUrl}#delete`, and `Accept(Follow)` uses `{actorUri}#accepts/{ulid}`. The outbox reconstructs `Create` activities from current Notes; it is not an audit log of edits and deletions.
 
 ## Setup and operations
 
@@ -155,7 +155,7 @@ Watch it happen live with `npx wrangler tail`:
 
 Once followed, replies, likes, and boosts flow back to the site:
 
-- The inbox accepts signature-verified reply `Create(Note)` (in-reply-to one of our Notes), `Like`, `Announce`, and their `Undo`/`Delete`; anything else is acknowledged and dropped. Activities from a blocklisted domain are dropped before any store write.
+- The inbox accepts signature-verified reply `Create(Note)` (in-reply-to one of our Notes), `Like`, `Announce`, `Undo` (for `Follow`, `Like`, or `Announce`), and `Delete` (removing stored interactions by `object_id`); anything else is acknowledged and dropped. Activities from a blocklisted domain are dropped before any store write.
 - Replies render as a sanitized thread (`rehype-sanitize`) under the Note; likes and boosts render as counts. Remote avatars are proxied through R2 (`avatars/{sha256}.{ext}`) and served from `/api/ap/media/…` — never hotlinked.
 - The author moderates from **`/dashboard/notes`** (Access-protected):
   - **Notes** list shows Notes and their interactions.

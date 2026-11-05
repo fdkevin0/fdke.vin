@@ -7,15 +7,18 @@ import {
 	recordFeedFetchSuccess,
 	upsertFeedEntry,
 } from "@/lib/feed/storage";
-import type { FeedAiMessage, FeedFetchMessage, ParsedFeedEntry } from "@/lib/feed/types";
+import {
+	FEED_COORDINATOR_NAME,
+	type FeedAiMessage,
+	type FeedFetchMessage,
+	type ParsedFeedEntry,
+} from "@/lib/feed/types";
 
 export async function processFeedFetchMessage(
 	env: FeedEnv,
 	message: FeedFetchMessage,
 ): Promise<void> {
-	const startedAt = Date.now();
 	let ok = false;
-	let errorMessage: string | null = null;
 
 	try {
 		const response = await fetch(message.feedUrl, {
@@ -55,25 +58,24 @@ export async function processFeedFetchMessage(
 		await recordFeedFetchSuccess(env, message.feedId);
 		ok = true;
 	} catch (error) {
-		errorMessage = getErrorMessage(error, "Feed fetch failed");
+		const errorMessage = getErrorMessage(error, "Feed fetch failed");
 		await recordFeedFetchFailure(env, message.feedId, errorMessage);
 		throw error;
 	} finally {
-		await notifyCoordinator(env, {
-			runId: message.runId,
-			feedId: message.feedId,
-			ok,
-			error: errorMessage,
-			durationMs: Date.now() - startedAt,
-		});
+		if (message.runId) {
+			await notifyCoordinator(env, {
+				runId: message.runId,
+				ok,
+			});
+		}
 	}
 }
 
 async function notifyCoordinator(
 	env: FeedEnv,
-	payload: { runId: string; feedId: string; ok: boolean; error: string | null; durationMs: number },
+	payload: { runId: string; ok: boolean },
 ): Promise<void> {
-	const stub = env.FEED_COORDINATOR.get(env.FEED_COORDINATOR.idFromName("global-feed-pool"));
+	const stub = env.FEED_COORDINATOR.get(env.FEED_COORDINATOR.idFromName(FEED_COORDINATOR_NAME));
 	await stub.fetch("https://feed-coordinator.internal/runs/complete", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },

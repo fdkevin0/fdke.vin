@@ -1,11 +1,9 @@
-import { sha256 } from "@/lib/api/tokens/crypto";
 import type { CloudflareAccessUser } from "@/lib/cloudflare-access";
+import { sha256Hex } from "@/lib/crypto";
 import type { FeedEnv } from "@/lib/feed/runtime";
 import type {
 	FeedAiMessage,
-	FeedItemSummary,
 	FeedReadingItem,
-	FeedRunState,
 	FeedSource,
 	FeedSourceInput,
 	ParsedFeedEntry,
@@ -24,24 +22,6 @@ interface FeedSourceRow {
 	updated_at: string;
 	created_by_email: string;
 	updated_by_email: string;
-}
-
-interface FeedItemRow {
-	id: string;
-	feed_id: string;
-	feed_title: string;
-	title: string;
-	title_en: string | null;
-	url: string;
-	published_at: string | null;
-	visible_until: string | null;
-	click_count: number;
-	source_language: string | null;
-	summary: string | null;
-	summary_en: string | null;
-	ai_status: string;
-	created_at: string;
-	updated_at: string;
 }
 
 interface FeedReadingRow {
@@ -181,22 +161,6 @@ export async function getFeedSourceById(env: FeedEnv, id: string): Promise<FeedS
 	return row ? mapFeedSourceRow(row) : null;
 }
 
-export async function listRecentFeedItems(env: FeedEnv, limit = 50): Promise<FeedItemSummary[]> {
-	const result = await env.DATABASE.prepare(
-		`SELECT items.id, items.feed_id, feeds.title AS feed_title, items.title, items.title_en, items.url, items.published_at,
-		 items.visible_until, items.click_count,
-		 items.source_language, items.summary, items.summary_en, items.ai_status, items.created_at, items.updated_at
-		 FROM rss_feed_items AS items
-		 JOIN rss_feeds AS feeds ON feeds.id = items.feed_id
-		 ORDER BY COALESCE(items.published_at, items.created_at) DESC
-		 LIMIT ?`,
-	)
-		.bind(limit)
-		.all<FeedItemRow>();
-
-	return (result.results ?? []).map(mapFeedItemRow);
-}
-
 export async function countFailedFeedItemsForAiRetry(env: FeedEnv): Promise<number> {
 	const row = await env.DATABASE.prepare(
 		`SELECT COUNT(*) AS total
@@ -289,42 +253,6 @@ export async function extendFeedItemVisibility(
 	return Number(row?.click_count ?? 0);
 }
 
-export async function createIngestRun(
-	env: FeedEnv,
-	options: { dayUtc: string; trigger: string; feedCount: number; triggeredByEmail: string | null },
-): Promise<string> {
-	const id = crypto.randomUUID();
-	const startedAt = new Date().toISOString();
-	await env.DATABASE.prepare(
-		`INSERT INTO rss_ingest_runs (
-		 id, day_utc, trigger, status, feed_count, success_count, failure_count, triggered_by_email,
-		 started_at, completed_at, updated_at
-		) VALUES (?, ?, ?, 'running', ?, 0, 0, ?, ?, NULL, ?)`,
-	)
-		.bind(
-			id,
-			options.dayUtc,
-			options.trigger,
-			options.feedCount,
-			options.triggeredByEmail,
-			startedAt,
-			startedAt,
-		)
-		.run();
-	return id;
-}
-
-export async function completeIngestRun(env: FeedEnv, state: FeedRunState): Promise<void> {
-	const completedAt = new Date().toISOString();
-	await env.DATABASE.prepare(
-		`UPDATE rss_ingest_runs
-		 SET status = 'completed', success_count = ?, failure_count = ?, completed_at = ?, updated_at = ?
-		 WHERE id = ?`,
-	)
-		.bind(state.successCount, state.failureCount, completedAt, completedAt, state.runId)
-		.run();
-}
-
 export async function recordFeedFetchSuccess(env: FeedEnv, feedId: string): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DATABASE.prepare(
@@ -354,7 +282,7 @@ export async function upsertFeedEntry(
 	},
 ): Promise<{ itemId: string; shouldQueueAi: boolean }> {
 	const now = new Date().toISOString();
-	const guidHash = await sha256(`${options.feedId}:${options.entry.id}`);
+	const guidHash = await sha256Hex(`${options.feedId}:${options.entry.id}`);
 	const itemId = guidHash;
 	const summary = options.entry.summary?.trim() || null;
 	const hasSummary = Boolean(summary);
@@ -520,25 +448,5 @@ function mapFeedSourceRow(row: FeedSourceRow): FeedSource {
 		updatedAt: row.updated_at,
 		createdByEmail: row.created_by_email,
 		updatedByEmail: row.updated_by_email,
-	};
-}
-
-function mapFeedItemRow(row: FeedItemRow): FeedItemSummary {
-	return {
-		id: row.id,
-		feedId: row.feed_id,
-		feedTitle: row.feed_title,
-		title: row.title,
-		titleEn: row.title_en,
-		url: row.url,
-		publishedAt: row.published_at,
-		visibleUntil: row.visible_until,
-		clickCount: Number(row.click_count ?? 0),
-		sourceLanguage: row.source_language,
-		summary: row.summary,
-		summaryEn: row.summary_en,
-		aiStatus: row.ai_status,
-		createdAt: row.created_at,
-		updatedAt: row.updated_at,
 	};
 }

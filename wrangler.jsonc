@@ -36,11 +36,6 @@
 			"preview_bucket_name": "email-storage",
 		},
 		{
-			"binding": "RSS_BUCKET",
-			"bucket_name": "rss-feed-storage",
-			"preview_bucket_name": "rss-feed-storage",
-		},
-		{
 			"binding": "AP_BUCKET",
 			"bucket_name": "ap-storage",
 			"preview_bucket_name": "ap-storage",

@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import type { APIRoute } from "astro";
 import { getErrorMessage, json, jsonError, logApiError } from "@/lib/api/http";
+import { getEdgeCache } from "@/lib/cloudflare-runtime";
 import { RadarError, type RadarOptions } from "@/lib/network/radar";
 
 /**
@@ -40,7 +41,7 @@ export function radarGroupRoute<T>(
 ): APIRoute {
 	return async ({ request, url }) => {
 		try {
-			const cache = (caches as unknown as { default?: Cache }).default;
+			const cache = getEdgeCache();
 			const cached = request.method === "GET" ? await cache?.match(request) : null;
 			if (cached) return cached;
 			const snapshot = await read({ token: env.RADAR_API_TOKEN }, url);

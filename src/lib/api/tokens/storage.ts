@@ -1,8 +1,9 @@
-import { generateApiToken, sha256 } from "@/lib/api/tokens/crypto";
+import { generateApiToken } from "@/lib/api/tokens/crypto";
 import type { ApiScope } from "@/lib/api/tokens/scopes";
 import { hasRequiredScope, isApiScope } from "@/lib/api/tokens/scopes";
 import type { CloudflareAccessUser } from "@/lib/cloudflare-access";
 import { requireCloudflareEnv, runInBackground } from "@/lib/cloudflare-runtime";
+import { sha256Hex } from "@/lib/crypto";
 
 export interface StoredApiToken {
 	id: string;
@@ -91,13 +92,6 @@ export async function createApiToken(options: {
 		)
 		.run();
 
-	await insertAuditEvent({
-		tokenId: generated.id,
-		actor: user,
-		action: "created",
-		metadata: { scopes, expiresAt, name },
-	});
-
 	return {
 		token: {
 			id: generated.id,
@@ -142,13 +136,6 @@ export async function updateApiToken(options: {
 		.bind(name, JSON.stringify(scopes), expiresAt, now, tokenId, user.uid ?? user.email)
 		.run();
 
-	await insertAuditEvent({
-		tokenId,
-		actor: user,
-		action: "updated",
-		metadata: { name, scopes, expiresAt },
-	});
-
 	return {
 		...mapTokenRow(existing),
 		name,
@@ -177,13 +164,6 @@ export async function revokeApiToken(
 		)
 		.bind(now, now, tokenId, user.uid ?? user.email)
 		.run();
-
-	await insertAuditEvent({
-		tokenId,
-		actor: user,
-		action: "revoked",
-		metadata: null,
-	});
 
 	return true;
 }
@@ -230,20 +210,6 @@ export async function rotateApiToken(options: {
 			),
 	]);
 
-	await insertAuditEvent({
-		tokenId: existing.id,
-		actor: options.user,
-		action: "rotated",
-		metadata: { replacementTokenId: generated.id },
-	});
-
-	await insertAuditEvent({
-		tokenId: generated.id,
-		actor: options.user,
-		action: "created",
-		metadata: { rotatedFromTokenId: existing.id },
-	});
-
 	return {
 		token: {
 			id: generated.id,
@@ -268,7 +234,7 @@ export async function verifyApiToken(
 	requiredScope: string,
 ): Promise<VerifiedApiToken | null> {
 	const db = await getApiTokensDb();
-	const hash = await sha256(secret);
+	const hash = await sha256Hex(secret);
 	const result = await db
 		.prepare(
 			`SELECT id, owner_uid, owner_email, name, token_prefix, scopes, expires_at, last_used_at, revoked_at, created_at, updated_at, rotated_from_token_id, token_hash
@@ -337,30 +303,6 @@ async function getOwnedTokenRow(
 		.first<TokenRow>();
 
 	return result ?? null;
-}
-
-async function insertAuditEvent(options: {
-	tokenId: string;
-	actor: CloudflareAccessUser;
-	action: string;
-	metadata: unknown;
-}) {
-	const db = await getApiTokensDb();
-	await db
-		.prepare(
-			`INSERT INTO api_token_audit_events (id, token_id, actor_uid, actor_email, action, created_at, metadata)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		)
-		.bind(
-			crypto.randomUUID(),
-			options.tokenId,
-			options.actor.uid ?? options.actor.email,
-			options.actor.email,
-			options.action,
-			new Date().toISOString(),
-			options.metadata ? JSON.stringify(options.metadata) : null,
-		)
-		.run();
 }
 
 function mapTokenRow(row: TokenRow): StoredApiToken {

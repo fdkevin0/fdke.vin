@@ -11,7 +11,7 @@ curl 'https://ip.fdke.vin/1.1.1.1?detail=1&format=json'
 curl https://ip.fdke.vin/example.com
 ```
 
-The bare text response is exactly the caller's address plus a newline, with no upstream call or Radar token. Keep that shape stable for shell scripts. `/json` returns the caller's Connection as JSON. Format is chosen from `Accept`, with `?format=` as an override: `*/*` defaults to text, `application/json` requests JSON, and `text/html` redirects to the corresponding tool page. `?detail=1` enables more detail.
+The bare text response is exactly the caller's address plus a newline, with no upstream call or Radar token. Keep that shape stable for shell scripts. `/json` returns the caller's Connection as JSON. Format is chosen from `Accept`, with `?format=` as an override: `*/*` defaults to text, `application/json` requests JSON, and `text/html` redirects (`302`) to `/tools/network` (for `/` and `/json`) or `/tools/network/{target}` (which rewrites to `/tools/network?q={target}`). `?detail=1` enables more detail.
 
 ## Connection and IP profile
 
@@ -35,7 +35,7 @@ The dataset reader handles summary dimension maps (`summary_0`), ranked arrays, 
 
 Store `RADAR_API_TOKEN` as a Worker secret. Calls use a Bearer token with Account > Radar > Read permission and unwrap the Cloudflare `{ success, errors, result }` envelope. See the [official setup guide](https://developers.cloudflare.com/radar/get-started/first-request/) and [API reference](https://developers.cloudflare.com/api/resources/radar/).
 
-[radar.ts](../src/lib/network/radar.ts) performs a single attempt and surfaces failures instead of retrying or returning a successful empty result. The lookup host returns 503 when no token is configured, 429 for rate limiting (with `Retry-After: 60`), and 422 for excessive query cost. Its bare Connection endpoint still works without a token. Dataset routes preserve Radar error status but do not add the lookup host's Retry-After header.
+[radar.ts](../src/lib/network/radar.ts) performs a single attempt and throws `RadarError` on non-2xx or envelope failures instead of retrying. The lookup host returns 503 when no token is configured, 429 for rate limiting (with `Retry-After: 60`), and 422 for excessive query cost; its bare Connection endpoint still works without a token. In [datasets.ts](../src/lib/network/datasets.ts), each group reader catches individual `radarGet` sub-call failures as `null` so one failing metric or annotation endpoint degrades to `null`/`[]` rather than failing the whole group (while [route.ts](../src/lib/network/route.ts) maps any uncaught `RadarError` to its HTTP status without adding `Retry-After`).
 
 Consult current [Radar errors](https://developers.cloudflare.com/radar/get-started/error-codes/) before changing this mapping. Avoid relying on a numeric request budget inferred from old research.
 

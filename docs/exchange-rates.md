@@ -5,7 +5,7 @@ The exchange tool at `/tools/exchange` reads Bank of China (BOC) rates collected
 ## Latest-rate API
 
 - `GET /api/exchange/currencies` returns the stored currency names.
-- `GET /api/exchange/rates?currency=USD&limit=30` returns an array of the latest records for one currency, newest first. Currency is required and normalized to uppercase; limit defaults to 30 and must be a positive integer, capped at 1000 by the query.
+- `GET /api/exchange/rates?currency=USD&limit=30` returns an array of the latest records for one currency, newest first. Currency is required and normalized to uppercase; limit defaults to 30 (the `/tools/exchange` page requests `limit=12`) and must be a positive integer, capped at 1000 by the query.
 - Missing currency or invalid limit returns 400; no stored rows returns 404. Results use `Cache-Control: no-store`.
 
 The read performs one currency-filtered query using the `(currency, pub_time)` primary key. There is no total count, offset, date-range filter, or pagination metadata. The standalone `pub_time` index remains in the migration from an earlier query design; it does not imply support for currency-less queries.

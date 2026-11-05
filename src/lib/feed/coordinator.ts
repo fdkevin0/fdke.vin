@@ -1,7 +1,5 @@
-import { getErrorMessage } from "@/lib/api/http";
 import type { FeedEnv } from "@/lib/feed/runtime";
-import { getDayUtc } from "@/lib/feed/runtime";
-import { completeIngestRun, createIngestRun, listActiveFeedSources } from "@/lib/feed/storage";
+import { listActiveFeedSources } from "@/lib/feed/storage";
 import type { FeedRunState } from "@/lib/feed/types";
 import { FEED_COORDINATOR_NAME } from "@/lib/feed/types";
 
@@ -33,17 +31,10 @@ export async function startRun(
 	}
 
 	const feeds = await listActiveFeedSources(env);
-	const dayUtc = getDayUtc();
-	const runId = await createIngestRun(env, {
-		dayUtc,
-		trigger: options.trigger,
-		feedCount: feeds.length,
-		triggeredByEmail: options.triggeredByEmail,
-	});
+	const runId = crypto.randomUUID();
 
 	const nextState: FeedRunState = {
 		runId,
-		dayUtc,
 		total: feeds.length,
 		pending: feeds.length,
 		successCount: 0,
@@ -54,7 +45,6 @@ export async function startRun(
 	};
 
 	if (feeds.length === 0) {
-		await completeIngestRun(env, nextState);
 		await state.storage.delete(RUN_STATE_KEY);
 		return { ...nextState, pending: 0 };
 	}
@@ -67,10 +57,8 @@ export async function startRun(
 			slice.map((feed) => ({
 				body: {
 					runId,
-					dayUtc,
 					feedId: feed.id,
 					feedUrl: feed.feedUrl,
-					feedTitle: feed.title,
 					aiTranslationEnabled: feed.aiTranslationEnabled,
 				},
 			})),
@@ -82,7 +70,6 @@ export async function startRun(
 
 export async function completeRunFeed(
 	state: DurableObjectState,
-	env: FeedEnv,
 	payload: { runId: string; ok: boolean },
 ): Promise<(FeedRunState & { completed?: boolean }) | null> {
 	const runState = await state.storage.get<FeedRunState>(RUN_STATE_KEY);
@@ -95,7 +82,6 @@ export async function completeRunFeed(
 	runState.failureCount += payload.ok ? 0 : 1;
 
 	if (runState.pending === 0) {
-		await completeIngestRun(env, runState);
 		await state.storage.delete(RUN_STATE_KEY);
 		await state.storage.deleteAlarm();
 		return { ...runState, completed: true };
@@ -105,20 +91,9 @@ export async function completeRunFeed(
 	return runState;
 }
 
-export async function recoverTimedOutRun(state: DurableObjectState, env: FeedEnv): Promise<void> {
+export async function recoverTimedOutRun(state: DurableObjectState): Promise<void> {
 	const runState = await state.storage.get<FeedRunState>(RUN_STATE_KEY);
 	if (!runState) {
-		return;
-	}
-
-	try {
-		await completeIngestRun(env, runState);
-	} catch (error) {
-		console.error(
-			"[feed.coordinator] alarm recovery failed",
-			getErrorMessage(error, "Unknown error"),
-		);
-		await state.storage.setAlarm(Date.now() + RUN_TIMEOUT_MS);
 		return;
 	}
 
