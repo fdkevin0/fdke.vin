@@ -37,35 +37,14 @@ To solve all three, I performed static binary analysis on `agy` (v1.5.1 / v1.5.3
 
 ### The 4-layer extension architecture and toolkits
 
-```text
-+------------------------------------------------------------+
-|         External Agent Hosts & Multi-Account Routers       |
-|  [ Paseo Desktop / Mobile ]    [ Pi Coding Agent (1.5.x) ] |
-|    via paseo-agy-acp             via pi-agy-acp            |
-|        (agy-acp)                   + pi-multi-account      |
-+--------------|-----------------------------|---------------+
-               | ACP (agy acp)               | Quota (/usage)
-               v                             v
-+------------------------------------------------------------+
-|          Google Antigravity CLI (agy) 4-Layer Stack        |
-|                                                            |
-|  Layer 1: Go Binary Kernel (jetski/cortex)                 |
-|    - 13 System Slash Cmds (@ 0xcbad108): /boost (owl), ... |
-|    - 9 Allowed Subagents (@ 0xcc49000): DeepCoder, ...     |
-|    - AgentFrontmatter (@ 0xbf3a5a8): 19 YAML fields        |
-|                                                            |
-|  Layer 2: Builtin Assets (builtin/.manifest, 39 files)     |
-|  Layer 3: EGM Plugin (7-way Read-Only Goldfish Audit)      |
-|  Layer 4: Ponytail Plugin (Minimalist YAGNI Discipline)    |
-+--------------|-----------------------------|---------------+
-               | Brain JSONL                 | Container VM
-               v                             v
-+-----------------------------+ +----------------------------+
-| xurl (agents://antigravity) | | agy-sbx-kit (Sandboxes v3) |
-| - Reads transcript_full     | | - YOLO + SSH_CONNECTION=1  |
-| - Stream-JSON write/resume  | | - 9-domain egress policy   |
-+-----------------------------+ +----------------------------+
-```
+<figure class="arch-diagram not-prose" aria-label="agy extension architecture diagram">
+<div class="arch-tier"><div class="arch-label">External hosts</div><div class="arch-row"><div class="arch-card"><span class="arch-tag">Desktop / Mobile</span><strong>Paseo</strong><ul><li>via <code>paseo-agy-acp</code></li></ul></div><div class="arch-card"><span class="arch-tag">1.5.x</span><strong>Pi Coding Agent</strong><ul><li>via <code>pi-agy-acp</code></li><li>+ <code>pi-multi-account</code></li></ul></div></div></div>
+<div class="arch-links" aria-hidden="true"><span>↓ ACP (<code>agy acp</code>)</span><span>↓ Quota (<code>/usage</code>)</span></div>
+<div class="arch-tier arch-core"><div class="arch-label">Google Antigravity CLI (<code>agy</code>)</div><ol class="arch-layers"><li><span class="arch-layer-no">L1</span><span><strong>Go binary kernel</strong><br>13 system slash commands incl. <code>/boost</code> (owl) · 9 allowed subagents · 19 Subagent fields</span></li><li><span class="arch-layer-no">L2</span><span><strong>Builtin assets</strong><br><code>builtin/.manifest</code>, 39 files</span></li><li><span class="arch-layer-no">L3</span><span><strong>EGM plugin</strong><br>7-way read-only Goldfish review</span></li><li><span class="arch-layer-no">L4</span><span><strong>Ponytail plugin</strong><br>Minimalist YAGNI discipline</span></li></ol></div>
+<div class="arch-links" aria-hidden="true"><span>↓ Brain JSONL</span><span>↓ Container VM</span></div>
+<div class="arch-tier"><div class="arch-label">Open-source toolkits</div><div class="arch-row"><div class="arch-card"><span class="arch-tag">agents://antigravity</span><strong>xurl</strong><ul><li>Reads full transcripts</li><li>Stream-JSON write / resume</li></ul></div><div class="arch-card"><span class="arch-tag">Sandboxes v3</span><strong>agy-sbx-kit</strong><ul><li>YOLO + <code>SSH_CONNECTION=1</code></li><li>9-domain egress policy</li></ul></div></div></div>
+<figcaption>Hosts reach <code>agy</code> over ACP; the toolkits read its transcripts or run it in a sandbox.</figcaption>
+</figure>
 
 ---
 
