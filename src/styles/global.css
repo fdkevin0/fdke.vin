@@ -313,17 +313,15 @@
 		overflow-x: auto;
 	}
 
-	.prose table {
-		display: block;
-		width: 100%;
+	/* Tables are wrapped by rehypeTableScroll, so the wrapper scrolls and the table keeps
+	   its normal layout and full width. */
+	.prose .table-scroll {
 		max-width: 100%;
 		overflow-x: auto;
-		-webkit-overflow-scrolling: touch;
 	}
 
 	.prose th,
 	.prose td {
-		min-width: 6.5rem;
 		vertical-align: top;
 	}
 

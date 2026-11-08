@@ -76,7 +76,7 @@ const projects: LabProject[] = [
 				value: {
 					en: "Parks healthy unprompted ACP processes for instant reuse; symlink-safe cleanup of temporary conversations/<id>.db & brain/<id>/",
 					zh: "目录探测后保持健康 ACP 进程热待机复用；对未提问临时会话执行防符号链接穿透的 conversations/<id>.db 与 brain/<id>/ 安全清理",
-					ja: "未入力のACPプロセスをウォーム待機させて高速再利用・一時アーティファクトを安全に削除",
+					ja: "未入力の健全な ACP プロセスをウォーム待機させて即座に再利用し、一時会話の conversations/<id>.db と brain/<id>/ をシンボリックリンクを辿らずに安全に削除",
 				},
 			},
 			{
@@ -84,7 +84,7 @@ const projects: LabProject[] = [
 				value: {
 					en: "singleStepInput = round((input + cachedRead + cachedWrite) / steps); queries agy -p /usage --output-format json for 5h & weekly buckets",
 					zh: "按内部步数折算单步上下文占用（256K / GPT-OSS 131K）；通过 agy -p /usage --output-format json 解析 5h 与周度配额窗口",
-					ja: "複数ステップのトークン統計からコンテキスト使用量を推定・5h/週次クォータを取得",
+					ja: "singleStepInput = round((input + cachedRead + cachedWrite) / steps)；agy -p /usage --output-format json で 5h と週次のクォータ枠を取得",
 				},
 			},
 		],
@@ -119,7 +119,7 @@ const projects: LabProject[] = [
 				value: {
 					en: "Dedicated PI_AGY_HOME (~/.pi/agent/cache/antigravity-acp) with 0600 OAuth token sync and automatic temporary session cleanup",
 					zh: "默认使用独立 PI_AGY_HOME (~/.pi/agent/cache/antigravity-acp) 隔离桥接会话与日常 agy 插件，以 0600 权限同步 OAuth 令牌并自动清理旧日志",
-					ja: "専用の PI_AGY_HOME で通常の agy 環境と分離し、0600 権限でトークンを同期",
+					ja: "専用の PI_AGY_HOME (~/.pi/agent/cache/antigravity-acp) で通常の agy 環境と分離し、0600 権限で OAuth トークンを同期、一時セッションを自動削除",
 				},
 			},
 			{
@@ -127,7 +127,7 @@ const projects: LabProject[] = [
 				value: {
 					en: "12-cell TUI quota bars with 2-min TTL, 20%/5% alerts, and automatic veto of Pi idle prompt-cache warming",
 					zh: "提供 12 格 TUI 配额进度条与倒计时，轮次结束后后台更新状态栏（如 AGY 80%），在 20%/5% 阈值告警，并自动拦截 Pi 空闲缓存预热以节省配额",
-					ja: "12セルのTUIクォータバー、20%/5%残量警告、アイドル時のプロンプトキャッシュウォームアップ抑止",
+					ja: "2 分 TTL の 12 セル TUI クォータバー、残量 20%/5% での警告、Pi のアイドル時プロンプトキャッシュ予熱の自動拒否",
 				},
 			},
 		],
@@ -160,7 +160,7 @@ const projects: LabProject[] = [
 				value: {
 					en: "SSH_CONNECTION=1 triggers copy/paste OAuth fallback; host proxy stores real tokens while writing sentinel placeholders inside VM",
 					zh: "SSH_CONNECTION=1 触发复制粘贴回调；宿主机代理拦截并刷新真实 Token，沙箱内 antigravity-oauth-token 仅保留安全占位符与 GCP project_id/region",
-					ja: "SSH_CONNECTION=1 でコールバックURL貼り付け認証に切替・ホスト側プロキシで実トークンを管理",
+					ja: "SSH_CONNECTION=1 でコピー＆ペースト式 OAuth に切り替え、実トークンはホスト側プロキシが保持し、VM 内にはセンチネルのプレースホルダーのみを書き込む",
 				},
 			},
 			{
@@ -168,7 +168,7 @@ const projects: LabProject[] = [
 				value: {
 					en: "antigravity.google, antigravity-unleash.goog, auto-updater Cloud Run, 3 Google OAuth hosts & 4 Cloud Code / Gemini API hosts",
 					zh: "仅放行 antigravity.google、antigravity-unleash.goog、自动更新源、3 个 Google OAuth 域名与 4 个 Cloud Code / Gemini 推理端点",
-					ja: "ポータル・Unleash機能フラグ・自動更新・Google OAuth 3種・推論API 4種の計9ドメインのみ許可",
+					ja: "antigravity.google、antigravity-unleash.goog、自動更新用 Cloud Run、Google OAuth ホスト 3 つ、Cloud Code / Gemini API ホスト 4 つ",
 				},
 			},
 		],

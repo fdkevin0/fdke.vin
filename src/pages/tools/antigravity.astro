@@ -921,22 +921,10 @@ For complex architecture or multi-module engineering tasks:
 					"",
 				];
 
-				if (headlessOauth) {
-					cliLines.push(
-						`# ${stepNum++}. Force copy/paste OAuth callback for headless SSH / container environments`,
-						"export SSH_CONNECTION=1",
-						"",
-					);
-				}
-
 				if (authMode === "gcp") {
 					cliLines.push(
 						`# ${stepNum++}. Enterprise GCP account metadata (required in ~/.gemini/antigravity-cli/antigravity-oauth-token)`,
 						`# Ensure JSON includes: "auth_method": "gcp", "project_id": "${gcpProject}", "region": "${gcpRegion}"`,
-						`sbx run git+https://github.com/fdkevin0/agy-sbx-kit.git . --name agy-gcp \\`,
-						`  --kit-arg auth_method=gcp \\`,
-						`  --kit-arg gcp_project=${gcpProject} \\`,
-						`  --kit-arg gcp_location=${gcpRegion}`,
 						"",
 					);
 				}
@@ -951,14 +939,30 @@ For complex architecture or multi-module engineering tasks:
 				}
 
 				cliLines.push(
-					`# ${stepNum++}. Launch agy (all Model="inherit" subagents & /boost workers inherit ${parentModel})`,
+					`# ${stepNum++}. Launch agy on this machine (all Model="inherit" subagents & /boost workers inherit ${parentModel})`,
 				);
+				if (headlessOauth) {
+					cliLines.push(
+						"# SSH_CONNECTION=1 forces the copy/paste OAuth callback for headless SSH / container sessions",
+					);
+				}
 				if (yoloFlags) {
 					cliLines.push(
 						"# WARNING: Run YOLO permission flags ONLY inside an isolated container/VM sandbox (e.g. sbx run)",
 					);
 				}
-				cliLines.push(`agy ${agyFlags.join(" ")}`);
+				cliLines.push(`${headlessOauth ? "SSH_CONNECTION=1 " : ""}agy ${agyFlags.join(" ")}`);
+
+				if (authMode === "gcp") {
+					cliLines.push(
+						"",
+						"# Or, instead of launching on this machine: run agy inside a Docker Sandbox (agy-sbx-kit)",
+						`sbx run git+https://github.com/fdkevin0/agy-sbx-kit.git . --name agy-gcp \\`,
+						`  --kit-arg auth_method=gcp \\`,
+						`  --kit-arg gcp_project=${gcpProject} \\`,
+						`  --kit-arg gcp_location=${gcpRegion}`,
+					);
+				}
 
 				return {
 					rulesText,
