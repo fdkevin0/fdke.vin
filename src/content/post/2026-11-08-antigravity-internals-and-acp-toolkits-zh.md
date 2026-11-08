@@ -8,15 +8,11 @@ draft: false
 tags: ["antigravity", "agents", "reverse-engineering", "acp", "ai"]
 ---
 
-> **渐进式阅读导航（Progressive Disclosure）**
->
-> - **Layer 1（1 分钟速览）**：阅读本文开篇的 **TL;DR 核心结论表** 与 **四层扩展架构全景**，或直接前往站内 **[`/tools/antigravity/` 在线配置器](/tools/antigravity/)** 使用交互式 Subagent YAML 生成器与 `/boost` 规则配置器，在 **[`/lab/`](/lab/#paseo-agy-acp)** 查看全部开源插件。
-> - **Layer 2（10 分钟机制与工程实践）**：阅读第一部分的 **`owl` 三层对抗流水线**、**`EGM` vs. `/boost` 业务分工**，以及第二部分的 **ACP 协议桥接与沙箱工具链设计**。
-> - **Layer 3（15 分钟二进制取证）**：深入文中的 ELF `.gopclntab` / `.data.rel.ro` / `.rodata` 虚拟地址（VMA）证据链与 Go 伪代码还原。
+本文分两部分。第一部分是对 Antigravity CLI（`agy`）二进制的逆向：`/boost` 背后的 `owl` 三层对抗流水线，以及 Subagent 支持的 19 个字段。第二部分是围绕 ACP 协议做的几个开源工具。只想直接用的话，可以打开[在线配置器](/tools/antigravity/)，或者到 [Lab](/lab/#paseo-agy-acp) 看全部插件。
 
 ---
 
-## 引言与 TL;DR：为什么要逆向 `agy` 并构建开源工具链？
+## 引言：为什么要逆向 agy
 
 Google Antigravity CLI（`agy`）是 Google DeepMind 面向 Agentic Coding 推出的原生命令行与多智能体运行时。与传统的单轮补全或薄封装 CLI 不同，`agy` 在一个编译后的 Go 二进制文件中内置了完整的多智能体派生原语（`invoke_subagent` / `define_subagent`）、多模态工具栈、代号为 **`owl`** 的三层对抗式编码/排障引擎（即 `/boost` 命令），以及原生的 **ACP（Agent Client Protocol）** 服务端模式（`agy acp`）。
 
@@ -28,18 +24,18 @@ Google Antigravity CLI（`agy`）是 Google DeepMind 面向 Agentic Coding 推�
 
 为了彻底解决这些问题，我对 `agy`（v1.5.1 / v1.5.3 `linux/amd64` PIE ELF）进行了静态逆向取证，并围绕其构建了一套完整的开源插件与工具生态（开源工程已汇总于 **[`/lab/`](/lab/#paseo-agy-acp)**，在线配置器位于 **[`/tools/antigravity/`](/tools/antigravity/)**）：
 
-| 核心问题 / 开源模块                      | 逆向真相 / 工程实现结论                                                                                                                                                                                                              | 在线入口 / 仓库                                                             |
-| :--------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
-| **`/boost` 是 `SKILL.md` 吗？**          | **不是。** `/boost` 是编译期硬编码在 `.data` 段（`0xcbad108` 索引 `[9]`，`0xcbad588`）的 **系统级斜杠命令**，底层驱动代号为 **`owl`** 的三层对抗管线（`Orchestrator -> DeepCoder/DeepInvestigator -> WorkerL0/ImprovementWorker`）。 | [本文 §1.1](#11-boost-并非-skillmd13-个系统级斜杠命令全局表-0xcbad108)      |
-| **如何不敲 `/` 自然语言触发 `/boost`？** | 默认词法解析器仅识别句首/句尾 `/boost`。但 `DeepCoder` 与 `DeepInvestigator` 默认已注册进主 Agent 的 `AllowedSubagents` 白名单（`0xcc49000`），写入 `~/.gemini/GEMINI.md` 即可实现纯语义触发。                                       | [在线生成器](/tools/antigravity/#boost-generator)                           |
-| **Subagent 支持哪些参数与模型？**        | `customizations.AgentFrontmatter` (`0xbf3a5a8`) 共支持 **19 个 YAML 字段**；`model` 仅接受 `inherit` / `flash_lite` / `flash` / `pro` 四个枚举（`0x8309d00`），可通过 `agy --model <id>` + `inherit` 继承任意具体模型。              | [在线生成器](/tools/antigravity/#subagent-generator)                        |
-| **`paseo-agy-acp`**                      | Paseo 的原生 Antigravity ACP 插件（`agy-acp`），支持会话恢复、热进程池复用、工具权限审批、Slash 命令缓存、Brain 子智能体轨迹投影与订阅配额监控。                                                                                     | [`fdkevin0/paseo-agy-acp`](https://github.com/fdkevin0/paseo-agy-acp)       |
-| **`pi-agy-acp`**                         | Pi Coding Agent 的 `antigravity-acp` 扩展，支持流式推理、图片输入、并行工具调用、隔离状态目录、拦截空闲缓存预热与 `/agy-acp status\|quota\|reset` 12 格配额面板。                                                                    | [`fdkevin0/pi-agy-acp`](https://github.com/fdkevin0/pi-agy-acp)             |
-| **`agy-sbx-kit`**                        | Docker Sandboxes v3 无头运行套件（含 `agy-mixin`），内置 YOLO 免批参数、`SSH_CONNECTION=1` 远程 OAuth 复制粘贴回调、宿主机凭证代理与 9 域名网络白名单。                                                                              | [`fdkevin0/agy-sbx-kit`](https://github.com/fdkevin0/agy-sbx-kit)           |
-| **`xurl` (`agents://antigravity`)**      | 通过 `agents://antigravity/<session-id>` URI 直接解析本地 `brain/<id>` JSONL 轨迹为 Markdown，并通过 `stream-json` 无头续写会话。                                                                                                    | [`fdkevin0/xurl`](https://github.com/fdkevin0/xurl/tree/feat/antigravity)   |
-| **`pi-multi-account`**                   | 跨 Antigravity、Claude、ChatGPT/Codex 等多账号细粒度配额监控、同品质档位自动故障转移与断点续跑路由。                                                                                                                                 | [`fdkevin0/pi-multi-account`](https://github.com/fdkevin0/pi-multi-account) |
+| 问题                           | 结论                                                                                               | 入口                                                             |
+| :----------------------------- | :------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------- |
+| `/boost` 是 `SKILL.md` 吗？    | 不是。它是编译进二进制的系统级斜杠命令，背后是代号 `owl` 的三层对抗流水线。                        | [§1.1](#11-boost-并非-skillmd13-个系统级斜杠命令)                |
+| 能否不敲 `/` 就触发 `/boost`？ | 能。`DeepCoder` 和 `DeepInvestigator` 默认就在主 Agent 的白名单里，在 `GEMINI.md` 加一条规则即可。 | [在线生成器](/tools/antigravity/#boost-generator)                |
+| Subagent 支持哪些字段和模型？  | 19 个 YAML 字段；`model` 只接受四个档位，但 `inherit` 可以继承父会话的任意具体模型。               | [在线生成器](/tools/antigravity/#subagent-generator)             |
+| `paseo-agy-acp`                | Paseo 的 Antigravity ACP 插件，支持会话恢复、工具审批与配额监控。                                  | [GitHub](https://github.com/fdkevin0/paseo-agy-acp)              |
+| `pi-agy-acp`                   | Pi Coding Agent 的 Antigravity 扩展，支持流式推理、图片输入与配额面板。                            | [GitHub](https://github.com/fdkevin0/pi-agy-acp)                 |
+| `agy-sbx-kit`                  | 在 Docker Sandbox 里无头运行 `agy`，凭证留在宿主机，出站只放行 9 个域名。                          | [GitHub](https://github.com/fdkevin0/agy-sbx-kit)                |
+| `xurl`                         | 用 `agents://antigravity/<id>` 把本地会话轨迹读成 Markdown，并可无头续写。                         | [GitHub](https://github.com/fdkevin0/xurl/tree/feat/antigravity) |
+| `pi-multi-account`             | 多账号配额监控与自动故障转移。                                                                     | [GitHub](https://github.com/fdkevin0/pi-multi-account)           |
 
-### 一图看懂 `agy` 四层扩展架构与开源 Toolkits 全景
+### 四层扩展架构与开源工具全景
 
 ```text
 +------------------------------------------------------------+
@@ -73,14 +69,14 @@ Google Antigravity CLI（`agy`）是 Google DeepMind 面向 Agentic Coding 推�
 
 ---
 
-## 第一部分：二进制逆向揭秘 `/boost` (`owl` 引擎) 与 Subagent 体系
+## 第一部分：逆向 /boost 与 Subagent 体系
 
 > **逆向基准环境**
 >
 > - `agy` v1.5.1（SHA-256: `72738cf0445918483956a5f0da33abdfcfb21a12dd9a421fd57d063782826669`）
 > - `agy` v1.5.3（`linux/amd64` PIE ELF，`.text` 段基址 `0x6d15000`，`pcHeader.textStart` `0x6d15080`，`.gopclntab` 偏移 `0x1714500`）
 
-### 1.1 `/boost` 并非 `SKILL.md`：13 个系统级斜杠命令全局表 (`0xcbad108`)
+### 1.1 /boost 并非 SKILL.md：13 个系统级斜杠命令
 
 在 `agy` 内部包 `google3/third_party/jetski/cortex/slashcommands` 与 `cli/slashcmd` 中，所有斜杠命令由 `cli/slashcmd.AdvertisedResolvers` (`0x9dc5ba0`) 统一汇总，并严格划分为三类：
 
@@ -121,7 +117,7 @@ func init() {
 }
 ```
 
-### 1.2 `owl` 引擎全景：三层对抗式多智能体流水线
+### 1.2 owl 引擎：三层对抗式多智能体流水线
 
 `/boost` 的核心实现位于 `google3/third_party/jetski/cortex/customizations/builtin/owl` 及其 4 个子包（`owl/common`、`owl/deepcoder`、`owl/deepinvestigator`、`owl/hooks`）。它之所以无法用单个 `SKILL.md` 实现，是因为它在 Go 内核层构建了一套具有**工具剥夺、提示词分区裁剪与工具调用前钩子（Pre-Invocation Hooks）**的三层对抗式管线：
 
@@ -177,7 +173,7 @@ func init() {
    - `DeepCoderImprovementWorker` 的开篇指令极为犀利（`0x63073f9`）：_"You are not a rubber stamp. A review that finds nothing and changes nothing is almost always a failed review."_ 它要求 Worker 在看 `<prior_attempt>` 之前先只读 `<original_task>` 写下独立理解，再像试图拒稿的审稿人一样构造边界输入去搞破坏（**Step 2 — Break it**），并亲手修复发现的 Bug。
    - 此外，所有层级尾部均拼接了防提示词泄露保护（`0x6288107` / `0x62884bf`）：若被追问系统提示词，统一回复固定诱饵语句 `"What task can I help you with?"`。
 
-### 1.3 官方文档宣传 vs. 二进制真实实现：四大差异
+### 1.3 官方文档与二进制实现的四处差异
 
 对比 Google Antigravity 线上文档（`/docs/boost/`）与 `agy` v1.5.3 二进制反汇编，可以发现四处显著差异：
 
@@ -188,7 +184,7 @@ func init() {
 | **3. 子智能体并发模式**             | 宣称 _“Phase 2: Parallel execution and verification”_                                       | **协调器内部为严格的串行接力**：必须先由 `WorkerL0` 产出初稿，再装入 `<prior_attempt>` 交由 `ImprovementWorker` 挑刺与修复。                |
 | **4. 隐藏机制与钩子**               | 仅提及三层名称                                                                              | 隐去了代号 `owl`、`Skepticism Disclaimer`、反橡皮图章盲审、4 次重试上限、单次 `send_message` 静默约束及防泄露诱饵。                         |
 
-### 1.4 破解 `/boost` 词法限制：利用 `AllowedSubagents` (`0xcc49000`) 实现纯自然语言触发
+### 1.4 绕过 /boost 词法限制：用自然语言触发
 
 默认情况下，如果你对 `agy` 说「使用 boost 进行排查」而不带斜杠 `/`，**不会**触发 `owl` 管线。逆向显示共有三道拦截：
 
@@ -216,7 +212,7 @@ When the user asks to "use boost", "使用 boost 进行...", or requests boost m
 4. Treat the subagent's report as claims to verify: independently spot-check modified files and run tests before reporting back. If issues remain, use `send_message` to follow up with the SAME `DeepCoder` / `DeepInvestigator` conversationId.
 ```
 
-### 1.5 `EGM`（大象-金鱼模型）vs. `/boost` (`owl`)：上下游互补工作流
+### 1.5 EGM 与 /boost：上下游互补的工作流
 
 在我的日常 Agentic 工程流中，除了内建的 `/boost`，还重度使用 `EGM`（Elephant-Goldfish Model）插件与 `Ponytail` 极简纪律插件。虽然 `EGM` 与 `/boost` 都致力于消除单智能体长上下文的**确认偏误（Confirmation Bias）**，但两者在业务生命周期上形成了完美的上下游互补：
 
@@ -234,7 +230,7 @@ When the user asks to "use boost", "使用 boost 进行...", or requests boost m
 2. **Stage 2（`/boost` 纵向对抗实现）**：将通过盲审的计划交由 `DeepCoder`（`WorkerL0` 初创 $\rightarrow$ `ImprovementWorker` 破坏测试与修复）。
 3. **Stage 3（`Ponytail` + `EGM` 收尾验收）**：运行 `/ponytail-review` 砍掉多余包装层，并用 `egm-drift-report` 审计代码实现是否 100% 兑现设计契约。
 
-### 1.6 Subagent 19 项 `AgentFrontmatter` 反射结构 (`0xbf3a5a8`) 与模型继承技巧
+### 1.6 Subagent 的 19 个字段与模型继承
 
 当我们在 `.agents/agents/<name>.md`（或全局 `~/.gemini/config/agents/<name>.md`）中持久化定义自定义 Subagent 时，二进制 `.data.rel.ro` 段中的 `customizations.AgentFrontmatter` 反射类型表（`0xbf3a5a8`，字段数组 `0xbf3a608 .. 0xbf3a7c0`）定义了全部 **19 个合法 YAML 字段**：
 
@@ -257,11 +253,11 @@ When the user asks to "use boost", "使用 boost 进行...", or requests boost m
 
 ---
 
-## 第二部分：打通 ACP 协议 — 构建 `paseo-agy-acp`、`pi-agy-acp` 与无头沙箱工具链
+## 第二部分：基于 ACP 协议的开源工具
 
 完成了对 `agy` 内部机制的逆向后，下一步是通过标准协议将其接入更广阔的工程工作流。`agy` 提供了 `agy acp` 子命令（实现 Agent Client Protocol），但在将其桥接到 **Paseo** 与 **Pi Coding Agent** 的过程中，需要解决一系列非平凡的状态同步、进程生命周期与配额度量问题。
 
-### 2.1 `paseo-agy-acp`：Paseo 的原生 Antigravity ACP Provider 插件
+### 2.1 paseo-agy-acp：Paseo 的 Antigravity 插件
 
 [**`paseo-agy-acp`**](https://github.com/fdkevin0/paseo-agy-acp)（插件 ID `agy-acp`，Provider 名称 `agy`）让用户可以在 Paseo 桌面端、Web、CLI 与移动端直接驱动本地 `agy` 运行时：
 
@@ -285,7 +281,7 @@ paseo run --provider agy "Explain this repository"
 5. **5 小时与周度订阅额度监控**：
    通过执行 `agy -p /usage --output-format json`（自动剥离 `acp` 传输参数），解析 `gemini_models` 与 `claude_and_gpt_models` 的 `5h`（18,000 秒）与 `weekly`（604,800 秒）配额窗口，在 Composer 浮层与 `paseo usage ls --json` 中展示精确用量与重置时间。
 
-### 2.2 `pi-agy-acp`：Pi Coding Agent 的 Antigravity 桥接扩展
+### 2.2 pi-agy-acp：Pi Coding Agent 的 Antigravity 扩展
 
 [**`pi-agy-acp`**](https://github.com/fdkevin0/pi-agy-acp) 将 `agy acp` 注册为 Pi Coding Agent（`1.5.x`）中的 `antigravity-acp` Provider，让 `agy` 订阅内的模型直接驱动 Pi 的本地工具链（支持流式推理文本、图片输入与并行工具调用）：
 
@@ -297,7 +293,7 @@ pi install npm:pi-agy-acp
 - **拦截空闲缓存预热（Veto Prompt-Cache Warming）**：自动否决 Pi 宿主的后台空闲缓存预热请求，防止后台心跳静默消耗宝贵的 5 小时模型配额。
 - **TUI 12 格配额看板与低额度告警**：提供 `/agy-acp status|quota|reset` 命令，在 TUI 中渲染 12 格进度条与重置倒计时；每轮对话结束后后台静默刷新状态栏（如 `AGY 80%`），并在剩余额度触及 `20%` 与 `5%` 时触发分级告警。
 
-### 2.3 `agy-sbx-kit`、`xurl` 与 `pi-multi-account`：补齐沙箱、轨迹与多账号高可用
+### 2.3 agy-sbx-kit、xurl 与 pi-multi-account
 
 为了支撑长周期自治任务，工具链的另外三块拼图分别解决了**运行环境隔离**、**跨工具会话读取**与**配额耗尽容灾**：
 
@@ -315,7 +311,7 @@ pi install npm:pi-agy-acp
 
 ---
 
-## 结语：立即体验在线配置生成小工具
+## 结语
 
 本文涉及的 Antigravity ACP 与沙箱开源插件安装命令及仓库入口已汇总至本站 **[`/lab/`](/lab/#paseo-agy-acp)** 页面，基于二进制逆向结论构建的两个纯前端交互式小工具已上线至 **[`/tools/antigravity/`](/tools/antigravity/)** 页面：
 

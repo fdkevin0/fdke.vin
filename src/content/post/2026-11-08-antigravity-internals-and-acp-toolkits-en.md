@@ -8,15 +8,11 @@ draft: false
 tags: ["antigravity", "agents", "reverse-engineering", "acp", "ai"]
 ---
 
-> **Progressive Disclosure Guide**
->
-> - **Layer 1 (1-Minute Overview)**: Read the **TL;DR Summary Table** and **4-Layer Architecture Diagram** below, or jump straight to **[`/tools/antigravity/`](/tools/antigravity/)** to use the interactive Subagent YAML Generator and `/boost` Workflow Configurator in your browser, and **[`/lab/`](/lab/#paseo-agy-acp)** for the open-source ACP plugins.
-> - **Layer 2 (10-Minute Architecture & Engineering)**: Read Part 1 for the **`owl` 3-Tier Adversarial Pipeline** and **`EGM` vs. `/boost` workflow division**, and Part 2 for **ACP protocol bridging and sandbox engineering**.
-> - **Layer 3 (15-Minute Binary Forensics)**: Dive into the ELF `.gopclntab`, `.data.rel.ro`, and `.rodata` virtual memory addresses (VMAs) and reconstructed Go pseudocode throughout Part 1.
+This post has two parts. Part 1 reverse-engineers the Antigravity CLI (`agy`) binary: the `owl` 3-tier adversarial pipeline behind `/boost`, and the 19 fields a Subagent accepts. Part 2 covers the open-source tools I built on top of ACP. If you only want the tools, open the [interactive configurator](/tools/antigravity/) or the plugin list in [Lab](/lab/#paseo-agy-acp).
 
 ---
 
-## Introduction & TL;DR: Why Reverse-Engineer `agy` and Build an Open-Source Ecosystem?
+## Introduction: Why reverse-engineer agy
 
 Google Antigravity CLI (`agy`) is Google DeepMind's native terminal and multi-agent runtime for agentic coding. Unlike thin API wrappers, `agy` ships a single compiled Go binary containing native subagent spawning primitives (`invoke_subagent` / `define_subagent`), a multimodal tool stack, a 3-tier adversarial coding and root-cause analysis engine codenamed **`owl`** (exposed via `/boost`), and a native **ACP (Agent Client Protocol)** server (`agy acp`).
 
@@ -28,18 +24,18 @@ In heavy day-to-day engineering, however, three friction points quickly emerge:
 
 To solve all three, I performed static binary analysis on `agy` (v1.5.1 / v1.5.3 `linux/amd64` PIE ELF) and built an open-source suite of plugins and tools (open-source repositories indexed on **[`/lab/`](/lab/#paseo-agy-acp)** and interactive browser generators on **[`/tools/antigravity/`](/tools/antigravity/)**):
 
-| Question / Open-Source Project                 | Binary Truth / Engineering Solution                                                                                                                                                                                                                                                      | Live Tool / Repository                                                                 |
-| :--------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------- |
-| **Is `/boost` a `SKILL.md`?**                  | **No.** `/boost` is a compile-time **System Slash Command** hardcoded in `.data` (`0xcbad108` index `[9]`, `0xcbad588`), driving the **`owl`** 3-tier adversarial pipeline (`Orchestrator -> DeepCoder/DeepInvestigator -> WorkerL0/ImprovementWorker`).                                 | [Part 1 §1.1](#11-boost-is-not-a-skillmd-the-13-system-slash-commands-table-0xcbad108) |
-| **Can `/boost` run without typing `/`?**       | By default, the CLI lexer requires a leading or trailing `/boost`. However, `DeepCoder` and `DeepInvestigator` are registered in the main agent's `AllowedSubagents` whitelist (`0xcc49000`) at startup—adding a rule to `~/.gemini/GEMINI.md` unlocks pure natural-language triggering. | [Interactive Configurator](/tools/antigravity/#boost-generator)                        |
-| **What fields & models do Subagents support?** | `customizations.AgentFrontmatter` (`0xbf3a5a8`) defines **19 YAML fields**; `model` accepts only 4 `ModelTier` enums (`inherit`, `flash_lite`, `flash`, `pro` @ `0x8309d00`). Launch the parent with `agy --model <id>` + `Model: "inherit"` to run any concrete model.                  | [Interactive Generator](/tools/antigravity/#subagent-generator)                        |
-| **`paseo-agy-acp`**                            | Native Antigravity ACP provider (`agy-acp`) for Paseo with conversation persistence/resume, warm ACP process pooling, tool approval cards, slash command caching, Brain subagent transcript projection, and quota tracking.                                                              | [`fdkevin0/paseo-agy-acp`](https://github.com/fdkevin0/paseo-agy-acp)                  |
-| **`pi-agy-acp`**                               | Google Antigravity ACP extension (`antigravity-acp`) for Pi Coding Agent supporting streaming reasoning/text, images, parallel tool calls, isolated state directories, idle cache-warm vetoing, and `/agy-acp status\|quota\|reset`.                                                     | [`fdkevin0/pi-agy-acp`](https://github.com/fdkevin0/pi-agy-acp)                        |
-| **`agy-sbx-kit`**                              | Docker Sandboxes v3 workload kit & `agy-mixin` for running `agy` in YOLO mode with `SSH_CONNECTION=1` copy/paste OAuth fallback, host-side token proxying, and a 9-domain egress allowlist.                                                                                              | [`fdkevin0/agy-sbx-kit`](https://github.com/fdkevin0/agy-sbx-kit)                      |
-| **`xurl` (`agents://antigravity`)**            | Resolves local `brain/<id>` JSONL transcripts into Markdown via `agents://antigravity/<session-id>` and supports streaming headless writes/continuations.                                                                                                                                | [`fdkevin0/xurl`](https://github.com/fdkevin0/xurl/tree/feat/antigravity)              |
-| **`pi-multi-account`**                         | Quota-aware multi-account rotation and automatic failover across Antigravity, Claude, ChatGPT/Codex, Cursor, Kimi, Qwen, and Ollama.                                                                                                                                                     | [`fdkevin0/pi-multi-account`](https://github.com/fdkevin0/pi-multi-account)            |
+| Question                             | Answer                                                                                                  | Link                                                             |
+| :----------------------------------- | :------------------------------------------------------------------------------------------------------ | :--------------------------------------------------------------- |
+| Is `/boost` a `SKILL.md`?            | No. It is a system slash command compiled into the binary, driving the 3-tier `owl` pipeline.           | [§1.1](#11-boost-is-not-a-skillmd-the-13-system-slash-commands)  |
+| Can `/boost` run without typing `/`? | Yes. `DeepCoder` and `DeepInvestigator` are already allowed subagents; one `GEMINI.md` rule unlocks it. | [Configurator](/tools/antigravity/#boost-generator)              |
+| What can a Subagent configure?       | 19 YAML fields. `model` takes four tiers, but `inherit` passes through any concrete parent model.       | [Generator](/tools/antigravity/#subagent-generator)              |
+| `paseo-agy-acp`                      | Antigravity ACP provider for Paseo with session resume, tool approvals, and quota tracking.             | [GitHub](https://github.com/fdkevin0/paseo-agy-acp)              |
+| `pi-agy-acp`                         | Antigravity extension for Pi Coding Agent with streaming reasoning, image input, and quota bars.        | [GitHub](https://github.com/fdkevin0/pi-agy-acp)                 |
+| `agy-sbx-kit`                        | Runs `agy` headless in Docker Sandboxes, keeps tokens on the host, and allows only 9 egress domains.    | [GitHub](https://github.com/fdkevin0/agy-sbx-kit)                |
+| `xurl`                               | Reads local session transcripts as Markdown via `agents://antigravity/<id>` and can continue them.      | [GitHub](https://github.com/fdkevin0/xurl/tree/feat/antigravity) |
+| `pi-multi-account`                   | Quota-aware multi-account rotation and automatic failover.                                              | [GitHub](https://github.com/fdkevin0/pi-multi-account)           |
 
-### Panorama: `agy` 4-Layer Extension Architecture & Open-Source Toolkits
+### The 4-layer extension architecture and toolkits
 
 ```text
 +------------------------------------------------------------+
@@ -73,14 +69,14 @@ To solve all three, I performed static binary analysis on `agy` (v1.5.1 / v1.5.3
 
 ---
 
-## Part 1: Binary Reverse-Engineering of `/boost` (`owl` Engine) & the Subagent System
+## Part 1: Reverse-engineering /boost and Subagents
 
 > **Target Binary Baselines**
 >
 > - `agy` v1.5.1 (SHA-256: `72738cf0445918483956a5f0da33abdfcfb21a12dd9a421fd57d063782826669`)
 > - `agy` v1.5.3 (`linux/amd64` PIE ELF, `.text` base `0x6d15000`, `pcHeader.textStart` `0x6d15080`, `.gopclntab` offset `0x1714500`)
 
-### 1.1 `/boost` Is Not a `SKILL.md`: The 13 System Slash Commands Table (`0xcbad108`)
+### 1.1 /boost is not a SKILL.md: the 13 system slash commands
 
 Inside `google3/third_party/jetski/cortex/slashcommands` and `cli/slashcmd`, all slash commands are aggregated by `cli/slashcmd.AdvertisedResolvers` (`0x9dc5ba0`) into three distinct categories:
 
@@ -121,7 +117,7 @@ func init() {
 }
 ```
 
-### 1.2 Inside the `owl` Engine: The 3-Tier Adversarial Multi-Agent Pipeline
+### 1.2 Inside the owl engine: a 3-tier adversarial pipeline
 
 The `/boost` runtime lives in `google3/third_party/jetski/cortex/customizations/builtin/owl` and its four subpackages (`owl/common`, `owl/deepcoder`, `owl/deepinvestigator`, `owl/hooks`). It cannot be expressed as a mere `SKILL.md` because the Go runtime enforces **tool stripping, prompt-section whitelisting, and pre-invocation hooks** across three tiers:
 
@@ -178,7 +174,7 @@ Key mechanisms recovered from the binary:
    - `DeepCoderImprovementWorker` (`0x63073f9`) opens with: _"You are not a rubber stamp. A review that finds nothing and changes nothing is almost always a failed review."_ It requires the worker to write down its independent understanding of `<original_task>` **before** looking at `<prior_attempt>`, then actively try to **Break it** with boundary inputs and fix any discovered bugs in-place.
    - Every tier ends with a prompt-protection block (`0x6288107` / `0x62884bf`) that forces the model to reply with the exact decoy phrase `"What task can I help you with?"` if probed for its system instructions.
 
-### 1.3 Official `/docs/boost/` vs. Binary Implementation: 4 Major Discrepancies
+### 1.3 The docs vs. the binary: 4 discrepancies
 
 Comparing the public documentation at `antigravity.google/docs/boost/` against the `owl` disassembly in `agy` v1.5.3 reveals four notable contradictions:
 
@@ -189,7 +185,7 @@ Comparing the public documentation at `antigravity.google/docs/boost/` against t
 | **3. Execution Topology**           | Claims _“Phase 2: Parallel execution and verification”_                                              | **Strict sequential relay inside each coordinator**: `WorkerL0` must finish first so its report can be wrapped into `<prior_attempt>` for `ImprovementWorker`.                 |
 | **4. Undocumented Mechanisms**      | Mentions only the 3-tier names                                                                       | Omits the `owl` codename, mandatory `Skepticism Disclaimer`, anti-rubber-stamp blind review, 4x retry cap, single `send_message` silence rule, and prompt-leak decoy.          |
 
-### 1.4 Bypassing the `/` Lexical Gate via `AllowedSubagents` (`0xcc49000`)
+### 1.4 Triggering /boost with natural language
 
 Out of the box, saying _"use boost to fix this race condition"_ without a leading or trailing `/boost` will **not** trigger the `owl` pipeline due to three guards:
 
@@ -217,7 +213,7 @@ When the user asks to "use boost", "使用 boost 进行...", or requests boost m
 4. Treat the subagent's report as claims to verify: independently spot-check modified files and run tests before reporting back. If issues remain, use `send_message` to follow up with the SAME `DeepCoder` / `DeepInvestigator` conversationId.
 ```
 
-### 1.5 `EGM` (Elephant-Goldfish Model) vs. `/boost` (`owl`): Complementary Workflows
+### 1.5 EGM and /boost: complementary workflows
 
 While both `EGM` (`elephant-goldfish-model`) and `/boost` (`owl`) are designed to defeat single-agent **Confirmation Bias**, they operate at opposite halves of the software engineering lifecycle:
 
@@ -235,7 +231,7 @@ Combining `EGM`, `/boost`, and `Ponytail` yields a clean 3-stage workflow:
 2. **Stage 2 (`/boost` Adversarial Implementation)**: Delegate the locked plan to `DeepCoder` (`WorkerL0` initial build $\rightarrow$ `ImprovementWorker` adversarial break & fix).
 3. **Stage 3 (`Ponytail` + `EGM` Final Audit)**: Run `/ponytail-review` to strip unnecessary abstraction layers and `egm-drift-report` to verify contract compliance.
 
-### 1.6 All 19 `AgentFrontmatter` Fields (`0xbf3a5a8`) & Model Tier Inheritance
+### 1.6 The 19 Subagent fields and model inheritance
 
 Persistent custom subagents live in `.agents/agents/<name>.md` (or `~/.gemini/config/agents/<name>.md`). Extracting the `customizations.AgentFrontmatter` reflection descriptor from `.data.rel.ro` at `0xbf3a5a8` (field array `0xbf3a608 .. 0xbf3a7c0`) reveals all **19 valid YAML fields**:
 
@@ -258,11 +254,11 @@ Persistent custom subagents live in `.agents/agents/<name>.md` (or `~/.gemini/co
 
 ---
 
-## Part 2: Bridging the Agent Client Protocol (ACP) — `paseo-agy-acp`, `pi-agy-acp` & the Sandbox Toolchain
+## Part 2: Open-source tools built on ACP
 
 With `agy`'s internal mechanics mapped out, the second half of this effort focused on connecting `agy acp` to external agent hosts, headless containers, and multi-account routers.
 
-### 2.1 `paseo-agy-acp`: Native Antigravity ACP Provider for Paseo
+### 2.1 paseo-agy-acp: Antigravity for Paseo
 
 [**`paseo-agy-acp`**](https://github.com/fdkevin0/paseo-agy-acp) (plugin ID `agy-acp`, provider `agy`) integrates Antigravity into Paseo across desktop, web, CLI, and mobile clients:
 
@@ -286,7 +282,7 @@ Key engineering highlights:
 5. **5-Hour & Weekly Subscription Quota Tracking**:
    Executes `agy -p /usage --output-format json` to surface `5h` and `weekly` quota buckets for `gemini_models` and `claude_and_gpt_models` in both the Composer popover and `paseo usage ls --json`.
 
-### 2.2 `pi-agy-acp`: Antigravity ACP Extension for Pi Coding Agent
+### 2.2 pi-agy-acp: Antigravity for Pi Coding Agent
 
 [**`pi-agy-acp`**](https://github.com/fdkevin0/pi-agy-acp) registers the `antigravity-acp` provider in Pi Coding Agent (`1.5.x`), allowing models hosted on Google Antigravity to execute Pi's local tools with streaming text, reasoning levels, image inputs, and parallel tool calls:
 
@@ -298,7 +294,7 @@ pi install npm:pi-agy-acp
 - **Automatic Prompt-Cache Warming Veto**: Vetoes Pi's idle background prompt-cache warming so background heartbeats never drain your 5-hour Antigravity quota.
 - **12-Cell TUI Quota Bars & Low-Quota Alerts**: Provides `/agy-acp status|quota|reset` with 12-cell visual bars and reset countdowns, updates the status bar (`AGY 80%`) after each turn settles, and warns at `20%` and `5%` remaining quota.
 
-### 2.3 `agy-sbx-kit`, `xurl` & `pi-multi-account`: Headless Sandboxes, Transcripts & Failover
+### 2.3 agy-sbx-kit, xurl and pi-multi-account
 
 To complete the autonomous workflow toolchain:
 
@@ -314,7 +310,7 @@ To complete the autonomous workflow toolchain:
 
 ---
 
-## Conclusion: Try the Interactive Generators on `/tools/antigravity/`
+## Conclusion
 
 The Antigravity ACP and sandbox toolkits are indexed on **[`/lab/`](/lab/#paseo-agy-acp)**, and two zero-dependency browser generators built directly from the binary reverse-engineering findings above are live on **[`/tools/antigravity/`](/tools/antigravity/)**:
 

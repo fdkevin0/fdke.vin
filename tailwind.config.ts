@@ -17,11 +17,33 @@ export default {
 							},
 						},
 						blockquote: {
-							borderLeftWidth: "0",
+							borderLeftWidth: "2px",
+							borderLeftColor: "var(--tw-prose-quote-borders)",
+							color: "var(--tw-prose-quotes)",
+							fontStyle: "normal",
+							fontWeight: "400",
+							quotes: "none",
+						},
+						"blockquote p:first-of-type::before": {
+							content: "none",
+						},
+						"blockquote p:last-of-type::after": {
+							content: "none",
 						},
 						code: {
-							border: "1px dotted #666",
-							borderRadius: "2px",
+							backgroundColor: "var(--tw-prose-code-bg)",
+							borderRadius: "3px",
+							padding: "0.1em 0.3em",
+						},
+						"code::before": {
+							content: "none",
+						},
+						"code::after": {
+							content: "none",
+						},
+						"pre code": {
+							backgroundColor: "transparent",
+							padding: "0",
 						},
 						kbd: {
 							"&:where([data-theme='dark'], [data-theme='dark'] *)": {

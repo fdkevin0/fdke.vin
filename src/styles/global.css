@@ -241,6 +241,8 @@
 	.tool-code pre {
 		margin: 0;
 		overflow: auto;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
 		padding: 0.875rem;
 		font-size: 0.75rem;
 		line-height: 1.6;
@@ -286,13 +288,6 @@
 	.tool-disclosure[open] > summary::before {
 		content: "▾";
 	}
-
-	/* Widens a tool to the right on desktop, like the post TOC, without passing the viewport edge. */
-	@media (min-width: 1024px) {
-		.tool-breakout {
-			margin-inline-end: calc(-1 * min(20rem, (100vw - 100%) / 2 - 2rem));
-		}
-	}
 }
 
 @utility prose {
@@ -303,7 +298,13 @@
 	--tw-prose-headings: var(--color-accent-2);
 	--tw-prose-hr: 0.5px dashed #666;
 	--tw-prose-links: var(--color-global-text);
-	--tw-prose-quotes: var(--color-quote);
+	--tw-prose-quotes: color-mix(in oklab, var(--color-global-text) 75%, var(--color-global-bg));
+	--tw-prose-quote-borders: color-mix(
+		in oklab,
+		var(--color-global-text) 25%,
+		var(--color-global-bg)
+	);
+	--tw-prose-code-bg: color-mix(in oklab, var(--color-global-text) 8%, var(--color-global-bg));
 	--tw-prose-th-borders: #666;
 }
 
