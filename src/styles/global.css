@@ -450,3 +450,34 @@
 		text-align: center;
 	}
 }
+
+@layer components {
+	/* CJK body text reads poorly in a monospace stack: use the system sans for zh/ja prose, keep
+	   headings and code monospace, and let the browser space CJK/Latin runs and trim punctuation. */
+	.prose:where(:lang(zh), :lang(ja)) {
+		font-family:
+			ui-sans-serif,
+			system-ui,
+			-apple-system,
+			"PingFang SC",
+			"Hiragino Sans",
+			"Hiragino Sans GB",
+			"Noto Sans CJK SC",
+			"Noto Sans CJK JP",
+			"Microsoft YaHei",
+			"Yu Gothic UI",
+			sans-serif;
+		line-height: 1.85;
+		text-autospace: normal;
+		text-spacing-trim: normal;
+	}
+
+	.prose:where(:lang(zh), :lang(ja)) :where(h1, h2, h3, h4, h5, h6) {
+		font-family: var(--font-mono);
+	}
+
+	.prose:where(:lang(zh), :lang(ja)) :not(pre) > code {
+		padding: 0 0.25em;
+		font-size: 0.875em;
+	}
+}
