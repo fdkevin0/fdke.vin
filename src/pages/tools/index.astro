@@ -2,20 +2,23 @@
 import PageLayout from "@/layouts/Base.astro";
 
 const tools = [
-	{ href: "access/", title: "Access", description: "Inspect your session and token." },
-	{ href: "mail/", title: "Email", description: "Read routed messages." },
+	{
+		href: "antigravity/",
+		title: "Antigravity Config",
+		description: "Generate Antigravity subagent files and GEMINI.md rules.",
+	},
 	{
 		href: "camera/",
 		title: "Camera",
 		description: "Calculate depth of field and equivalent focal lengths.",
 	},
-	{ href: "exchange/", title: "Exchange rates", description: "View buy, sell, and middle rates." },
-	{ href: "network/", title: "Network", description: "Look up IP addresses and Internet health." },
 	{
 		href: "lut-to-np3/",
 		title: "LUT to NP3",
 		description: "Convert supported .cube LUTs to approximate Nikon profiles.",
 	},
+	{ href: "exchange/", title: "Exchange rates", description: "View buy, sell, and middle rates." },
+	{ href: "network/", title: "Network", description: "Look up IP addresses and Internet health." },
 ];
 ---
 

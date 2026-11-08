@@ -1,0 +1,276 @@
+---
+import CopyButton from "@/components/ui/CopyButton.astro";
+import PageLayout from "@/layouts/Base.astro";
+import { getRequestSiteLang, getSiteLangMeta, getSiteUrlWithLang, SITE_LANGS } from "@/lib/i18n";
+
+export const prerender = false;
+
+const siteLang = getRequestSiteLang(Astro.url, Astro.locals.siteDefaultLang);
+const langMeta = getSiteLangMeta(siteLang);
+
+type LocalizedText = Record<"en" | "zh" | "ja", string>;
+
+interface SpecRow {
+	label: LocalizedText;
+	value: LocalizedText;
+}
+
+interface ProjectLink {
+	href: string;
+	label: LocalizedText;
+}
+
+interface LabProject {
+	id: string;
+	title: string;
+	subtitle: LocalizedText;
+	stack: string;
+	installCmds?: string[];
+	summary: LocalizedText;
+	specs: SpecRow[];
+	links: ProjectLink[];
+}
+
+const copy = {
+	en: {
+		description: "Open-source Google Antigravity ACP provider plugins and Docker sandbox kits.",
+		title: "Lab",
+	},
+	ja: {
+		description:
+			"Google Antigravity 向けオープンソース ACP プロバイダープラグインと Docker サンドボックスキット。",
+		title: "Lab",
+	},
+	zh: {
+		description: "Google Antigravity 开源 ACP 插件与 Docker 沙箱套件。",
+		title: "Lab",
+	},
+} as const;
+
+// Link labels that read the same in every language (repo, package, and tool names).
+const label = (text: string): LocalizedText => ({ en: text, zh: text, ja: text });
+const articleLabel: LocalizedText = { en: "Article", zh: "文章", ja: "記事" };
+
+const projects: LabProject[] = [
+	{
+		id: "paseo-agy-acp",
+		title: "paseo-agy-acp",
+		subtitle: {
+			en: "Antigravity ACP provider plugin for Paseo",
+			zh: "Paseo 的 Antigravity ACP 插件",
+			ja: "Paseo用 Antigravity ACPプラグイン",
+		},
+		stack: "TypeScript · Node.js >=22.18 · ACP (agy acp) · Paseo >=0.15.0",
+		installCmds: [
+			"paseo plugin install npm:@fdkevin0/paseo-agy-acp",
+			'paseo run --provider agy "Explain this repository"',
+		],
+		summary: {
+			en: "Connects Paseo to the local Antigravity CLI over agy acp. Conversations can be created, imported, and resumed across desktop and mobile, with native tool approvals and 5-hour/weekly quota tracking.",
+			zh: "通过 agy acp 把本地 Antigravity CLI 接入 Paseo 桌面端与移动端。支持会话创建、导入与跨端恢复，提供原生工具审批卡片和 5 小时/周度配额查询。",
+			ja: "agy acp 経由でローカルの Antigravity CLI を Paseo に接続します。デスクトップとモバイルで会話の作成・インポート・再開ができ、ツール承認カードと5時間/週次クォータ監視を備えます。",
+		},
+		specs: [
+			{
+				label: { en: "Session & Warm Pool", zh: "会话与热进程池", ja: "ウォームプール" },
+				value: {
+					en: "Parks healthy unprompted ACP processes for instant reuse; symlink-safe cleanup of temporary conversations/<id>.db & brain/<id>/",
+					zh: "目录探测后保持健康 ACP 进程热待机复用；对未提问临时会话执行防符号链接穿透的 conversations/<id>.db 与 brain/<id>/ 安全清理",
+					ja: "未入力のACPプロセスをウォーム待機させて高速再利用・一時アーティファクトを安全に削除",
+				},
+			},
+			{
+				label: { en: "Context & Quota", zh: "上下文与配额", ja: "コンテキスト＆クォータ" },
+				value: {
+					en: "singleStepInput = round((input + cachedRead + cachedWrite) / steps); queries agy -p /usage --output-format json for 5h & weekly buckets",
+					zh: "按内部步数折算单步上下文占用（256K / GPT-OSS 131K）；通过 agy -p /usage --output-format json 解析 5h 与周度配额窗口",
+					ja: "複数ステップのトークン統計からコンテキスト使用量を推定・5h/週次クォータを取得",
+				},
+			},
+		],
+		links: [
+			{ href: "https://github.com/fdkevin0/paseo-agy-acp", label: label("GitHub") },
+			{ href: "https://www.npmjs.com/package/@fdkevin0/paseo-agy-acp", label: label("npm") },
+			{
+				href: "/tools/antigravity/",
+				label: { en: "Antigravity Config", zh: "Antigravity 配置器", ja: "Antigravity 設定" },
+			},
+			{ href: "/posts/antigravity-internals-and-acp-toolkits/", label: articleLabel },
+		],
+	},
+	{
+		id: "pi-agy-acp",
+		title: "pi-agy-acp",
+		subtitle: {
+			en: "Antigravity ACP provider extension for Pi Coding Agent",
+			zh: "Pi 的 Antigravity ACP 扩展",
+			ja: "Pi向け Antigravity ACP拡張",
+		},
+		stack: "TypeScript · Pi 1.5.x (@earendil-works/pi-coding-agent) · agy >=1.4.12",
+		installCmds: ["pi install npm:pi-agy-acp"],
+		summary: {
+			en: "Registers an antigravity-acp provider in Pi Coding Agent so Antigravity-hosted Gemini, Claude, and GPT-OSS models can drive Pi's local tools. Supports streaming reasoning, image input, parallel tool calls, and TUI quota bars.",
+			zh: "在 Pi Coding Agent 中注册 antigravity-acp Provider，让 Antigravity 账号下的 Gemini、Claude 与 GPT-OSS 模型直接调用 Pi 的本地工具。支持流式推理、图片输入、并行工具调用与 TUI 配额条。",
+			ja: "Pi Coding Agent に antigravity-acp プロバイダーを登録し、Antigravity 上の Gemini・Claude・GPT-OSS から Pi のローカルツールを実行します。ストリーミング推論・画像入力・並列ツール呼び出し・TUI クォータバーに対応します。",
+		},
+		specs: [
+			{
+				label: { en: "State Isolation", zh: "隔离状态目录", ja: "状態ディレクトリ分離" },
+				value: {
+					en: "Dedicated PI_AGY_HOME (~/.pi/agent/cache/antigravity-acp) with 0600 OAuth token sync and automatic temporary session cleanup",
+					zh: "默认使用独立 PI_AGY_HOME (~/.pi/agent/cache/antigravity-acp) 隔离桥接会话与日常 agy 插件，以 0600 权限同步 OAuth 令牌并自动清理旧日志",
+					ja: "専用の PI_AGY_HOME で通常の agy 環境と分離し、0600 権限でトークンを同期",
+				},
+			},
+			{
+				label: { en: "Quota & Cache Guard", zh: "配额看板与防空耗", ja: "クォータ保護" },
+				value: {
+					en: "12-cell TUI quota bars with 2-min TTL, 20%/5% alerts, and automatic veto of Pi idle prompt-cache warming",
+					zh: "提供 12 格 TUI 配额进度条与倒计时，轮次结束后后台更新状态栏（如 AGY 80%），在 20%/5% 阈值告警，并自动拦截 Pi 空闲缓存预热以节省配额",
+					ja: "12セルのTUIクォータバー、20%/5%残量警告、アイドル時のプロンプトキャッシュウォームアップ抑止",
+				},
+			},
+		],
+		links: [
+			{ href: "https://github.com/fdkevin0/pi-agy-acp", label: label("GitHub") },
+			{ href: "https://www.npmjs.com/package/pi-agy-acp", label: label("npm") },
+		],
+	},
+	{
+		id: "agy-sbx-kit",
+		title: "agy-sbx-kit",
+		subtitle: {
+			en: "Run agy headless in Docker Sandboxes",
+			zh: "在 Docker Sandbox 中无头运行 agy",
+			ja: "Docker Sandbox で agyをヘッドレス実行",
+		},
+		stack: "Docker Sandboxes v3 · OCI BuildKit · OAuth Credential Proxy · Network Policy",
+		installCmds: [
+			"sbx run git+https://github.com/fdkevin0/agy-sbx-kit.git .",
+			"sbx run git+https://github.com/fdkevin0/agy-sbx-kit.git . --name agy-gcp --kit-arg auth_method=gcp --kit-arg gcp_project=YOUR_PROJECT_ID --kit-arg gcp_location=global",
+		],
+		summary: {
+			en: "Packages the official agy binary as a Docker Sandboxes v3 workload that starts in YOLO mode. SSH_CONNECTION=1 switches OAuth to a copy/paste callback, real tokens stay in the host credential proxy, and egress is limited to 9 domains.",
+			zh: "把官方 agy 打包为 Docker Sandboxes v3 工作负载，默认以 YOLO 模式启动。注入 SSH_CONNECTION=1 让 OAuth 改为复制粘贴回调，真实 Token 由宿主机凭证代理托管，出站仅放行 9 个域名。",
+			ja: "公式 agy バイナリを Docker Sandboxes v3 ワークロード化し、YOLO モードで起動します。SSH_CONNECTION=1 で OAuth をコピー＆ペースト方式に切り替え、実トークンはホスト側プロキシで保持し、通信は9ドメインに限定します。",
+		},
+		specs: [
+			{
+				label: { en: "Headless OAuth & Proxy", zh: "无头认证与凭证代理", ja: "ヘッドレス認証" },
+				value: {
+					en: "SSH_CONNECTION=1 triggers copy/paste OAuth fallback; host proxy stores real tokens while writing sentinel placeholders inside VM",
+					zh: "SSH_CONNECTION=1 触发复制粘贴回调；宿主机代理拦截并刷新真实 Token，沙箱内 antigravity-oauth-token 仅保留安全占位符与 GCP project_id/region",
+					ja: "SSH_CONNECTION=1 でコールバックURL貼り付け認証に切替・ホスト側プロキシで実トークンを管理",
+				},
+			},
+			{
+				label: { en: "9-Domain Allowlist", zh: "9 域名最小网络白名单", ja: "9ドメイン通信許可" },
+				value: {
+					en: "antigravity.google, antigravity-unleash.goog, auto-updater Cloud Run, 3 Google OAuth hosts & 4 Cloud Code / Gemini API hosts",
+					zh: "仅放行 antigravity.google、antigravity-unleash.goog、自动更新源、3 个 Google OAuth 域名与 4 个 Cloud Code / Gemini 推理端点",
+					ja: "ポータル・Unleash機能フラグ・自動更新・Google OAuth 3種・推論API 4種の計9ドメインのみ許可",
+				},
+			},
+		],
+		links: [{ href: "https://github.com/fdkevin0/agy-sbx-kit", label: label("GitHub") }],
+	},
+];
+
+const t = copy[siteLang];
+---
+
+<PageLayout
+	meta={{
+		title: t.title,
+		description: t.description,
+		lang: langMeta.htmlLang,
+		ogLocale: langMeta.ogLocale,
+		blogLanguage: siteLang,
+		blogLanguageOptions: SITE_LANGS.map((lang) => ({
+			href: getSiteUrlWithLang(Astro.url, lang, true),
+			label: getSiteLangMeta(lang).label,
+			lang,
+		})),
+	}}
+>
+	<div class="tool-workbench">
+		<h1 class="title mb-8">{t.title}</h1>
+
+		<div class="space-y-3">
+			{
+				projects.map((project) => (
+					<details id={project.id} class="tool-disclosure">
+						<summary>
+							<div class="grid min-w-0 flex-1 gap-x-4 sm:grid-cols-[13rem_minmax(0,1fr)]">
+								<span class="text-accent-2 font-semibold">{project.title}</span>
+								<span>{project.subtitle[siteLang]}</span>
+							</div>
+						</summary>
+						<div class="mt-3 mb-6 space-y-4 ps-5">
+							<p class="leading-relaxed [overflow-wrap:anywhere] break-words">
+								{project.summary[siteLang]}
+							</p>
+							<p class="tool-note" translate="no">
+								{project.stack}
+							</p>
+							<dl class="tool-rows text-xs sm:text-sm">
+								{project.specs.map((spec) => (
+									<div class="tool-row">
+										<dt>{spec.label[siteLang]}</dt>
+										<dd>{spec.value[siteLang]}</dd>
+									</div>
+								))}
+							</dl>
+							{project.installCmds && (
+								<div class="tool-code py-1.5">
+									{project.installCmds.map((cmd) => (
+										<div class="flex items-start gap-2 px-3.5 py-1.5">
+											<code class="min-w-0 flex-1 py-1 text-xs leading-5 break-all" translate="no">
+												<span class="select-none" style="color: var(--code-muted)">
+													${" "}
+												</span>
+												{cmd}
+											</code>
+											<CopyButton value={cmd} label={cmd} />
+										</div>
+									))}
+								</div>
+							)}
+							{project.links.length > 0 && (
+								<div class="flex flex-wrap gap-x-4 gap-y-1">
+									{project.links.map((link) => {
+										const isExternal = link.href.startsWith("http");
+										return (
+											<a
+												href={link.href}
+												class="cactus-link"
+												target={isExternal ? "_blank" : undefined}
+												rel={isExternal ? "noopener noreferrer" : undefined}
+											>
+												{link.label[siteLang]}
+											</a>
+										);
+									})}
+								</div>
+							)}
+						</div>
+					</details>
+				))
+			}
+		</div>
+	</div>
+</PageLayout>
+
+<script>
+	// Open the project named in the URL hash, e.g. /lab/#paseo-agy-acp from a post.
+	function openHashTarget() {
+		const id = decodeURIComponent(location.hash.slice(1));
+		if (!id) return;
+		const target = document.getElementById(id);
+		if (target instanceof HTMLDetailsElement) target.open = true;
+	}
+
+	openHashTarget();
+	window.addEventListener("hashchange", openHashTarget);
+	window.addEventListener("pageshow", openHashTarget);
+</script>

@@ -58,11 +58,11 @@ const alternates = SITE_LANGS.flatMap((lang) => {
 		title,
 	}}
 >
-	<article class="grow break-words" data-pagefind-body>
+	<article class="min-w-0 grow break-words" data-pagefind-body>
 		<div id="blog-hero" class="mb-12">
 			<Masthead content={post} explicitLanguage={explicitLang} readingTime={readingTime} />
 		</div>
-		<div class="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
+		<div class="flex min-w-0 flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
 			{
 				(supportedTranslations.length > 1 || headings.length > 0) && (
 					<aside class="lg:sticky lg:top-12 lg:order-2 lg:-me-32 lg:basis-64">
@@ -93,7 +93,7 @@ const alternates = SITE_LANGS.flatMap((lang) => {
 				)
 			}
 			<div
-				class="prose prose-sm prose-headings:font-semibold prose-headings:text-accent-2 prose-headings:before:absolute prose-headings:before:-ms-4 prose-headings:before:text-gray-600 prose-headings:hover:before:text-accent sm:prose-headings:before:content-['#'] sm:prose-th:before:content-none"
+				class="prose prose-sm prose-headings:font-semibold prose-headings:text-accent-2 prose-headings:before:absolute prose-headings:before:-ms-4 prose-headings:before:text-gray-600 prose-headings:hover:before:text-accent sm:prose-headings:before:content-['#'] sm:prose-th:before:content-none w-full max-w-full min-w-0"
 			>
 				<slot />
 				<WebMentions />
