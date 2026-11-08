@@ -1,0 +1,995 @@
+---
+import CopyButton from "@/components/ui/CopyButton.astro";
+import PageLayout from "@/layouts/Base.astro";
+import { getRequestSiteLang, getSiteLangMeta, getSiteUrlWithLang, SITE_LANGS } from "@/lib/i18n";
+
+export const prerender = false;
+
+const siteLang = getRequestSiteLang(Astro.url, Astro.locals.siteDefaultLang);
+const langMeta = getSiteLangMeta(siteLang);
+
+const copy = {
+	en: {
+		title: "Antigravity Config",
+		description: "Generate Antigravity subagent files and GEMINI.md rules in the browser.",
+		introBefore: "Generate Antigravity subagent files and GEMINI.md rules, based on these ",
+		introLink: "reverse-engineering notes",
+		introAfter: ".",
+		download: "Download",
+		subagent: {
+			title: "Subagent file",
+			template: "Template",
+			presets: {
+				security: "Security auditor",
+				breaker: "Test breaker",
+				coordinator: "Pipeline coordinator",
+				indexer: "Fast indexer",
+			},
+			reservedWarn: "Conflicts with a built-in agent name.",
+			flags: "Flags",
+			systemPrompt: "System prompt",
+		},
+		boost: {
+			title: "GEMINI.md rules",
+			ruleSemantic: "Natural-language /boost trigger",
+			ruleEgmFlow: "EGM → /boost → Ponytail workflow",
+			rulePonytail: "Ponytail discipline",
+			routing: "Route to",
+			ponytailLevel: "Ponytail level",
+			yoloWarn: "Only run inside an isolated container or VM.",
+		},
+	},
+	zh: {
+		title: "Antigravity 配置器",
+		description: "在浏览器中生成 Antigravity Subagent 定义文件与 GEMINI.md 规则。",
+		introBefore: "生成 Antigravity 的 Subagent 定义文件与 GEMINI.md 规则，依据见",
+		introLink: "逆向笔记",
+		introAfter: "。",
+		download: "下载",
+		subagent: {
+			title: "Subagent 定义",
+			template: "模板",
+			presets: {
+				security: "安全审计",
+				breaker: "测试破坏者",
+				coordinator: "管线协调",
+				indexer: "快速检索",
+			},
+			reservedWarn: "与内置 Agent 重名。",
+			flags: "开关",
+			systemPrompt: "系统提示词",
+		},
+		boost: {
+			title: "GEMINI.md 规则",
+			ruleSemantic: "自然语言触发 /boost",
+			ruleEgmFlow: "EGM → /boost → Ponytail 工作流",
+			rulePonytail: "Ponytail 精简纪律",
+			routing: "默认路由",
+			ponytailLevel: "Ponytail 档位",
+			yoloWarn: "仅在隔离的容器或虚拟机中使用。",
+		},
+	},
+	ja: {
+		title: "Antigravity 設定",
+		description: "Antigravity の Subagent 定義と GEMINI.md ルールをブラウザで生成。",
+		introBefore: "Antigravity の Subagent 定義と GEMINI.md ルールを生成します。根拠は",
+		introLink: "解析記事",
+		introAfter: "を参照。",
+		download: "保存",
+		subagent: {
+			title: "Subagent 定義",
+			template: "テンプレート",
+			presets: {
+				security: "セキュリティ監査",
+				breaker: "テスト破壊",
+				coordinator: "パイプライン調整",
+				indexer: "高速インデクサー",
+			},
+			reservedWarn: "組み込みエージェント名と重複しています。",
+			flags: "フラグ",
+			systemPrompt: "システムプロンプト",
+		},
+		boost: {
+			title: "GEMINI.md ルール",
+			ruleSemantic: "自然言語で /boost を起動",
+			ruleEgmFlow: "EGM → /boost → Ponytail ワークフロー",
+			rulePonytail: "Ponytail ミニマル規律",
+			routing: "委譲先",
+			ponytailLevel: "Ponytail レベル",
+			yoloWarn: "隔離されたコンテナまたは VM 内でのみ使用。",
+		},
+	},
+} as const;
+
+const t = copy[siteLang];
+
+const presetIds = ["security", "breaker", "coordinator", "indexer"] as const;
+const toolNames = [
+	"read_file",
+	"run_command",
+	"write_file",
+	"edit_file",
+	"search_web",
+	"invoke_subagent",
+	"define_subagent",
+	"manage_subagents",
+	"send_message",
+	"ask_question",
+	"manage_task",
+	"schedule",
+];
+const flagNames = [
+	"subagent",
+	"mainAgent",
+	"inheritMcp",
+	"inheritCustomizations",
+	"excludeDefaultComponents",
+	"hidden",
+	"disabled",
+];
+const listFields = [
+	{ name: "skills", placeholder: "diagnosing-bugs, code-review" },
+	{ name: "preloadSkills", placeholder: "ponytail" },
+	{ name: "plugins", placeholder: "egm, ponytail" },
+	{ name: "rules", placeholder: "security-baseline" },
+	{ name: "agents", placeholder: "research, self" },
+];
+const parentModels = [
+	"claude-opus-5-5-high",
+	"gemini-4-argon-high",
+	"claude-sonnet-5-5-high",
+	"gemini-3.8-flash-high",
+	"gpt-oss-120b-medium",
+];
+
+const checkGrid = "grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-x-4 gap-y-1.5";
+const checkLabel = "flex min-h-6 items-center gap-2";
+const keyLabel = "tool-field-label font-mono";
+const codePane = "tool-code flex min-h-0 flex-col";
+const codePre = "min-h-0 flex-1 overflow-auto";
+---
+
+<PageLayout
+	meta={{
+		title: t.title,
+		description: t.description,
+		lang: langMeta.htmlLang,
+		ogLocale: langMeta.ogLocale,
+		blogLanguage: siteLang,
+		blogLanguageOptions: SITE_LANGS.map((lang) => ({
+			href: getSiteUrlWithLang(Astro.url, lang, true),
+			label: getSiteLangMeta(lang).label,
+			lang,
+		})),
+	}}
+>
+	<div class="tool-workbench space-y-12" data-toolkits-root>
+		<header class="space-y-4">
+			<nav aria-label="Breadcrumb" class="tool-kicker">
+				<a href="/tools/" class="cactus-link">Tools</a> / {t.title}
+			</nav>
+			<h1 class="title">{t.title}</h1>
+			<p class="tool-lede max-w-2xl">
+				{t.introBefore}<a href="/posts/antigravity-internals-and-acp-toolkits/" class="cactus-link"
+					>{t.introLink}</a
+				>{t.introAfter}
+			</p>
+		</header>
+
+		<section id="subagent-generator" data-subagent-gen>
+			<h2 class="title text-accent mb-6 text-xl">{t.subagent.title}</h2>
+			<div class="grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+				<form class="flex min-w-0 flex-col gap-4" data-sa-form>
+					<label class="block space-y-1.5">
+						<span class="tool-field-label">{t.subagent.template}</span>
+						<select class="tool-select px-2.5 py-1.5 text-sm" data-sa-preset autocomplete="off">
+							{presetIds.map((id) => <option value={id}>{t.subagent.presets[id]}</option>)}
+						</select>
+					</label>
+
+					<div class="space-y-1.5">
+						<label class="block space-y-1.5">
+							<span class={keyLabel} translate="no">name</span>
+							<input
+								class="tool-input px-2.5 py-1.5 font-mono text-sm"
+								type="text"
+								name="name"
+								value="security-auditor"
+								autocomplete="off"
+								spellcheck="false"
+								aria-describedby="sa-name-warn"
+							/>
+						</label>
+						<p
+							id="sa-name-warn"
+							hidden
+							class="text-xs text-red-700 dark:text-red-300"
+							role="status"
+							data-sa-reserved-warn
+						>
+							{t.subagent.reservedWarn}
+						</p>
+					</div>
+
+					<label class="block space-y-1.5">
+						<span class={keyLabel} translate="no">description</span>
+						<input
+							class="tool-input px-2.5 py-1.5 text-sm"
+							type="text"
+							name="description"
+							value="Read-only security auditor focusing on vulnerability scanning, auth boundaries, and dependency hygiene."
+							autocomplete="off"
+						/>
+					</label>
+
+					<label class="block space-y-1.5">
+						<span class={keyLabel} translate="no">model</span>
+						<select class="tool-select px-2.5 py-1.5 font-mono text-sm" name="model" translate="no">
+							<option value="inherit">inherit</option>
+							<option value="pro" selected>pro</option>
+							<option value="flash">flash</option>
+							<option value="flash_lite">flash_lite</option>
+						</select>
+					</label>
+
+					<label class="block space-y-1.5">
+						<span class={keyLabel} translate="no">commandExecutionPolicy</span>
+						<select
+							class="tool-select px-2.5 py-1.5 font-mono text-sm"
+							name="commandExecutionPolicy"
+							translate="no"
+						>
+							<option value="">default</option>
+							<option value="sandbox" selected>sandbox</option>
+							<option value="auto">auto</option>
+							<option value="eager">eager</option>
+							<option value="off">off</option>
+						</select>
+					</label>
+
+					<fieldset>
+						<legend class={`${keyLabel} mb-1.5`} translate="no">tools</legend>
+						<div class={`${checkGrid} font-mono text-xs`} translate="no">
+							{
+								toolNames.map((tool) => (
+									<label class={checkLabel}>
+										<input type="checkbox" name="tool" value={tool} />
+										<span class="min-w-0 break-all">{tool}</span>
+									</label>
+								))
+							}
+						</div>
+					</fieldset>
+
+					<details class="tool-disclosure">
+						<summary class="py-0.5 text-sm"><span>{t.subagent.flags}</span></summary>
+						<div
+							class="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-x-4 gap-y-1.5 pt-2 pl-5 font-mono text-xs"
+							translate="no"
+						>
+							{
+								flagNames.map((flag) => (
+									<label class={checkLabel}>
+										<input type="checkbox" name={`flag_${flag}`} />
+										<span class="min-w-0 break-all">{flag}</span>
+									</label>
+								))
+							}
+						</div>
+					</details>
+
+					<details class="tool-disclosure">
+						<summary class="py-0.5 text-sm" translate="no">
+							<span>skills, plugins, MCP, hooks</span>
+						</summary>
+						<div class="flex flex-col gap-4 pt-2 pl-5">
+							{
+								listFields.map((field) => (
+									<label class="block space-y-1.5">
+										<span class={keyLabel} translate="no">
+											{field.name}
+										</span>
+										<input
+											class="tool-input px-2.5 py-1.5 font-mono text-xs"
+											type="text"
+											name={field.name}
+											placeholder={field.placeholder}
+											autocomplete="off"
+											spellcheck="false"
+										/>
+									</label>
+								))
+							}
+							<div class={`${checkGrid} font-mono text-xs`} translate="no">
+								<label class={checkLabel}>
+									<input type="checkbox" name="include_mcpServers" />
+									<span>mcpServers</span>
+								</label>
+								<label class={checkLabel}>
+									<input type="checkbox" name="include_hooks" />
+									<span>hooks</span>
+								</label>
+							</div>
+						</div>
+					</details>
+
+					<label class="block space-y-1.5">
+						<span class="tool-field-label">{t.subagent.systemPrompt}</span>
+						<textarea
+							class="tool-input px-2.5 py-1.5 font-mono text-xs leading-relaxed"
+							name="systemPrompt"
+							rows="8"
+							spellcheck="false"></textarea>
+					</label>
+				</form>
+
+				<div class="min-w-0 lg:sticky lg:top-6 lg:self-start">
+					<div class={`${codePane} lg:max-h-[calc(100dvh-3rem)]`}>
+						<div class="tool-code-bar">
+							<code
+								id="sa-path"
+								class="min-w-0 truncate"
+								title=".agents/agents/security-auditor.md"
+								translate="no"
+								data-sa-path>.agents/agents/security-auditor.md</code
+							>
+							<div class="flex shrink-0 items-center gap-2">
+								<CopyButton value="" label="file" />
+								<button
+									type="button"
+									class="tool-button min-h-7 cursor-pointer px-2.5 py-1 text-xs"
+									data-sa-download
+								>
+									{t.download}
+								</button>
+							</div>
+						</div>
+						<pre
+							tabindex="0"
+							aria-labelledby="sa-path"
+							class={`${codePre} max-h-[28rem] lg:max-h-none`}
+							translate="no"><code data-sa-output /></pre>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section id="boost-generator" data-boost-gen>
+			<h2 class="title text-accent mb-6 text-xl">{t.boost.title}</h2>
+			<div class="grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+				<form class="flex min-w-0 flex-col gap-4" data-boost-form>
+					<div class="space-y-1.5 text-sm">
+						<label class={checkLabel}>
+							<input type="checkbox" name="rule_semantic" checked />
+							<span>{t.boost.ruleSemantic}</span>
+						</label>
+						<label class={checkLabel}>
+							<input type="checkbox" name="rule_egm_flow" checked />
+							<span>{t.boost.ruleEgmFlow}</span>
+						</label>
+						<label class={checkLabel}>
+							<input type="checkbox" name="rule_ponytail" checked />
+							<span>{t.boost.rulePonytail}</span>
+						</label>
+					</div>
+
+					<label class="block space-y-1.5">
+						<span class="tool-field-label">{t.boost.routing}</span>
+						<select
+							class="tool-select px-2.5 py-1.5 font-mono text-sm disabled:opacity-60"
+							name="boost_routing"
+							translate="no"
+						>
+							<option value="auto" selected>auto</option>
+							<option value="coder">DeepCoder</option>
+							<option value="investigator">DeepInvestigator</option>
+						</select>
+					</label>
+
+					<label class="block space-y-1.5">
+						<span class="tool-field-label">{t.boost.ponytailLevel}</span>
+						<select
+							class="tool-select px-2.5 py-1.5 font-mono text-sm disabled:opacity-60"
+							name="ponytail_level"
+							translate="no"
+						>
+							<option value="lite">lite</option>
+							<option value="full" selected>full</option>
+							<option value="ultra">ultra</option>
+						</select>
+					</label>
+
+					<label class="block space-y-1.5">
+						<span class={keyLabel} translate="no">--model</span>
+						<select
+							class="tool-select px-2.5 py-1.5 font-mono text-sm"
+							name="parent_model"
+							translate="no"
+						>
+							{parentModels.map((model) => <option value={model}>{model}</option>)}
+						</select>
+					</label>
+
+					<label class="block space-y-1.5">
+						<span class={keyLabel} translate="no">--agent</span>
+						<input
+							class="tool-input px-2.5 py-1.5 font-mono text-sm"
+							type="text"
+							name="custom_agent"
+							placeholder="security-auditor"
+							autocomplete="off"
+							spellcheck="false"
+						/>
+					</label>
+
+					<div class="space-y-1.5 font-mono text-sm" translate="no">
+						<label class={checkLabel}>
+							<input type="checkbox" name="headless_oauth" checked />
+							<span>SSH_CONNECTION=1</span>
+						</label>
+						<label class={checkLabel}>
+							<input type="checkbox" name="yolo_flags" aria-describedby="boost-yolo-warn" />
+							<span class="min-w-0 break-all">YOLO (--dangerously-skip-permissions)</span>
+						</label>
+						<p
+							id="boost-yolo-warn"
+							hidden
+							class="pl-5 text-xs text-red-700 dark:text-red-300"
+							translate="yes"
+							data-boost-yolo-warn
+						>
+							{t.boost.yoloWarn}
+						</p>
+					</div>
+
+					<label class="block space-y-1.5">
+						<span class={keyLabel} translate="no">auth_method</span>
+						<select
+							class="tool-select px-2.5 py-1.5 font-mono text-sm"
+							name="auth_mode"
+							translate="no"
+						>
+							<option value="consumer" selected>consumer</option>
+							<option value="gcp">gcp</option>
+						</select>
+					</label>
+
+					<div hidden class="flex flex-col gap-5" data-gcp-fields>
+						<label class="block space-y-1.5">
+							<span class={keyLabel} translate="no">project_id</span>
+							<input
+								class="tool-input px-2.5 py-1.5 font-mono text-sm"
+								type="text"
+								name="gcp_project"
+								value="my-gcp-project-id"
+								autocomplete="off"
+								spellcheck="false"
+							/>
+						</label>
+						<label class="block space-y-1.5">
+							<span class={keyLabel} translate="no">region</span>
+							<input
+								class="tool-input px-2.5 py-1.5 font-mono text-sm"
+								type="text"
+								name="gcp_region"
+								value="global"
+								autocomplete="off"
+								spellcheck="false"
+							/>
+						</label>
+					</div>
+				</form>
+
+				<div
+					class="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:self-start"
+				>
+					<div class={codePane}>
+						<div class="tool-code-bar">
+							<code id="boost-rules-path" class="min-w-0 truncate" translate="no"
+								>~/.gemini/GEMINI.md</code
+							>
+							<span data-boost-copy-rules><CopyButton value="" label="GEMINI.md" /></span>
+						</div>
+						<pre
+							tabindex="0"
+							aria-labelledby="boost-rules-path"
+							class={`${codePre} max-h-[28rem] lg:max-h-none`}
+							translate="no"><code data-boost-rules-output /></pre>
+					</div>
+					<div class="tool-code flex shrink-0 flex-col">
+						<div class="tool-code-bar">
+							<code id="boost-cli-path" translate="no">shell</code>
+							<span data-boost-copy-cli><CopyButton value="" label="shell" /></span>
+						</div>
+						<pre
+							tabindex="0"
+							aria-labelledby="boost-cli-path"
+							class="max-h-[20rem] overflow-auto"
+							translate="no"><code data-boost-cli-output /></pre>
+					</div>
+				</div>
+			</div>
+		</section>
+	</div>
+</PageLayout>
+
+<script>
+	const root = document.querySelector("[data-toolkits-root]");
+	if (root instanceof HTMLElement) {
+		type ValueControl = { value: string; disabled?: boolean };
+
+		const getVal = (form: HTMLFormElement, name: string): string => {
+			const el = form.querySelector(`[name="${name}"]`) as unknown as ValueControl | null;
+			return el ? el.value : "";
+		};
+
+		const setVal = (form: HTMLFormElement, name: string, val: string) => {
+			const el = form.querySelector(`[name="${name}"]`) as unknown as ValueControl | null;
+			if (el) el.value = val;
+		};
+
+		const setDisabled = (form: HTMLFormElement, name: string, disabled: boolean) => {
+			const el = form.querySelector(`[name="${name}"]`) as unknown as ValueControl | null;
+			if (el) el.disabled = disabled;
+		};
+
+		const getCheck = (form: HTMLFormElement, name: string): boolean => {
+			const el = form.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+			return Boolean(el?.checked);
+		};
+
+		const setCheck = (form: HTMLFormElement, name: string, checked: boolean) => {
+			const el = form.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+			if (el) el.checked = checked;
+		};
+
+		const copyButtonIn = (container: Element, selector: string) =>
+			container.querySelector<HTMLButtonElement>(`${selector} [data-tool-copy]`);
+
+		// =========================================================================
+		// MINI-TOOL 1: Subagent YAML Frontmatter Generator (0xbf3a5a8)
+		// =========================================================================
+		const saContainer = root.querySelector("[data-subagent-gen]");
+		if (saContainer instanceof HTMLElement) {
+			const form = saContainer.querySelector("[data-sa-form]") as HTMLFormElement;
+			const outputEl = saContainer.querySelector("[data-sa-output]") as HTMLElement;
+			const pathEl = saContainer.querySelector("[data-sa-path]") as HTMLElement;
+			const warnEl = saContainer.querySelector("[data-sa-reserved-warn]") as HTMLElement;
+			const presetSelect = saContainer.querySelector("[data-sa-preset]") as HTMLElement &
+				ValueControl;
+			const copyBtn = saContainer.querySelector("[data-tool-copy]") as HTMLButtonElement;
+			const downloadBtn = saContainer.querySelector("[data-sa-download]") as HTMLButtonElement;
+
+			form.addEventListener("submit", (e) => e.preventDefault());
+
+			const RESERVED_NAMES = new Set([
+				"self",
+				"research",
+				"research-google",
+				"jetski-guide",
+				"browser",
+				"browser-vision",
+				"teamwork",
+				"deepcoder",
+				"deepinvestigator",
+				"deepcoderworkerl0",
+				"deepcoderimprovementworker",
+				"deepinvestigatorworkerl0",
+				"deepinvestigatorimprovementworker",
+				"image-generator",
+				"deepagent",
+				"review-agent",
+			]);
+
+			const parseCsv = (raw: string): string[] =>
+				raw
+					.split(",")
+					.map((s) => s.trim())
+					.filter(Boolean);
+
+			const yamlQuoteIfNeeded = (val: string): string => {
+				if (!val) return '""';
+				if (
+					/[:#{}[\],&*?|<>=!%@`"'\\]/.test(val) ||
+					val.includes("\n") ||
+					/^\s|\s$|^[-?]/.test(val) ||
+					/^(true|false|null|yes|no|on|off|~)$/i.test(val) ||
+					/^[+-]?(\d+(\.\d*)?|\.\d+)$/.test(val)
+				) {
+					return JSON.stringify(val);
+				}
+				return val;
+			};
+
+			const renderSubagentMarkdown = (): { filename: string; content: string } => {
+				const rawName = getVal(form, "name").trim();
+				const safeSlug =
+					rawName
+						.replace(/[^a-zA-Z0-9_-]/g, "-")
+						.replace(/-+/g, "-")
+						.replace(/^-+|-+$/g, "") || "custom-agent";
+				const desc =
+					getVal(form, "description").trim() ||
+					"Custom subagent generated for Google Antigravity (agy).";
+				const model = getVal(form, "model");
+				const policy = getVal(form, "commandExecutionPolicy");
+
+				const isReserved = RESERVED_NAMES.has(safeSlug.toLowerCase());
+				warnEl.hidden = !isReserved;
+
+				const subagentFlag = getCheck(form, "flag_subagent");
+				const mainAgentFlag = getCheck(form, "flag_mainAgent");
+				const inheritMcpFlag = getCheck(form, "flag_inheritMcp");
+				const inheritCustFlag = getCheck(form, "flag_inheritCustomizations");
+				const excludeDefaultFlag = getCheck(form, "flag_excludeDefaultComponents");
+				const hiddenFlag = getCheck(form, "flag_hidden");
+				const disabledFlag = getCheck(form, "flag_disabled");
+
+				const checkedTools = Array.from(
+					form.querySelectorAll<HTMLInputElement>('input[name="tool"]:checked'),
+				).map((el) => el.value);
+
+				const skills = parseCsv(getVal(form, "skills"));
+				const preloadSkills = parseCsv(getVal(form, "preloadSkills"));
+				const plugins = parseCsv(getVal(form, "plugins"));
+				const rules = parseCsv(getVal(form, "rules"));
+				const agents = parseCsv(getVal(form, "agents"));
+				const includeMcp = getCheck(form, "include_mcpServers");
+				const includeHooks = getCheck(form, "include_hooks");
+				const body = getVal(form, "systemPrompt").trim();
+
+				const lines: string[] = ["---"];
+				lines.push(`name: ${yamlQuoteIfNeeded(safeSlug)}`);
+				lines.push(`description: ${yamlQuoteIfNeeded(desc)}`);
+				if (disabledFlag) lines.push("disabled: true");
+				lines.push(`mainAgent: ${mainAgentFlag}`);
+				lines.push(`subagent: ${subagentFlag}`);
+				if (hiddenFlag) lines.push("hidden: true");
+				lines.push(`model: ${model}`);
+				if (policy) {
+					lines.push(`commandExecutionPolicy: ${policy}`);
+				}
+				if (excludeDefaultFlag) {
+					lines.push("excludeDefaultComponents: true");
+				}
+				if (inheritCustFlag) {
+					lines.push("inheritCustomizations: true");
+				}
+				lines.push(`inheritMcp: ${inheritMcpFlag}`);
+
+				if (checkedTools.length > 0) {
+					lines.push("tools:");
+					for (const tool of checkedTools) {
+						lines.push(`  - ${tool}`);
+					}
+				}
+
+				if (includeMcp) {
+					lines.push("mcpServers:");
+					lines.push("  custom-server:");
+					lines.push("    command: npx");
+					lines.push("    args:");
+					lines.push('      - "-y"');
+					lines.push('      - "@modelcontextprotocol/server-filesystem"');
+				}
+
+				if (skills.length > 0) {
+					lines.push("skills:");
+					for (const s of skills) lines.push(`  - ${yamlQuoteIfNeeded(s)}`);
+				}
+				if (preloadSkills.length > 0) {
+					lines.push("preloadSkills:");
+					for (const s of preloadSkills) lines.push(`  - ${yamlQuoteIfNeeded(s)}`);
+				}
+				if (plugins.length > 0) {
+					lines.push("plugins:");
+					for (const p of plugins) lines.push(`  - ${yamlQuoteIfNeeded(p)}`);
+				}
+				if (rules.length > 0) {
+					lines.push("rules:");
+					for (const r of rules) lines.push(`  - ${yamlQuoteIfNeeded(r)}`);
+				}
+				if (agents.length > 0) {
+					lines.push("agents:");
+					for (const a of agents) lines.push(`  - ${yamlQuoteIfNeeded(a)}`);
+				}
+				if (includeHooks) {
+					lines.push("hooks:");
+					lines.push("  preTool:");
+					lines.push("    - command: echo 'Validating tool invocation'");
+				}
+
+				lines.push("---");
+				lines.push("");
+				lines.push(body || "# Role\nDescribe the subagent instructions and output contract here.");
+
+				return {
+					filename: `${safeSlug}.md`,
+					content: `${lines.join("\n")}\n`,
+				};
+			};
+
+			const syncSubagentView = () => {
+				const { filename, content } = renderSubagentMarkdown();
+				const path = `.agents/agents/${filename}`;
+				pathEl.textContent = path;
+				pathEl.title = path;
+				outputEl.textContent = content;
+				copyBtn.dataset.copyValue = content;
+			};
+
+			const applyPreset = (preset: string) => {
+				const setTools = (enabled: string[]) => {
+					const set = new Set(enabled);
+					for (const cb of form.querySelectorAll<HTMLInputElement>('input[name="tool"]')) {
+						cb.checked = set.has(cb.value);
+					}
+				};
+
+				// Reset all fields before applying preset
+				setCheck(form, "flag_subagent", true);
+				setCheck(form, "flag_mainAgent", false);
+				setCheck(form, "flag_inheritMcp", false);
+				setCheck(form, "flag_inheritCustomizations", false);
+				setCheck(form, "flag_excludeDefaultComponents", false);
+				setCheck(form, "flag_hidden", false);
+				setCheck(form, "flag_disabled", false);
+				setVal(form, "skills", "");
+				setVal(form, "preloadSkills", "");
+				setVal(form, "plugins", "");
+				setVal(form, "rules", "");
+				setVal(form, "agents", "");
+				setCheck(form, "include_mcpServers", false);
+				setCheck(form, "include_hooks", false);
+
+				if (preset === "security") {
+					setVal(form, "name", "security-auditor");
+					setVal(
+						form,
+						"description",
+						"Read-only security auditor focusing on vulnerability scanning, auth boundaries, and dependency hygiene.",
+					);
+					setVal(form, "model", "pro");
+					setVal(form, "commandExecutionPolicy", "sandbox");
+					setTools(["read_file", "run_command", "send_message"]);
+					setVal(
+						form,
+						"systemPrompt",
+						"# Role\nYou are a senior security engineer. Audit the target files for injection flaws, broken access controls, and unsafe dependencies.\nDo NOT modify application source files; report structured findings with exact file:line evidence.",
+					);
+				} else if (preset === "breaker") {
+					setVal(form, "name", "test-breaker");
+					setVal(
+						form,
+						"description",
+						"Adversarial verification worker that compiles code, constructs boundary inputs, and fixes failing edge cases.",
+					);
+					setVal(form, "model", "inherit");
+					setVal(form, "commandExecutionPolicy", "auto");
+					setVal(form, "preloadSkills", "ponytail");
+					setTools(["read_file", "write_file", "edit_file", "run_command", "send_message"]);
+					setVal(
+						form,
+						"systemPrompt",
+						"# Role\nYou are not a rubber stamp. Read the task requirements independently first, then compile and try to break the existing implementation with edge-case tests.\nFix any confirmed defects directly and report Deep vs. Shallow verification evidence.",
+					);
+				} else if (preset === "coordinator") {
+					setVal(form, "name", "pipeline-coordinator");
+					setVal(
+						form,
+						"description",
+						"Multi-stage workflow coordinator that decomposes tasks and dispatches specialized child subagents.",
+					);
+					setVal(form, "model", "inherit");
+					setVal(form, "commandExecutionPolicy", "");
+					setCheck(form, "flag_inheritMcp", true);
+					setVal(form, "agents", "security-auditor, test-breaker, research");
+					setTools([
+						"read_file",
+						"invoke_subagent",
+						"manage_subagents",
+						"send_message",
+						"ask_question",
+					]);
+					setVal(
+						form,
+						"systemPrompt",
+						"# Role\nYou orchestrate specialized workers without writing production code directly.\n1. Dispatch L0 implementation/research workers via invoke_subagent.\n2. Spot-check returned claims using independent verification workers before reporting back.",
+					);
+				} else if (preset === "indexer") {
+					setVal(form, "name", "fast-indexer");
+					setVal(
+						form,
+						"description",
+						"High-speed read-only mapper using flash_lite to extract symbols and module boundaries.",
+					);
+					setVal(form, "model", "flash_lite");
+					setVal(form, "commandExecutionPolicy", "off");
+					setTools(["read_file", "send_message"]);
+					setVal(
+						form,
+						"systemPrompt",
+						"# Role\nQuickly scan the assigned directory subtree and return a concise markdown table of exported types, functions, and file paths.",
+					);
+				}
+
+				syncSubagentView();
+			};
+
+			presetSelect.addEventListener("change", () => applyPreset(presetSelect.value));
+
+			form.addEventListener("input", syncSubagentView);
+			form.addEventListener("change", syncSubagentView);
+
+			downloadBtn.addEventListener("click", () => {
+				const { filename, content } = renderSubagentMarkdown();
+				const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = filename;
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+			});
+
+			applyPreset(presetSelect.value);
+		}
+
+		// =========================================================================
+		// MINI-TOOL 2: GEMINI.md /boost (owl Engine) & Workflow Configurator
+		// =========================================================================
+		const boostContainer = root.querySelector("[data-boost-gen]");
+		if (boostContainer instanceof HTMLElement) {
+			const form = boostContainer.querySelector("[data-boost-form]") as HTMLFormElement;
+			const rulesOut = boostContainer.querySelector("[data-boost-rules-output]") as HTMLElement;
+			const cliOut = boostContainer.querySelector("[data-boost-cli-output]") as HTMLElement;
+			const gcpFields = boostContainer.querySelector("[data-gcp-fields]") as HTMLElement;
+			const yoloWarn = boostContainer.querySelector("[data-boost-yolo-warn]") as HTMLElement;
+			const copyRulesBtn = copyButtonIn(boostContainer, "[data-boost-copy-rules]");
+			const copyCliBtn = copyButtonIn(boostContainer, "[data-boost-copy-cli]");
+
+			form.addEventListener("submit", (e) => e.preventDefault());
+
+			const sanitizeShellToken = (raw: string, fallback: string): string =>
+				raw.replace(/[^a-zA-Z0-9._-]/g, "") || fallback;
+
+			const renderBoostConfig = (): { rulesText: string; cliText: string } => {
+				const enableSemantic = getCheck(form, "rule_semantic");
+				const enableEgmFlow = getCheck(form, "rule_egm_flow");
+				const enablePonytail = getCheck(form, "rule_ponytail");
+				const routing = getVal(form, "boost_routing");
+				const ponytailLevel = getVal(form, "ponytail_level");
+
+				setDisabled(form, "boost_routing", !enableSemantic);
+				setDisabled(form, "ponytail_level", !enablePonytail);
+
+				const parentModel = getVal(form, "parent_model");
+				const customAgent = sanitizeShellToken(getVal(form, "custom_agent").trim(), "");
+				const headlessOauth = getCheck(form, "headless_oauth");
+				const yoloFlags = getCheck(form, "yolo_flags");
+				const authMode = getVal(form, "auth_mode");
+				const gcpProject = sanitizeShellToken(
+					getVal(form, "gcp_project").trim(),
+					"YOUR_PROJECT_ID",
+				);
+				const gcpRegion = sanitizeShellToken(getVal(form, "gcp_region").trim(), "global");
+
+				gcpFields.hidden = authMode !== "gcp";
+				yoloWarn.hidden = !yoloFlags;
+
+				const ruleSections: string[] = [];
+
+				if (enableSemantic) {
+					let routingBullet =
+						'   - Set `TypeName: "DeepCoder"` for coding, refactoring, bug fixing, or test writing tasks.\n   - Set `TypeName: "DeepInvestigator"` for root-cause analysis, reverse engineering, or codebase research tasks.';
+					if (routing === "coder") {
+						routingBullet =
+							'   - Default to `TypeName: "DeepCoder"` (WorkerL0 implementation -> ImprovementWorker adversarial break & fix). Use `DeepInvestigator` only when strictly read-only analysis is requested.';
+					} else if (routing === "investigator") {
+						routingBullet =
+							'   - Default to `TypeName: "DeepInvestigator"` (read-only end-to-end call chain tracing & gap verification). Switch to `DeepCoder` only after root cause is confirmed.';
+					}
+
+					ruleSections.push(`# Boost (OWL Adversarial Pipeline) Semantic Trigger Rule
+When the user asks to "use boost", "使用 boost 进行...", or requests boost mode in natural language without typing the \`/boost\` slash command:
+1. Do NOT tell the user to type \`/boost\`.
+2. Follow the **No Pre-work** rule: do NOT read files or search the codebase beforehand.
+3. Immediately call \`invoke_subagent\` with \`Workspace: "inherit"\`:
+${routingBullet}
+   - Pass the user's request verbatim under \`**Task**: <user request>\`, along with \`**Context**:\` and \`**Scope**:\` if applicable.
+4. Treat the subagent's report as claims to verify: independently spot-check modified files and run tests before reporting back. If issues remain, use \`send_message\` to follow up with the SAME \`DeepCoder\` / \`DeepInvestigator\` conversationId.`);
+				}
+
+				if (enableEgmFlow) {
+					ruleSections.push(`# EGM + /boost + Ponytail Multi-Agent Workflow
+For complex architecture or multi-module engineering tasks:
+1. **Stage 1 (Design & Blind Review — EGM)**: Draft the specification or implementation plan first (\`No Code Generation\`). Fan out read-only Goldfish reviewers (\`egm-zoom-out\`, \`egm-design\`, \`egm-codebase-details\`, \`egm-implementation-readiness\`) to eliminate confirmation bias before writing code.
+2. **Stage 2 (Adversarial Implementation — /boost)**: Delegate implementation of the locked plan to \`DeepCoder\` (\`Workspace: "inherit"\`) so \`DeepCoderWorkerL0\` implements from scratch and \`DeepCoderImprovementWorker\` attempts to break and fix it with real tests.
+3. **Stage 3 (Minimalist Audit & Contract Sync)**: Run \`/ponytail-review\` to strip dead abstractions and \`egm-drift-report\` to verify the implementation matches the design contract.`);
+				}
+
+				if (enablePonytail) {
+					ruleSections.push(`# Ponytail Minimalist Engineering Discipline (Level: ${ponytailLevel})
+- Write the smallest change that fully solves the requested task (YAGNI).
+- Do not add unrequested wrapper layers, speculative config flags, or redundant comments.
+- Record intentional deferrals with a concise \`// shortcut: <reason>\` comment.`);
+				}
+
+				const rulesText =
+					ruleSections.length > 0
+						? `${ruleSections.join("\n\n")}\n`
+						: "# Select at least one rule checkbox above to generate ~/.gemini/GEMINI.md content.\n";
+
+				let stepNum = 1;
+				const cliLines: string[] = [
+					`# ${stepNum++}. Append the generated rules above to ~/.gemini/GEMINI.md`,
+					"mkdir -p ~/.gemini && $EDITOR ~/.gemini/GEMINI.md",
+					"",
+				];
+
+				if (authMode === "gcp") {
+					cliLines.push(
+						`# ${stepNum++}. Enterprise GCP account metadata (required in ~/.gemini/antigravity-cli/antigravity-oauth-token)`,
+						`# Ensure JSON includes: "auth_method": "gcp", "project_id": "${gcpProject}", "region": "${gcpRegion}"`,
+						"",
+					);
+				}
+
+				const agyFlags: string[] = [];
+				if (customAgent) {
+					agyFlags.push(`--agent ${customAgent}`);
+				}
+				agyFlags.push(`--model ${parentModel}`);
+				if (yoloFlags) {
+					agyFlags.push("--dangerously-skip-permissions", "--mode=accept-edits");
+				}
+
+				cliLines.push(
+					`# ${stepNum++}. Launch agy on this machine (all Model="inherit" subagents & /boost workers inherit ${parentModel})`,
+				);
+				if (headlessOauth) {
+					cliLines.push(
+						"# SSH_CONNECTION=1 forces the copy/paste OAuth callback for headless SSH / container sessions",
+					);
+				}
+				if (yoloFlags) {
+					cliLines.push(
+						"# WARNING: Run YOLO permission flags ONLY inside an isolated container/VM sandbox (e.g. sbx run)",
+					);
+				}
+				cliLines.push(`${headlessOauth ? "SSH_CONNECTION=1 " : ""}agy ${agyFlags.join(" ")}`);
+
+				if (authMode === "gcp") {
+					cliLines.push(
+						"",
+						"# Or, instead of launching on this machine: run agy inside a Docker Sandbox (agy-sbx-kit)",
+						`sbx run git+https://github.com/fdkevin0/agy-sbx-kit.git . --name agy-gcp \\`,
+						`  --kit-arg auth_method=gcp \\`,
+						`  --kit-arg gcp_project=${gcpProject} \\`,
+						`  --kit-arg gcp_location=${gcpRegion}`,
+					);
+				}
+
+				return {
+					rulesText,
+					cliText: `${cliLines.join("\n")}\n`,
+				};
+			};
+
+			const syncBoostView = () => {
+				const { rulesText, cliText } = renderBoostConfig();
+				rulesOut.textContent = rulesText;
+				cliOut.textContent = cliText;
+				if (copyRulesBtn) copyRulesBtn.dataset.copyValue = rulesText;
+				if (copyCliBtn) copyCliBtn.dataset.copyValue = cliText;
+			};
+
+			form.addEventListener("input", syncBoostView);
+			form.addEventListener("change", syncBoostView);
+
+			syncBoostView();
+		}
+	}
+</script>

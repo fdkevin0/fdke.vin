@@ -41,12 +41,12 @@ const {
 		/>
 	</head>
 	<body
-		class="bg-global-bg text-global-text mx-auto flex min-h-screen max-w-3xl flex-col px-4 pt-16 font-mono text-sm font-normal antialiased sm:px-8"
+		class="bg-global-bg text-global-text mx-auto flex min-h-screen w-full max-w-3xl flex-col overflow-x-hidden px-4 pt-16 font-mono text-sm font-normal antialiased sm:px-8"
 	>
 		<ThemeProvider />
 		<SkipLink />
 		<Header blogLanguage={blogLanguage} blogLanguageOptions={blogLanguageOptions} />
-		<main id="main">
+		<main id="main" class="w-full min-w-0 flex-1">
 			<slot />
 		</main>
 		<Footer />

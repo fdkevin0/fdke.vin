@@ -14,6 +14,7 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeExternalLinks from "rehype-external-links";
 import rehypeUnwrapImages from "rehype-unwrap-images";
 // Remark plugins
+import { rehypeTableScroll } from "./src/plugins/rehype-table-scroll";
 import { remarkReadingTime } from "./src/plugins/remark-reading-time";
 import { siteConfig } from "./src/site.config";
 
@@ -79,6 +80,7 @@ export default defineConfig({
 					},
 				],
 				rehypeUnwrapImages,
+				rehypeTableScroll,
 			],
 			remarkPlugins: [remarkReadingTime],
 			remarkRehype: {

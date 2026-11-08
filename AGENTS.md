@@ -4,6 +4,10 @@ Complete the requested change through relevant validation, fixing failures cause
 
 Do not commit without explicit user permission. Local implementation and validation do not authorize deployment or changes to production data.
 
+## UI writing
+
+Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
+
 ## Read when relevant
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): development commands, validation, commits, and GitHub issue workflows.

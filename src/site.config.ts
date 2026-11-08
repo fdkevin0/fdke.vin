@@ -18,7 +18,7 @@ export const siteConfig: SiteConfig = {
 	url: "https://fdke.vin/",
 };
 
-// Used to generate links in both the Header & Footer.
+// Used to generate links in the Header.
 export const menuLinks: { path: string; title: string }[] = [
 	{
 		path: "/about/",
@@ -37,15 +37,15 @@ export const menuLinks: { path: string; title: string }[] = [
 		title: "Reading",
 	},
 	{
+		path: "/lab/",
+		title: "Lab",
+	},
+	{
 		path: "https://ph.fdke.vin",
 		title: "Photos",
 	},
 	{
 		path: "/tools/",
 		title: "Tools",
-	},
-	{
-		path: "/dashboard/",
-		title: "Dashboard",
 	},
 ];
