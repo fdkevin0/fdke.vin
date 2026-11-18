@@ -1,0 +1,1505 @@
+---
+import PageLayout from "@/layouts/Base.astro";
+import { DATA_SOURCES_REGISTRY, GPU_CATALOG, MODEL_CATALOG } from "@/lib/tools/gpu-ladder";
+---
+
+<PageLayout
+	meta={{
+		title: "LLM GPU Ladder",
+		description:
+			"Visual LLM GPU performance ladder ranked by theoretical TPS, real-world measured TPS, memory bandwidth, and compute TFLOPS, with drill-down AI Infra MBU/MFU benchmarks.",
+	}}
+>
+	<section class="tool-workbench space-y-6" data-gpu-ladder>
+		<div class="space-y-2">
+			<p class="tool-kicker">
+				<a href="/tools/" class="cactus-link">Tools</a> / LLM GPU Ladder
+			</p>
+			<h1 class="title">LLM GPU Performance Ladder</h1>
+			<p class="tool-lede max-w-2xl text-xs sm:text-sm">
+				Compare multi-vendor AI accelerators by theoretical Roofline TPS, community-measured TPS,
+				memory bandwidth, or dense Tensor TFLOPS on frontier open-weight LLMs. Click any GPU bar to
+				inspect real-world submissions, MBU/MFU efficiency diagnostics, and full hardware
+				provenance.
+			</p>
+		</div>
+
+		<!-- ======================== LEVEL 1: MAIN LADDER CHART VIEW ======================== -->
+		<div class="space-y-5" data-main-view>
+			<!-- Compact Top Control & Filter Bar -->
+			<div class="tool-panel space-y-4 pt-4">
+				<!-- Row 1: Primary Model, GPU Count & Quantization -->
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-12">
+					<label class="space-y-1 sm:col-span-6">
+						<span class="tool-field-label text-xs">Target LLM Model (HuggingFace Presets)</span>
+						<select class="tool-select text-xs font-semibold" data-model-select>
+							{
+								MODEL_CATALOG.map((model) => (
+									<option value={model.id} selected={model.id === "qwen3-32b"}>
+										{model.name} ({model.totalParamsB}B
+										{model.architecture === "moe" ? ` · ${model.activeParamsB}B active` : ""})
+									</option>
+								))
+							}
+							<option value="custom">Custom / HuggingFace Link…</option>
+						</select>
+					</label>
+
+					<label class="space-y-1 sm:col-span-3">
+						<span class="tool-field-label text-xs">GPU Count (Cluster)</span>
+						<select class="tool-select text-xs tabular-nums" data-gpu-count>
+							<option value="1" selected>1× Single GPU</option>
+							<option value="2">2× Dual GPU</option>
+							<option value="4">4× 4-GPU Node</option>
+							<option value="8">8× 8-GPU HGX/OAM</option>
+							<option value="16">16× 2-Node Cluster</option>
+						</select>
+					</label>
+
+					<label class="space-y-1 sm:col-span-3">
+						<span class="tool-field-label text-xs">Weight Quantization</span>
+						<select class="tool-select text-xs" data-weight-precision>
+							<option value="fp16">FP16 / BF16 (2.0 B)</option>
+							<option value="fp8">FP8 W8A8 (1.0 B)</option>
+							<option value="int8">INT8 W8A16 (1.05 B)</option>
+							<option value="int4" selected>INT4 AWQ/MXFP4 (0.56 B)</option>
+						</select>
+					</label>
+				</div>
+
+				<!-- Progressive Disclosure: Optional HuggingFace Link & Workload Drawer -->
+				<details class="rounded border border-[var(--tool-line)] px-3 py-2 text-xs" data-hf-drawer>
+					<summary class="cursor-pointer font-semibold select-none">
+						Parse Any HuggingFace Model Link / Customize Sequence Length
+						<span class="tool-note ml-2 font-normal" data-model-badge>
+							Dense · 32.8B · 2048 in / 512 out
+						</span>
+					</summary>
+					<div class="mt-3 space-y-3 border-t border-[var(--tool-line)] pt-3">
+						<div class="space-y-1">
+							<label class="tool-field-label text-xs" for="hf-repo-input">
+								Paste a HuggingFace URL or <code>&lt;org&gt;/&lt;repo&gt;</code> (auto-fetches
+								<code>config.json</code>)
+							</label>
+							<div class="flex gap-2">
+								<input
+									id="hf-repo-input"
+									class="tool-input min-w-0 flex-1 py-1.5 text-xs"
+									type="text"
+									placeholder="Qwen/Qwen3-235B-A22B or https://huggingface.co/..."
+									autocomplete="off"
+									spellcheck="false"
+									data-hf-input
+								/>
+								<button class="tool-button shrink-0 py-1.5 text-xs" type="button" data-hf-fetch>
+									Parse Model
+								</button>
+							</div>
+						</div>
+
+						<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+							<label class="space-y-1">
+								<span class="tool-field-label text-xs">Total Params (B)</span>
+								<input
+									class="tool-input py-1.5 text-xs tabular-nums"
+									type="number"
+									min="0.1"
+									step="0.1"
+									value="32.8"
+									data-param-total
+								/>
+							</label>
+							<label class="space-y-1">
+								<span class="tool-field-label text-xs">Active Params (B)</span>
+								<input
+									class="tool-input py-1.5 text-xs tabular-nums"
+									type="number"
+									min="0.1"
+									step="0.1"
+									value="32.8"
+									data-param-active
+								/>
+							</label>
+							<label class="space-y-1">
+								<span class="tool-field-label text-xs">Input Tokens</span>
+								<input
+									class="tool-input py-1.5 text-xs tabular-nums"
+									type="number"
+									min="16"
+									step="64"
+									value="2048"
+									data-input-tokens
+								/>
+							</label>
+							<label class="space-y-1">
+								<span class="tool-field-label text-xs">Output Tokens</span>
+								<input
+									class="tool-input py-1.5 text-xs tabular-nums"
+									type="number"
+									min="16"
+									step="64"
+									value="512"
+									data-output-tokens
+								/>
+							</label>
+							<label class="space-y-1">
+								<span class="tool-field-label text-xs">Batch Size</span>
+								<input
+									class="tool-input py-1.5 text-xs tabular-nums"
+									type="number"
+									min="1"
+									step="1"
+									value="1"
+									data-batch-size
+								/>
+							</label>
+						</div>
+
+						<p class="tool-status text-xs" data-hf-status aria-live="polite" role="status">
+							Enter any HuggingFace repository URL to extract layer count, GQA/MLA KV heads, and MoE
+							active parameters.
+						</p>
+					</div>
+				</details>
+
+				<!-- Row 2: Hardware Precision Support Filters & Vendor Search -->
+				<div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+					<div class="flex flex-wrap items-center gap-1.5 text-xs">
+						<span class="tool-note mr-1">Native HW Precision:</span>
+						<button
+							type="button"
+							class="tool-button tool-button-primary px-2.5 py-1 text-xs"
+							data-cap-filter="all"
+						>
+							All
+						</button>
+						<button type="button" class="tool-button px-2.5 py-1 text-xs" data-cap-filter="fp32">
+							FP32
+						</button>
+						<button type="button" class="tool-button px-2.5 py-1 text-xs" data-cap-filter="fp16">
+							FP16
+						</button>
+						<button type="button" class="tool-button px-2.5 py-1 text-xs" data-cap-filter="bf16">
+							BF16
+						</button>
+						<button type="button" class="tool-button px-2.5 py-1 text-xs" data-cap-filter="fp8">
+							FP8
+						</button>
+						<button type="button" class="tool-button px-2.5 py-1 text-xs" data-cap-filter="int8">
+							INT8
+						</button>
+						<button type="button" class="tool-button px-2.5 py-1 text-xs" data-cap-filter="int4">
+							INT4
+						</button>
+					</div>
+
+					<div class="flex flex-wrap items-center gap-2 text-xs">
+						<select class="tool-select w-auto py-1 text-xs" data-vendor-filter>
+							<option value="all">All Vendors</option>
+							<option value="NVIDIA">NVIDIA</option>
+							<option value="AMD">AMD</option>
+							<option value="Apple">Apple</option>
+							<option value="Huawei">Huawei</option>
+							<option value="Intel">Intel</option>
+							<option value="Google">Google</option>
+						</select>
+						<input
+							class="tool-input w-36 py-1 text-xs sm:w-44"
+							type="search"
+							placeholder="Search B200, 5090, M4…"
+							autocomplete="off"
+							data-gpu-search
+						/>
+						<label class="flex cursor-pointer items-center gap-1.5">
+							<input type="checkbox" class="accent-accent" data-hide-oom />
+							<span class="tool-note">Hide OOM</span>
+						</label>
+					</div>
+				</div>
+
+				<!-- Row 3: Ladder Ranking Dimension Tabs -->
+				<div
+					class="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--tool-line)] pt-3 text-xs"
+				>
+					<div class="flex flex-wrap items-center gap-1.5">
+						<span class="tool-note mr-1">Sort Ladder By:</span>
+						<button
+							type="button"
+							class="tool-button tool-button-primary px-2.5 py-1 text-xs font-semibold"
+							data-sort-metric="decodeSingleTps"
+						>
+							Theoretical Decode TPS
+						</button>
+						<button
+							type="button"
+							class="tool-button px-2.5 py-1 text-xs font-semibold"
+							data-sort-metric="actualDecodeTps"
+						>
+							Measured Decode TPS
+						</button>
+						<button
+							type="button"
+							class="tool-button px-2.5 py-1 text-xs font-semibold"
+							data-sort-metric="memBandwidthGbs"
+						>
+							Memory Bandwidth (GB/s)
+						</button>
+						<button
+							type="button"
+							class="tool-button px-2.5 py-1 text-xs font-semibold"
+							data-sort-metric="computeTflops"
+						>
+							Peak Compute (TFLOPS)
+						</button>
+						<button
+							type="button"
+							class="tool-button px-2.5 py-1 text-xs font-semibold"
+							data-sort-metric="prefillTps"
+						>
+							Theoretical Prefill TPS
+						</button>
+					</div>
+					<span class="tool-note" data-ladder-count>24 GPUs</span>
+				</div>
+			</div>
+
+			<!-- Visual GPU Ladder Chart (No dense table on home view!) -->
+			<div class="space-y-2" data-ladder-list role="list"></div>
+
+			<p class="tool-note text-center">
+				Click any GPU bar above to drill down into community real-world benchmarks, submit your own
+				throughput numbers (MBU / MFU diagnostics), or inspect the full multi-model matrix.
+			</p>
+
+			<!-- Progressive Disclosure: Traceable Hardware Data Sources & Calibration Methodology -->
+			<details class="rounded border border-[var(--tool-line)] px-4 py-3 text-xs">
+				<summary class="cursor-pointer font-semibold select-none">
+					Data Sources, Provenance &amp; Dense Roofline Calibration Methodology
+				</summary>
+				<div class="mt-3 space-y-3 border-t border-[var(--tool-line)] pt-3">
+					<p class="tool-note">
+						Generic GPU databases often mix vector shader FLOPs with Tensor Core FLOPs or quote 2:4
+						structured sparsity numbers (2× higher than dense LLM weights). Every accelerator in
+						this ladder is normalized to <strong>Dense Tensor / Matrix Core TFLOPS</strong> and cross-checked
+						against primary sources:
+					</p>
+					<ul class="space-y-2">
+						{
+							DATA_SOURCES_REGISTRY.map((src) => (
+								<li class="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between">
+									<div>
+										<a
+											href={src.url}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="cactus-link font-semibold"
+										>
+											{src.name}
+										</a>
+										<span class="tool-note ml-1.5">({src.license})</span>
+										<p class="tool-note text-[11px]">{src.description}</p>
+									</div>
+								</li>
+							))
+						}
+					</ul>
+				</div>
+			</details>
+		</div>
+
+		<!-- ======================== LEVEL 2: GPU DETAIL DRILL-DOWN VIEW ======================== -->
+		<div class="hidden space-y-6" data-detail-view>
+			<!-- Top Back Bar & Quick GPU Switcher -->
+			<div
+				class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tool-line)] pb-4"
+			>
+				<button
+					type="button"
+					class="tool-button flex items-center gap-1.5 py-1.5 text-xs font-semibold"
+					data-back-to-ladder
+				>
+					← Back to GPU Ladder
+				</button>
+
+				<div class="flex items-center gap-2 text-xs">
+					<span class="tool-note">Switch GPU:</span>
+					<select class="tool-select w-auto py-1 text-xs font-semibold" data-detail-gpu-select>
+						{GPU_CATALOG.map((gpu) => <option value={gpu.id}>{gpu.name}</option>)}
+					</select>
+				</div>
+			</div>
+
+			<!-- Selected GPU Hero Summary -->
+			<div class="space-y-4">
+				<div class="flex flex-wrap items-baseline justify-between gap-2">
+					<div>
+						<p class="tool-kicker" data-detail-vendor>NVIDIA · Hopper · NVLink</p>
+						<h2 class="title text-xl" data-detail-title>NVIDIA HGX H100 SXM5 80GB</h2>
+					</div>
+					<div class="flex flex-wrap gap-1.5 text-xs" data-detail-precisions></div>
+				</div>
+
+				<!-- 4 Key Metric Cards for Current Model & GPU -->
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+					<div class="rounded border border-[var(--tool-line)] p-3">
+						<p class="tool-kicker">Theoretical Decode Ceiling</p>
+						<p class="tool-readout mt-1 text-base" data-detail-kpi-theo>—</p>
+						<p class="tool-note mt-0.5 text-[11px]" data-detail-kpi-theo-sub>—</p>
+					</div>
+					<div class="rounded border border-[var(--tool-line)] p-3">
+						<p class="tool-kicker">Best Measured Decode</p>
+						<p class="tool-readout mt-1 text-base" data-detail-kpi-actual>—</p>
+						<p class="tool-note mt-0.5 text-[11px]" data-detail-kpi-actual-sub>—</p>
+					</div>
+					<div class="rounded border border-[var(--tool-line)] p-3">
+						<p class="tool-kicker">VRAM Footprint &amp; Bandwidth</p>
+						<p class="tool-readout mt-1 text-base" data-detail-kpi-vram>—</p>
+						<p class="tool-note mt-0.5 text-[11px]" data-detail-kpi-vram-sub>—</p>
+					</div>
+					<div class="rounded border border-[var(--tool-line)] p-3">
+						<p class="tool-kicker">Per-GPU Dense TFLOPS (FP16/FP8)</p>
+						<p class="tool-readout mt-1 text-base" data-detail-kpi-tflops>—</p>
+						<p class="tool-note mt-0.5 text-[11px]" data-detail-kpi-tflops-sub>—</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Detail Sub-Tabs Navigation -->
+			<div class="flex flex-wrap gap-2 border-b border-[var(--tool-line)] pb-3 text-xs">
+				<button
+					type="button"
+					class="tool-button tool-button-primary py-1.5 text-xs font-semibold"
+					data-detail-tab="submissions"
+				>
+					1. Community Benchmarks &amp; MBU/MFU Evaluator
+				</button>
+				<button
+					type="button"
+					class="tool-button py-1.5 text-xs font-semibold"
+					data-detail-tab="models-matrix"
+				>
+					2. All Trending Models Matrix
+				</button>
+				<button
+					type="button"
+					class="tool-button py-1.5 text-xs font-semibold"
+					data-detail-tab="hw-specs"
+				>
+					3. Hardware Specs, Provenance &amp; Roofline
+				</button>
+			</div>
+
+			<!-- Detail Tab Panel 1: Real-World Submissions & MBU/MFU Evaluator -->
+			<div class="space-y-5" data-detail-panel="submissions">
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<div>
+						<h3 class="text-accent-2 text-sm font-semibold">
+							Real-World AI Infra Benchmarks for This GPU
+						</h3>
+						<p class="tool-note text-xs">
+							Compares measured throughput against physical memory bandwidth and Tensor Core FLOP
+							ceilings to compute MBU (Memory Bandwidth Utilization) and MFU (Model FLOPs
+							Utilization).
+						</p>
+					</div>
+					<button type="button" class="cactus-link text-xs" data-reset-submissions>
+						Reset Local Submissions
+					</button>
+				</div>
+
+				<div class="overflow-x-auto rounded border border-[var(--tool-line)]">
+					<table class="min-w-full divide-y divide-[var(--tool-line)] text-xs">
+						<thead
+							class="bg-[color-mix(in_oklab,var(--color-global-bg)_88%,var(--tool-line))] text-[var(--tool-muted)]"
+						>
+							<tr>
+								<th class="px-3 py-2 text-left font-semibold">GPUs &amp; Inference Engine</th>
+								<th class="px-3 py-2 text-left font-semibold">Model &amp; Quantization</th>
+								<th class="px-3 py-2 text-right font-semibold">Measured Decode (vs Ceiling)</th>
+								<th class="px-3 py-2 text-right font-semibold">MBU / MFU</th>
+								<th class="px-3 py-2 text-left font-semibold">Infra Optimization Tier</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-[var(--tool-line)]" data-gpu-submissions-tbody></tbody>
+					</table>
+				</div>
+
+				<!-- Submit New Benchmark for this GPU -->
+				<details class="rounded border border-[var(--tool-line)] p-4" open data-submit-drawer>
+					<summary class="cursor-pointer text-sm font-semibold select-none">
+						+ Submit Your Real-World Benchmark · Diagnose AI Infra Utilization
+					</summary>
+					<div class="mt-4 grid gap-6 border-t border-[var(--tool-line)] pt-4 md:grid-cols-2">
+						<form class="space-y-3" data-submission-form>
+							<div class="grid gap-3 sm:grid-cols-2">
+								<label class="space-y-1">
+									<span class="tool-field-label text-xs">Measured GPU Count</span>
+									<select class="tool-select py-1.5 text-xs tabular-nums" data-sub-count>
+										<option value="1" selected>1× GPU</option>
+										<option value="2">2× GPUs</option>
+										<option value="4">4× GPUs</option>
+										<option value="8">8× GPUs</option>
+									</select>
+								</label>
+								<label class="space-y-1">
+									<span class="tool-field-label text-xs">Evaluated Model</span>
+									<input
+										class="tool-input py-1.5 text-xs"
+										type="text"
+										readonly
+										data-sub-model-name
+									/>
+								</label>
+							</div>
+
+							<div class="grid gap-3 sm:grid-cols-2">
+								<label class="space-y-1">
+									<span class="tool-field-label text-xs">Measured Prefill TPS (tok/s)</span>
+									<input
+										class="tool-input py-1.5 text-xs tabular-nums"
+										type="number"
+										min="1"
+										step="0.1"
+										value="10850"
+										required
+										data-sub-prefill
+									/>
+								</label>
+								<label class="space-y-1">
+									<span class="tool-field-label text-xs">Measured Decode TPS (tok/s)</span>
+									<input
+										class="tool-input py-1.5 text-xs tabular-nums"
+										type="number"
+										min="0.1"
+										step="0.1"
+										value="38.4"
+										required
+										data-sub-decode
+									/>
+								</label>
+							</div>
+
+							<div class="grid gap-3 sm:grid-cols-2">
+								<label class="space-y-1">
+									<span class="tool-field-label text-xs">Inference Engine</span>
+									<input
+										class="tool-input py-1.5 text-xs"
+										type="text"
+										placeholder="e.g. vLLM 0.8 / SGLang 0.4 / TRT-LLM"
+										value="SGLang 0.4.4 (FP8 + FlashAttention-3)"
+										required
+										data-sub-engine
+									/>
+								</label>
+								<label class="space-y-1">
+									<span class="tool-field-label text-xs">Submitter Handle</span>
+									<input
+										class="tool-input py-1.5 text-xs"
+										type="text"
+										placeholder="e.g. homelab-node"
+										value="ai-infra-user"
+										data-sub-author
+									/>
+								</label>
+							</div>
+
+							<label class="space-y-1">
+								<span class="tool-field-label text-xs">Kernel / Interconnect / Tuning Notes</span>
+								<input
+									class="tool-input py-1.5 text-xs"
+									type="text"
+									placeholder="e.g. CUDA Graph + Marlin INT4 kernel"
+									value="CUDA Graph + Torch Compile + FP8 KV"
+									data-sub-notes
+								/>
+							</label>
+
+							<button
+								class="tool-button tool-button-primary w-full py-2 text-xs font-semibold"
+								type="submit"
+							>
+								Save Benchmark &amp; Update Ladder
+							</button>
+						</form>
+
+						<!-- Live MBU / MFU Diagnosis Card -->
+						<div class="space-y-3 rounded border border-[var(--tool-line)] p-4">
+							<div class="space-y-1">
+								<p class="tool-kicker">Live AI Infra Efficiency Diagnosis</p>
+								<p class="tool-readout text-base" data-report-tier>—</p>
+							</div>
+
+							<dl class="tool-rows text-xs">
+								<div class="tool-row">
+									<dt>Memory BW Utilization (MBU)</dt>
+									<dd data-report-mbu>—</dd>
+								</div>
+								<div class="tool-row">
+									<dt>Compute FLOPs Utilization (MFU)</dt>
+									<dd data-report-mfu>—</dd>
+								</div>
+								<div class="tool-row">
+									<dt>Theoretical Ceiling Reached</dt>
+									<dd data-report-ceiling>—</dd>
+								</div>
+								<div class="tool-row">
+									<dt>Roofline Speed Limit</dt>
+									<dd data-report-theo-decode>—</dd>
+								</div>
+							</dl>
+
+							<p class="tool-note text-xs" data-report-diagnosis></p>
+						</div>
+					</div>
+				</details>
+			</div>
+
+			<!-- Detail Tab Panel 2: All Standard Models Matrix Table -->
+			<div class="hidden space-y-3" data-detail-panel="models-matrix">
+				<h3 class="text-accent-2 text-sm font-semibold">
+					Theoretical Performance Matrix Across Trending HuggingFace Models
+				</h3>
+				<div class="overflow-x-auto rounded border border-[var(--tool-line)]">
+					<table class="min-w-full divide-y divide-[var(--tool-line)] text-xs">
+						<thead
+							class="bg-[color-mix(in_oklab,var(--color-global-bg)_88%,var(--tool-line))] text-[var(--tool-muted)]"
+						>
+							<tr>
+								<th class="px-3 py-2 text-left font-semibold">HuggingFace Model</th>
+								<th class="px-3 py-2 text-left font-semibold">Architecture / Params</th>
+								<th class="px-3 py-2 text-right font-semibold">VRAM Required / Avail</th>
+								<th class="px-3 py-2 text-right font-semibold">Theoretical Prefill (TTFT)</th>
+								<th class="px-3 py-2 text-right font-semibold">Theoretical Decode (TPOT)</th>
+								<th class="px-3 py-2 text-left font-semibold">Primary Bottleneck</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-[var(--tool-line)]" data-detail-models-tbody></tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Detail Tab Panel 3: Full Hardware Specs & Roofline Breakdown -->
+			<div class="grid hidden gap-6 md:grid-cols-2" data-detail-panel="hw-specs">
+				<div class="space-y-2">
+					<h3 class="text-accent-2 text-sm font-semibold">
+						Per-GPU Hardware Specifications &amp; Provenance
+					</h3>
+					<dl
+						class="tool-rows rounded border border-[var(--tool-line)] px-4 py-2 text-xs"
+						data-detail-hw-dl
+					>
+					</dl>
+				</div>
+				<div class="space-y-2">
+					<h3 class="text-accent-2 text-sm font-semibold">Current Workload Roofline Breakdown</h3>
+					<dl
+						class="tool-rows rounded border border-[var(--tool-line)] px-4 py-2 text-xs"
+						data-detail-roofline-dl
+					>
+					</dl>
+				</div>
+			</div>
+		</div>
+	</section>
+</PageLayout>
+
+<script>
+	import {
+		evaluateGpuPerformance,
+		evaluateUserSubmission,
+		GPU_CATALOG,
+		getHardwareTflopsByCapability,
+		getSupportedPrecisionsList,
+		gpuSupportsHardwarePrecision,
+		type HardwarePrecision,
+		INITIAL_COMMUNITY_SUBMISSIONS,
+		inferModelSpecFromRepoId,
+		type LadderSortMetric,
+		type LlmModelSpec,
+		MODEL_CATALOG,
+		type Precision,
+		parseHuggingFaceConfig,
+		parseHuggingFaceModelRef,
+		type RealWorldSubmission,
+		resolveActualBenchmarkForGpu,
+		type WorkloadConfig,
+	} from "@/lib/tools/gpu-ladder";
+
+	const STORAGE_KEY = "fdkevin:gpu-ladder:submissions:v2";
+
+	const root = document.querySelector("[data-gpu-ladder]");
+	if (root instanceof HTMLElement) {
+		const mainView = root.querySelector("[data-main-view]") as HTMLElement;
+		const detailView = root.querySelector("[data-detail-view]") as HTMLElement;
+
+		const modelSelect = root.querySelector("[data-model-select]") as unknown as HTMLSelectElement;
+		const gpuCountSelect = root.querySelector("[data-gpu-count]") as unknown as HTMLSelectElement;
+		const weightPrecisionSelect = root.querySelector(
+			"[data-weight-precision]",
+		) as unknown as HTMLSelectElement;
+
+		const hfInput = root.querySelector("[data-hf-input]") as HTMLInputElement;
+		const hfFetchBtn = root.querySelector("[data-hf-fetch]") as HTMLButtonElement;
+		const hfStatus = root.querySelector("[data-hf-status]") as HTMLElement;
+		const modelBadge = root.querySelector("[data-model-badge]") as HTMLElement;
+
+		const paramTotalInput = root.querySelector("[data-param-total]") as HTMLInputElement;
+		const paramActiveInput = root.querySelector("[data-param-active]") as HTMLInputElement;
+		const inputTokensInput = root.querySelector("[data-input-tokens]") as HTMLInputElement;
+		const outputTokensInput = root.querySelector("[data-output-tokens]") as HTMLInputElement;
+		const batchSizeInput = root.querySelector("[data-batch-size]") as HTMLInputElement;
+
+		const capFilterButtons = Array.from(
+			root.querySelectorAll<HTMLButtonElement>("[data-cap-filter]"),
+		);
+		const vendorFilterSelect = root.querySelector(
+			"[data-vendor-filter]",
+		) as unknown as HTMLSelectElement;
+		const gpuSearchInput = root.querySelector("[data-gpu-search]") as HTMLInputElement;
+		const hideOomCheckbox = root.querySelector("[data-hide-oom]") as HTMLInputElement;
+		const sortButtons = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-sort-metric]"));
+
+		const ladderCount = root.querySelector("[data-ladder-count]") as HTMLElement;
+		const ladderList = root.querySelector("[data-ladder-list]") as HTMLElement;
+
+		// Detail View Elements
+		const backToLadderBtn = root.querySelector("[data-back-to-ladder]") as HTMLButtonElement;
+		const detailGpuSelect = root.querySelector(
+			"[data-detail-gpu-select]",
+		) as unknown as HTMLSelectElement;
+		const detailVendor = root.querySelector("[data-detail-vendor]") as HTMLElement;
+		const detailTitle = root.querySelector("[data-detail-title]") as HTMLElement;
+		const detailPrecisions = root.querySelector("[data-detail-precisions]") as HTMLElement;
+
+		const kpiTheo = root.querySelector("[data-detail-kpi-theo]") as HTMLElement;
+		const kpiTheoSub = root.querySelector("[data-detail-kpi-theo-sub]") as HTMLElement;
+		const kpiActual = root.querySelector("[data-detail-kpi-actual]") as HTMLElement;
+		const kpiActualSub = root.querySelector("[data-detail-kpi-actual-sub]") as HTMLElement;
+		const kpiVram = root.querySelector("[data-detail-kpi-vram]") as HTMLElement;
+		const kpiVramSub = root.querySelector("[data-detail-kpi-vram-sub]") as HTMLElement;
+		const kpiTflops = root.querySelector("[data-detail-kpi-tflops]") as HTMLElement;
+		const kpiTflopsSub = root.querySelector("[data-detail-kpi-tflops-sub]") as HTMLElement;
+
+		const detailTabButtons = Array.from(
+			root.querySelectorAll<HTMLButtonElement>("[data-detail-tab]"),
+		);
+		const detailPanels = Array.from(root.querySelectorAll<HTMLElement>("[data-detail-panel]"));
+
+		const gpuSubmissionsTbody = root.querySelector(
+			"[data-gpu-submissions-tbody]",
+		) as HTMLTableSectionElement;
+		const detailModelsTbody = root.querySelector(
+			"[data-detail-models-tbody]",
+		) as HTMLTableSectionElement;
+		const detailHwDl = root.querySelector("[data-detail-hw-dl]") as HTMLElement;
+		const detailRooflineDl = root.querySelector("[data-detail-roofline-dl]") as HTMLElement;
+
+		const subForm = root.querySelector("[data-submission-form]") as HTMLFormElement;
+		const subCountSelect = root.querySelector("[data-sub-count]") as unknown as HTMLSelectElement;
+		const subModelNameInput = root.querySelector("[data-sub-model-name]") as HTMLInputElement;
+		const subPrefillInput = root.querySelector("[data-sub-prefill]") as HTMLInputElement;
+		const subDecodeInput = root.querySelector("[data-sub-decode]") as HTMLInputElement;
+		const subEngineInput = root.querySelector("[data-sub-engine]") as HTMLInputElement;
+		const subAuthorInput = root.querySelector("[data-sub-author]") as HTMLInputElement;
+		const subNotesInput = root.querySelector("[data-sub-notes]") as HTMLInputElement;
+		const resetSubmissionsBtn = root.querySelector("[data-reset-submissions]") as HTMLButtonElement;
+
+		const reportTier = root.querySelector("[data-report-tier]") as HTMLElement;
+		const reportMbu = root.querySelector("[data-report-mbu]") as HTMLElement;
+		const reportMfu = root.querySelector("[data-report-mfu]") as HTMLElement;
+		const reportCeiling = root.querySelector("[data-report-ceiling]") as HTMLElement;
+		const reportTheoDecode = root.querySelector("[data-report-theo-decode]") as HTMLElement;
+		const reportDiagnosis = root.querySelector("[data-report-diagnosis]") as HTMLElement;
+
+		const defaultModel = MODEL_CATALOG.find((m) => m.id === "qwen3-32b") ?? MODEL_CATALOG[0];
+		const defaultGpu = GPU_CATALOG.find((g) => g.id === "nvidia-h100-sxm-80gb") ?? GPU_CATALOG[0];
+		if (!defaultModel || !defaultGpu) {
+			throw new Error("Catalogs must not be empty.");
+		}
+
+		let currentModel: LlmModelSpec = { ...defaultModel };
+		let capabilityFilter: HardwarePrecision | "all" = "all";
+		let sortMetric: LadderSortMetric = "decodeSingleTps";
+		let selectedGpuId = defaultGpu.id;
+
+		const loadStoredSubmissions = (): RealWorldSubmission[] => {
+			try {
+				const raw = localStorage.getItem(STORAGE_KEY);
+				if (!raw) return [...INITIAL_COMMUNITY_SUBMISSIONS];
+				const parsed = JSON.parse(raw) as RealWorldSubmission[];
+				if (!Array.isArray(parsed) || parsed.length === 0) {
+					return [...INITIAL_COMMUNITY_SUBMISSIONS];
+				}
+				const existingIds = new Set(parsed.map((item) => item.id));
+				const missingDefaults = INITIAL_COMMUNITY_SUBMISSIONS.filter(
+					(item) => !existingIds.has(item.id),
+				);
+				return [...parsed, ...missingDefaults];
+			} catch {
+				return [...INITIAL_COMMUNITY_SUBMISSIONS];
+			}
+		};
+
+		const readWorkload = (): WorkloadConfig => {
+			const weightPrecision = (weightPrecisionSelect.value as Precision) || "int4";
+			return {
+				gpuCount: Math.max(1, Number(gpuCountSelect.value) || 1),
+				weightPrecision,
+				kvPrecision: weightPrecision === "fp16" ? "fp16" : "fp8",
+				inputTokens: Math.max(16, Number(inputTokensInput.value) || 2048),
+				outputTokens: Math.max(16, Number(outputTokensInput.value) || 512),
+				batchSize: Math.max(1, Number(batchSizeInput.value) || 1),
+			};
+		};
+
+		const syncModelBadge = () => {
+			const wl = readWorkload();
+			paramTotalInput.value = String(currentModel.totalParamsB);
+			paramActiveInput.value = String(currentModel.activeParamsB);
+			modelBadge.textContent = `${currentModel.architecture === "moe" ? "MoE" : "Dense"} · ${currentModel.totalParamsB}B (${currentModel.activeParamsB}B active) · ${wl.inputTokens} in / ${wl.outputTokens} out`;
+			subModelNameInput.value = `${currentModel.name} (${wl.weightPrecision.toUpperCase()})`;
+		};
+
+		const renderLadder = () => {
+			syncModelBadge();
+			const workload = readWorkload();
+			const submissions = loadStoredSubmissions();
+			const vendorFilter = vendorFilterSelect.value;
+			const query = gpuSearchInput.value.trim().toLowerCase();
+			const hideOom = hideOomCheckbox.checked;
+
+			const items = GPU_CATALOG.filter((gpu) => {
+				if (!gpuSupportsHardwarePrecision(gpu, capabilityFilter)) return false;
+				if (vendorFilter !== "all" && gpu.vendor !== vendorFilter) return false;
+				if (
+					query &&
+					!gpu.name.toLowerCase().includes(query) &&
+					!gpu.architecture.toLowerCase().includes(query) &&
+					!gpu.vendor.toLowerCase().includes(query)
+				) {
+					return false;
+				}
+				return true;
+			})
+				.map((gpu) => {
+					const theo = evaluateGpuPerformance(gpu, currentModel, workload);
+					const actual = resolveActualBenchmarkForGpu(gpu, theo, submissions);
+					const totalBandwidthGbs = gpu.memBandwidthGbs * workload.gpuCount;
+					const totalComputeTflops =
+						getHardwareTflopsByCapability(gpu, capabilityFilter) * workload.gpuCount;
+
+					const metricValue =
+						sortMetric === "memBandwidthGbs"
+							? totalBandwidthGbs
+							: sortMetric === "computeTflops"
+								? totalComputeTflops
+								: theo.vramStatus === "oom"
+									? 0
+									: sortMetric === "actualDecodeTps"
+										? (actual.actualDecodeTps ?? 0)
+										: sortMetric === "prefillTps"
+											? theo.prefillTps
+											: theo.decodeSingleTps;
+
+					return {
+						gpu,
+						theo,
+						actual,
+						totalBandwidthGbs,
+						totalComputeTflops,
+						metricValue,
+					};
+				})
+				.filter((item) => {
+					if (!hideOom) return true;
+					if (sortMetric === "memBandwidthGbs" || sortMetric === "computeTflops") return true;
+					return item.theo.vramStatus !== "oom";
+				});
+
+			const isHardwareRawSort = sortMetric === "memBandwidthGbs" || sortMetric === "computeTflops";
+
+			items.sort((a, b) => {
+				if (!isHardwareRawSort) {
+					if (a.theo.vramStatus === "oom" && b.theo.vramStatus !== "oom") return 1;
+					if (a.theo.vramStatus !== "oom" && b.theo.vramStatus === "oom") return -1;
+					if (a.theo.vramStatus === "oom" && b.theo.vramStatus === "oom") {
+						return a.theo.vramUtilizationPct - b.theo.vramUtilizationPct;
+					}
+				}
+				return b.metricValue - a.metricValue;
+			});
+
+			const maxMetricValue = Math.max(1, ...items.map((i) => i.metricValue));
+			const maxTheoDecode = Math.max(
+				1,
+				...items.filter((i) => i.theo.vramStatus !== "oom").map((i) => i.theo.decodeSingleTps),
+			);
+
+			ladderCount.textContent = `${items.length} GPU configurations`;
+			ladderList.replaceChildren();
+
+			for (const [idx, item] of items.entries()) {
+				const { gpu, theo, actual, totalBandwidthGbs, totalComputeTflops, metricValue } = item;
+				const isOom = !isHardwareRawSort && theo.vramStatus === "oom";
+
+				const card = document.createElement("button");
+				card.type = "button";
+				card.setAttribute("role", "listitem");
+				card.className = `w-full text-left rounded border border-[var(--tool-line)] px-3.5 py-3 transition hover:border-accent focus-visible:outline-2 focus-visible:outline-accent ${
+					isOom ? "opacity-60" : idx === 0 ? "bg-accent/5 dark:bg-accent/10" : ""
+				}`;
+				card.addEventListener("click", () => {
+					openGpuDetail(gpu.id);
+				});
+
+				// Top Row: Rank, Name, Capability Badges | Primary Value & Secondary Readout
+				const topRow = document.createElement("div");
+				topRow.className = "flex flex-wrap items-baseline justify-between gap-2";
+
+				const leftGroup = document.createElement("div");
+				leftGroup.className = "flex flex-wrap items-baseline gap-2 min-w-0";
+
+				const rankSpan = document.createElement("span");
+				rankSpan.className = `text-xs font-bold tabular-nums ${
+					isOom ? "text-red-600 dark:text-red-400" : "text-accent"
+				}`;
+				rankSpan.textContent = isOom ? "OOM" : `#${idx + 1}`;
+
+				const nameSpan = document.createElement("span");
+				nameSpan.className = "font-semibold text-accent-2 text-sm";
+				nameSpan.textContent = theo.gpuCount > 1 ? `${theo.gpuCount}× ${gpu.name}` : gpu.name;
+
+				const metaSpan = document.createElement("span");
+				metaSpan.className = "tool-note text-[11px]";
+				const supported = getSupportedPrecisionsList(gpu)
+					.map((p) => p.toUpperCase())
+					.join("/");
+				metaSpan.textContent = `${gpu.vendor} · ${theo.availableVramGb}GB · [${supported}]`;
+
+				leftGroup.appendChild(rankSpan);
+				leftGroup.appendChild(nameSpan);
+				leftGroup.appendChild(metaSpan);
+
+				const rightGroup = document.createElement("div");
+				rightGroup.className = "flex items-baseline gap-3 tabular-nums";
+
+				const primaryReadout = document.createElement("span");
+				primaryReadout.className = "font-semibold text-accent-2 text-sm";
+
+				const secondaryReadout = document.createElement("span");
+				secondaryReadout.className = "tool-note text-[11px]";
+
+				if (sortMetric === "memBandwidthGbs") {
+					primaryReadout.textContent = `${totalBandwidthGbs.toLocaleString()} GB/s`;
+					secondaryReadout.textContent = `Theo Decode ${theo.vramStatus === "oom" ? "OOM" : `${theo.decodeSingleTps.toFixed(1)} tok/s`} · Details →`;
+				} else if (sortMetric === "computeTflops") {
+					const capLabel = capabilityFilter === "all" ? "FP16" : capabilityFilter.toUpperCase();
+					primaryReadout.textContent = `${totalComputeTflops.toLocaleString()} TFLOPS (${capLabel})`;
+					secondaryReadout.textContent = `Theo Prefill ${theo.vramStatus === "oom" ? "OOM" : `${theo.prefillTps.toFixed(0)} tok/s`} · Details →`;
+				} else if (isOom) {
+					primaryReadout.textContent = `OOM (${theo.totalVramGb.toFixed(1)} / ${theo.availableVramGb} GB VRAM)`;
+					secondaryReadout.textContent = "Inspect compatible models →";
+				} else if (sortMetric === "actualDecodeTps") {
+					primaryReadout.textContent = actual.actualDecodeTps
+						? `${actual.actualDecodeTps.toFixed(1)} tok/s measured`
+						: "No submission yet";
+					secondaryReadout.textContent = `Ceiling ${theo.decodeSingleTps.toFixed(1)} tok/s${
+						actual.mbuPct ? ` · MBU ${actual.mbuPct}%` : ""
+					} · Details →`;
+				} else if (sortMetric === "prefillTps") {
+					primaryReadout.textContent = `${theo.prefillTps.toFixed(0)} tok/s prefill`;
+					secondaryReadout.textContent = `TTFT ${theo.ttftMs.toFixed(0)} ms · Decode ${theo.decodeSingleTps.toFixed(1)} tok/s →`;
+				} else {
+					primaryReadout.textContent = `${theo.decodeSingleTps.toFixed(1)} tok/s ceiling`;
+					secondaryReadout.textContent = actual.actualDecodeTps
+						? `Measured ~${actual.actualDecodeTps.toFixed(1)} tok/s (${actual.isDirectMatch ? "verified" : `MBU ${actual.mbuPct}%`}) · Details →`
+						: `TPOT ${theo.tpotMs.toFixed(1)} ms · Details →`;
+				}
+
+				rightGroup.appendChild(primaryReadout);
+				rightGroup.appendChild(secondaryReadout);
+				topRow.appendChild(leftGroup);
+				topRow.appendChild(rightGroup);
+
+				// Visual Bar Track
+				const barWrap = document.createElement("div");
+				barWrap.className = "mt-2 h-2.5 w-full overflow-hidden rounded bg-global-text/10 relative";
+
+				if (isOom) {
+					const oomBar = document.createElement("div");
+					oomBar.className = "h-full bg-red-500/35";
+					oomBar.style.width = "100%";
+					barWrap.appendChild(oomBar);
+				} else if (sortMetric === "decodeSingleTps" || sortMetric === "actualDecodeTps") {
+					// Dual-layered bar: Theoretical ceiling (translucent) + Actual TPS (solid accent)
+					const theoWidthPct = Math.max(
+						4,
+						Math.round((theo.decodeSingleTps / maxTheoDecode) * 100),
+					);
+					const theoBar = document.createElement("div");
+					theoBar.className = "h-full bg-accent/30 absolute left-0 top-0";
+					theoBar.style.width = `${theoWidthPct}%`;
+					barWrap.appendChild(theoBar);
+
+					if (actual.actualDecodeTps) {
+						const actWidthPct = Math.min(
+							100,
+							Math.max(3, Math.round((actual.actualDecodeTps / maxTheoDecode) * 100)),
+						);
+						const actBar = document.createElement("div");
+						actBar.className = "h-full bg-accent relative z-10";
+						actBar.style.width = `${actWidthPct}%`;
+						barWrap.appendChild(actBar);
+					}
+				} else {
+					const widthPct = Math.max(4, Math.round((metricValue / maxMetricValue) * 100));
+					const fillBar = document.createElement("div");
+					fillBar.className = "h-full bg-accent";
+					fillBar.style.width = `${widthPct}%`;
+					barWrap.appendChild(fillBar);
+				}
+
+				card.appendChild(topRow);
+				card.appendChild(barWrap);
+				ladderList.appendChild(card);
+			}
+		};
+
+		const appendDlRow = (dl: HTMLElement, label: string, value: string, href?: string) => {
+			const row = document.createElement("div");
+			row.className = "tool-row";
+			const dt = document.createElement("dt");
+			dt.textContent = label;
+			const dd = document.createElement("dd");
+			if (href) {
+				const link = document.createElement("a");
+				link.href = href;
+				link.target = "_blank";
+				link.rel = "noopener noreferrer";
+				link.className = "cactus-link font-semibold";
+				link.textContent = `${value} ↗`;
+				dd.appendChild(link);
+			} else {
+				dd.textContent = value;
+			}
+			row.appendChild(dt);
+			row.appendChild(dd);
+			dl.appendChild(row);
+		};
+
+		const renderDetailView = () => {
+			const gpu = GPU_CATALOG.find((g) => g.id === selectedGpuId) ?? defaultGpu;
+			detailGpuSelect.value = gpu.id;
+
+			const workload = readWorkload();
+			const submissions = loadStoredSubmissions();
+			const theo = evaluateGpuPerformance(gpu, currentModel, workload);
+			const actual = resolveActualBenchmarkForGpu(gpu, theo, submissions);
+
+			detailVendor.textContent = `${gpu.vendor} · ${gpu.architecture} (${gpu.releaseYear}) · ${gpu.interconnect.toUpperCase()} (${gpu.interconnectBandwidthGbs} GB/s) · TDP ${gpu.tdpWatts}W`;
+			detailTitle.textContent =
+				workload.gpuCount > 1 ? `${workload.gpuCount}× ${gpu.name}` : gpu.name;
+
+			detailPrecisions.replaceChildren();
+			for (const cap of ["fp32", "fp16", "bf16", "fp8", "int8", "int4"] as const) {
+				const supported = gpuSupportsHardwarePrecision(gpu, cap);
+				const badge = document.createElement("span");
+				badge.className = supported
+					? "rounded border border-accent px-2 py-0.5 font-semibold text-accent"
+					: "rounded border border-[var(--tool-line)] px-2 py-0.5 opacity-40 line-through";
+				badge.textContent = cap.toUpperCase();
+				detailPrecisions.appendChild(badge);
+			}
+
+			// 4 KPI Cards
+			kpiTheo.textContent =
+				theo.vramStatus === "oom"
+					? "OOM (Insufficient VRAM)"
+					: `${theo.decodeSingleTps.toFixed(1)} tok/s`;
+			kpiTheoSub.textContent =
+				theo.vramStatus === "oom"
+					? `Needs ${theo.totalVramGb.toFixed(1)} GB`
+					: `Prefill ${theo.prefillTps.toFixed(0)} tok/s · TTFT ${theo.ttftMs.toFixed(0)} ms`;
+
+			kpiActual.textContent = actual.actualDecodeTps
+				? `${actual.actualDecodeTps.toFixed(1)} tok/s`
+				: "No submission yet";
+			kpiActualSub.textContent = actual.actualDecodeTps
+				? `${actual.isDirectMatch ? "Direct submission" : "Projected from GPU MBU"} · MBU ${actual.mbuPct}%`
+				: "Submit the first benchmark below";
+
+			kpiVram.textContent = `${theo.totalVramGb.toFixed(1)} / ${theo.availableVramGb} GB`;
+			kpiVramSub.textContent = `${gpu.memBandwidthGbs * workload.gpuCount} GB/s BW (${theo.vramUtilizationPct}% VRAM)`;
+
+			kpiTflops.textContent = `${gpu.fp16Tflops} / ${gpu.fp8Tflops ?? "—"} TFLOPS`;
+			kpiTflopsSub.textContent = `FP32 ${gpu.fp32Tflops} TFLOPS · INT8 ${gpu.int8Tflops} TOPS`;
+
+			// Tab 1: Submissions Table for this GPU
+			const gpuSubs = submissions.filter((s) => s.gpuId === gpu.id);
+			gpuSubmissionsTbody.replaceChildren();
+			if (gpuSubs.length === 0) {
+				const tr = document.createElement("tr");
+				const td = document.createElement("td");
+				td.colSpan = 5;
+				td.className = "px-3 py-4 text-center tool-note";
+				td.textContent =
+					"No real-world submissions recorded for this GPU yet. Add your benchmark below!";
+				tr.appendChild(td);
+				gpuSubmissionsTbody.appendChild(tr);
+			} else {
+				for (const sub of gpuSubs) {
+					const mSpec =
+						MODEL_CATALOG.find((m) => m.id === sub.modelId) ??
+						inferModelSpecFromRepoId(sub.modelName) ??
+						currentModel;
+					const subTheo = evaluateGpuPerformance(gpu, mSpec, {
+						gpuCount: sub.gpuCount,
+						weightPrecision: sub.weightPrecision,
+						kvPrecision: sub.kvPrecision,
+						inputTokens: sub.inputTokens,
+						outputTokens: sub.outputTokens,
+						batchSize: sub.batchSize,
+					});
+					const rep = evaluateUserSubmission(
+						subTheo,
+						sub.actualPrefillTps,
+						sub.actualDecodeSingleTps,
+					);
+
+					const tr = document.createElement("tr");
+					tr.className = "even:bg-global-text/5";
+
+					const engineTd = document.createElement("td");
+					engineTd.className = "px-3 py-2";
+					const eMain = document.createElement("div");
+					eMain.className = "font-semibold text-accent-2";
+					eMain.textContent = `${sub.gpuCount}× GPU · ${sub.engine}`;
+					const eSub = document.createElement("div");
+					eSub.className = "tool-note text-[11px]";
+					eSub.textContent = `by ${sub.submitter} · ${sub.createdAt}`;
+					engineTd.appendChild(eMain);
+					engineTd.appendChild(eSub);
+
+					const modelTd = document.createElement("td");
+					modelTd.className = "px-3 py-2";
+					const mMain = document.createElement("div");
+					mMain.className = "font-semibold";
+					mMain.textContent = sub.modelName;
+					const mSub = document.createElement("div");
+					mSub.className = "tool-note text-[11px]";
+					mSub.textContent = `${sub.weightPrecision.toUpperCase()} / KV ${sub.kvPrecision.toUpperCase()} · ${sub.inputTokens}/${sub.outputTokens}`;
+					modelTd.appendChild(mMain);
+					modelTd.appendChild(mSub);
+
+					const speedTd = document.createElement("td");
+					speedTd.className = "px-3 py-2 text-right tabular-nums";
+					const sMain = document.createElement("div");
+					sMain.className = "font-semibold text-accent-2";
+					sMain.textContent = `${sub.actualDecodeSingleTps.toFixed(1)} tok/s`;
+					const sSub = document.createElement("div");
+					sSub.className = "tool-note text-[11px]";
+					sSub.textContent = `Ceiling ${subTheo.decodeSingleTps.toFixed(1)} tok/s (${rep.decodeCeilingPct}%)`;
+					speedTd.appendChild(sMain);
+					speedTd.appendChild(sSub);
+
+					const utilTd = document.createElement("td");
+					utilTd.className = "px-3 py-2 text-right tabular-nums";
+					const uMain = document.createElement("div");
+					uMain.className = "font-semibold";
+					uMain.textContent = `MBU ${rep.mbuPct}%`;
+					const uSub = document.createElement("div");
+					uSub.className = "tool-note text-[11px]";
+					uSub.textContent = `MFU ${rep.mfuPct}% (${sub.actualPrefillTps.toFixed(0)} tok/s)`;
+					utilTd.appendChild(uMain);
+					utilTd.appendChild(uSub);
+
+					const tierTd = document.createElement("td");
+					tierTd.className = "px-3 py-2";
+					const tMain = document.createElement("div");
+					tMain.className = "font-semibold";
+					tMain.textContent = rep.tierLabel;
+					const tSub = document.createElement("div");
+					tSub.className = "tool-note text-[11px]";
+					tSub.textContent = sub.notes;
+					tierTd.appendChild(tMain);
+					tierTd.appendChild(tSub);
+
+					tr.appendChild(engineTd);
+					tr.appendChild(modelTd);
+					tr.appendChild(speedTd);
+					tr.appendChild(utilTd);
+					tr.appendChild(tierTd);
+					gpuSubmissionsTbody.appendChild(tr);
+				}
+			}
+
+			// Tab 2: Standard Models Matrix for this GPU
+			detailModelsTbody.replaceChildren();
+			for (const stdModel of MODEL_CATALOG) {
+				const ev = evaluateGpuPerformance(gpu, stdModel, workload);
+				const isOom = ev.vramStatus === "oom";
+				const tr = document.createElement("tr");
+				tr.className = isOom ? "opacity-55" : "even:bg-global-text/5";
+
+				const mTd = document.createElement("td");
+				mTd.className = "px-3 py-2 font-semibold text-accent-2";
+				const hfLink = document.createElement("a");
+				hfLink.href = `https://huggingface.co/${stdModel.hfRepoId}`;
+				hfLink.target = "_blank";
+				hfLink.rel = "noopener noreferrer";
+				hfLink.className = "cactus-link";
+				hfLink.textContent = stdModel.name;
+				mTd.appendChild(hfLink);
+
+				const archTd = document.createElement("td");
+				archTd.className = "px-3 py-2 tabular-nums";
+				archTd.textContent = `${stdModel.architecture.toUpperCase()} · ${stdModel.totalParamsB}B (${stdModel.activeParamsB}B active)`;
+
+				const vramTd = document.createElement("td");
+				vramTd.className = "px-3 py-2 text-right tabular-nums";
+				vramTd.textContent = `${ev.totalVramGb.toFixed(1)} / ${ev.availableVramGb} GB (${ev.vramUtilizationPct}%)`;
+
+				const pfTd = document.createElement("td");
+				pfTd.className = "px-3 py-2 text-right tabular-nums";
+				pfTd.textContent = isOom
+					? "—"
+					: `${ev.prefillTps.toFixed(0)} tok/s (${ev.ttftMs.toFixed(0)} ms)`;
+
+				const decTd = document.createElement("td");
+				decTd.className = "px-3 py-2 text-right tabular-nums font-semibold";
+				decTd.textContent = isOom
+					? "OOM (VRAM)"
+					: `${ev.decodeSingleTps.toFixed(1)} tok/s (${ev.tpotMs.toFixed(1)} ms)`;
+
+				const botTd = document.createElement("td");
+				botTd.className = "px-3 py-2 tool-note";
+				botTd.textContent = isOom
+					? `Short ${(ev.totalVramGb - ev.availableVramGb).toFixed(1)} GB`
+					: ev.bottleneck === "compute"
+						? "Compute-Bound"
+						: "Memory-Bandwidth-Bound";
+
+				tr.appendChild(mTd);
+				tr.appendChild(archTd);
+				tr.appendChild(vramTd);
+				tr.appendChild(pfTd);
+				tr.appendChild(decTd);
+				tr.appendChild(botTd);
+				detailModelsTbody.appendChild(tr);
+			}
+
+			// Tab 3: Hardware Specs & Roofline Breakdown DLs
+			detailHwDl.replaceChildren();
+			appendDlRow(
+				detailHwDl,
+				"Vendor / Architecture",
+				`${gpu.vendor} · ${gpu.architecture} (${gpu.releaseYear})`,
+			);
+			appendDlRow(
+				detailHwDl,
+				"Per-GPU VRAM / Bandwidth",
+				`${gpu.vramGb} GB · ${gpu.memBandwidthGbs} GB/s`,
+			);
+			appendDlRow(detailHwDl, "FP32 Vector Compute", `${gpu.fp32Tflops} TFLOPS`);
+			appendDlRow(
+				detailHwDl,
+				"Dense FP16 / BF16 Tensor",
+				`${gpu.fp16Tflops} / ${gpu.bf16Tflops ?? "N/A"} TFLOPS`,
+			);
+			appendDlRow(
+				detailHwDl,
+				"Dense FP8 / INT8 Tensor",
+				`${gpu.fp8Tflops ?? "N/A"} / ${gpu.int8Tflops} TFLOPS`,
+			);
+			appendDlRow(detailHwDl, "Dense INT4 / FP4 Tensor", `${gpu.int4Tflops ?? "N/A"} TOPS`);
+			appendDlRow(
+				detailHwDl,
+				"Interconnect & TDP",
+				`${gpu.interconnect.toUpperCase()} (${gpu.interconnectBandwidthGbs} GB/s · TDP ${gpu.tdpWatts}W)`,
+			);
+			appendDlRow(detailHwDl, "Primary Spec Source", gpu.sourceName, gpu.sourceUrl);
+			appendDlRow(detailHwDl, "Calibration Note", gpu.calibrationNote);
+
+			detailRooflineDl.replaceChildren();
+			appendDlRow(
+				detailRooflineDl,
+				"Evaluated Model",
+				`${currentModel.name} (${workload.weightPrecision.toUpperCase()})`,
+				`https://huggingface.co/${currentModel.hfRepoId}`,
+			);
+			appendDlRow(
+				detailRooflineDl,
+				"VRAM Breakdown",
+				`Weights ${theo.weightsVramGb}G + KV ${theo.kvCacheVramGb}G + Runtime ${theo.overheadVramGb}G`,
+			);
+			appendDlRow(
+				detailRooflineDl,
+				"Memory Traffic per Decode Step",
+				`${(theo.decodeBytesPerStep / 1e9).toFixed(2)} GB / step`,
+			);
+			appendDlRow(
+				detailRooflineDl,
+				"Multi-GPU Scaling Efficiency",
+				`Compute ${Math.round(theo.multiGpuComputeEfficiency * 100)}% / Bandwidth ${Math.round(theo.multiGpuBandwidthEfficiency * 100)}%`,
+			);
+			appendDlRow(
+				detailRooflineDl,
+				"Arithmetic Intensity vs Ridge",
+				`${theo.decodeArithmeticIntensity} vs Ridge ${theo.ridgePointOpsPerByte} ops/byte`,
+			);
+			appendDlRow(
+				detailRooflineDl,
+				"End-to-End Generation Time",
+				theo.vramStatus === "oom"
+					? "OOM"
+					: `${theo.endToEndLatencySec}s (${workload.outputTokens} tokens)`,
+			);
+
+			renderLiveSubmissionEvaluation();
+		};
+
+		const renderLiveSubmissionEvaluation = () => {
+			const gpu = GPU_CATALOG.find((g) => g.id === selectedGpuId) ?? defaultGpu;
+			const gpuCount = Math.max(1, Number(subCountSelect.value) || 1);
+			const workload = { ...readWorkload(), gpuCount };
+			const theo = evaluateGpuPerformance(gpu, currentModel, workload);
+			const actualPrefill = Math.max(0.1, Number(subPrefillInput.value) || 0);
+			const actualDecode = Math.max(0.1, Number(subDecodeInput.value) || 0);
+			const report = evaluateUserSubmission(theo, actualPrefill, actualDecode);
+
+			reportTier.textContent = report.tierLabel;
+			reportMbu.textContent = `${report.mbuPct}% (Peak ${gpuCount * gpu.memBandwidthGbs} GB/s)`;
+			reportMfu.textContent = `${report.mfuPct}% (Peak ${gpuCount * theo.effectiveTflopsPerGpu} TFLOPS)`;
+			reportCeiling.textContent = `Decode ${report.decodeCeilingPct}% / Prefill ${report.prefillCeilingPct}%`;
+			reportTheoDecode.textContent =
+				theo.vramStatus === "oom"
+					? `OOM (${theo.totalVramGb.toFixed(1)} / ${theo.availableVramGb} GB)`
+					: `${theo.decodeSingleTps.toFixed(1)} tok/s (Prefill ${theo.prefillTps.toFixed(0)} tok/s)`;
+			reportDiagnosis.textContent = report.diagnosis;
+		};
+
+		const openGpuDetail = (gpuId: string) => {
+			selectedGpuId = gpuId;
+			subCountSelect.value = gpuCountSelect.value;
+			mainView.classList.add("hidden");
+			detailView.classList.remove("hidden");
+			renderDetailView();
+			window.scrollTo({ top: 0, behavior: "smooth" });
+		};
+
+		const closeGpuDetail = () => {
+			detailView.classList.add("hidden");
+			mainView.classList.remove("hidden");
+			renderLadder();
+		};
+
+		backToLadderBtn.addEventListener("click", closeGpuDetail);
+		detailGpuSelect.addEventListener("change", () => {
+			selectedGpuId = detailGpuSelect.value;
+			renderDetailView();
+		});
+
+		for (const btn of detailTabButtons) {
+			btn.addEventListener("click", () => {
+				const targetTab = btn.dataset.detailTab;
+				for (const b of detailTabButtons) {
+					b.classList.toggle("tool-button-primary", b === btn);
+				}
+				for (const panel of detailPanels) {
+					panel.classList.toggle("hidden", panel.dataset.detailPanel !== targetTab);
+				}
+			});
+		}
+
+		for (const btn of capFilterButtons) {
+			btn.addEventListener("click", () => {
+				const cap = (btn.dataset.capFilter as HardwarePrecision | "all") || "all";
+				capabilityFilter = cap;
+				for (const b of capFilterButtons) {
+					b.classList.toggle("tool-button-primary", b === btn);
+				}
+				renderLadder();
+			});
+		}
+
+		for (const btn of sortButtons) {
+			btn.addEventListener("click", () => {
+				const metric = btn.dataset.sortMetric as LadderSortMetric;
+				if (!metric) return;
+				sortMetric = metric;
+				for (const b of sortButtons) {
+					b.classList.toggle("tool-button-primary", b === btn);
+				}
+				renderLadder();
+			});
+		}
+
+		modelSelect.addEventListener("change", () => {
+			const preset = MODEL_CATALOG.find((m) => m.id === modelSelect.value);
+			if (preset) {
+				currentModel = { ...preset };
+				hfInput.value = preset.hfRepoId;
+				if (preset.defaultPrecision) {
+					weightPrecisionSelect.value = preset.defaultPrecision;
+				}
+				renderLadder();
+				if (!detailView.classList.contains("hidden")) renderDetailView();
+			} else if (modelSelect.value === "custom") {
+				const drawer = root.querySelector("[data-hf-drawer]") as HTMLDetailsElement | null;
+				if (drawer) drawer.open = true;
+			}
+		});
+
+		const onCustomParamEdit = () => {
+			modelSelect.value = "custom";
+			const totalB = Math.max(0.1, Number(paramTotalInput.value) || 7);
+			const activeB = Math.min(totalB, Math.max(0.1, Number(paramActiveInput.value) || totalB));
+			currentModel = {
+				...currentModel,
+				id: "custom",
+				name: hfInput.value.trim() || `Custom ${totalB}B`,
+				architecture: activeB < totalB * 0.95 ? "moe" : "dense",
+				totalParamsB: totalB,
+				activeParamsB: activeB,
+			};
+			renderLadder();
+			if (!detailView.classList.contains("hidden")) renderDetailView();
+		};
+
+		paramTotalInput.addEventListener("input", onCustomParamEdit);
+		paramActiveInput.addEventListener("input", onCustomParamEdit);
+
+		hfFetchBtn.addEventListener("click", async () => {
+			const repoId = parseHuggingFaceModelRef(hfInput.value);
+			if (!repoId) {
+				hfStatus.textContent =
+					"Please enter a valid HuggingFace URL or <org>/<repo> (e.g. Qwen/Qwen3-235B-A22B).";
+				hfStatus.classList.add("tool-status--danger");
+				return;
+			}
+			hfFetchBtn.disabled = true;
+			hfStatus.classList.remove("tool-status--danger");
+			hfStatus.textContent = `Fetching config.json for ${repoId} from HuggingFace…`;
+
+			try {
+				const [apiRes, configRes] = await Promise.allSettled([
+					fetch(`https://huggingface.co/api/models/${repoId}`),
+					fetch(`https://huggingface.co/${repoId}/resolve/main/config.json`),
+				]);
+
+				let safetensorsTotal: number | null = null;
+				if (apiRes.status === "fulfilled" && apiRes.value.ok) {
+					const meta = (await apiRes.value.json()) as {
+						safetensors?: { total?: number };
+					};
+					safetensorsTotal = meta.safetensors?.total ?? null;
+				}
+
+				if (configRes.status === "fulfilled" && configRes.value.ok) {
+					const rawConfig = (await configRes.value.json()) as Record<string, unknown>;
+					const parsed = parseHuggingFaceConfig(repoId, rawConfig, safetensorsTotal);
+					currentModel = parsed;
+					modelSelect.value = "custom";
+					if (parsed.defaultPrecision) {
+						weightPrecisionSelect.value = parsed.defaultPrecision;
+					}
+					hfStatus.textContent = `Parsed ${repoId}: ${parsed.architecture.toUpperCase()} ${parsed.totalParamsB}B (${parsed.activeParamsB}B active), ${parsed.numLayers} layers.`;
+					renderLadder();
+					if (!detailView.classList.contains("hidden")) renderDetailView();
+					return;
+				}
+
+				const inferred = inferModelSpecFromRepoId(repoId);
+				if (inferred) {
+					currentModel = inferred;
+					modelSelect.value = "custom";
+					if (inferred.defaultPrecision) {
+						weightPrecisionSelect.value = inferred.defaultPrecision;
+					}
+					hfStatus.textContent = `Inferred from repo name ${repoId}: ${inferred.totalParamsB}B total / ${inferred.activeParamsB}B active params.`;
+					renderLadder();
+					if (!detailView.classList.contains("hidden")) renderDetailView();
+					return;
+				}
+
+				throw new Error(`Could not fetch or infer architecture parameters for ${repoId}.`);
+			} catch (err) {
+				hfStatus.textContent =
+					err instanceof Error ? err.message : "Failed to load HuggingFace model.";
+				hfStatus.classList.add("tool-status--danger");
+			} finally {
+				hfFetchBtn.disabled = false;
+			}
+		});
+
+		for (const el of [
+			gpuCountSelect,
+			weightPrecisionSelect,
+			inputTokensInput,
+			outputTokensInput,
+			batchSizeInput,
+			vendorFilterSelect,
+			gpuSearchInput,
+			hideOomCheckbox,
+		]) {
+			el.addEventListener("input", () => {
+				renderLadder();
+				if (!detailView.classList.contains("hidden")) renderDetailView();
+			});
+			el.addEventListener("change", () => {
+				renderLadder();
+				if (!detailView.classList.contains("hidden")) renderDetailView();
+			});
+		}
+
+		for (const el of [subCountSelect, subPrefillInput, subDecodeInput]) {
+			el.addEventListener("input", renderLiveSubmissionEvaluation);
+			el.addEventListener("change", renderLiveSubmissionEvaluation);
+		}
+
+		subForm.addEventListener("submit", (event) => {
+			event.preventDefault();
+			const workload = readWorkload();
+			const newEntry: RealWorldSubmission = {
+				id: `sub-${Date.now()}`,
+				gpuId: selectedGpuId,
+				gpuCount: Math.max(1, Number(subCountSelect.value) || 1),
+				modelId: currentModel.id,
+				modelName: currentModel.name,
+				weightPrecision: workload.weightPrecision,
+				kvPrecision: workload.kvPrecision,
+				engine: subEngineInput.value.trim() || "Custom Engine",
+				inputTokens: workload.inputTokens,
+				outputTokens: workload.outputTokens,
+				batchSize: workload.batchSize,
+				actualPrefillTps: Math.max(1, Number(subPrefillInput.value) || 100),
+				actualDecodeSingleTps: Math.max(0.1, Number(subDecodeInput.value) || 10),
+				submitter: subAuthorInput.value.trim() || "anonymous",
+				notes: subNotesInput.value.trim() || "User submitted benchmark",
+				createdAt: new Date().toISOString().slice(0, 10),
+			};
+			const existing = loadStoredSubmissions();
+			const updated = [newEntry, ...existing];
+			try {
+				localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+			} catch {
+				// Ignore quota errors
+			}
+			renderDetailView();
+			renderLadder();
+		});
+
+		resetSubmissionsBtn.addEventListener("click", () => {
+			try {
+				localStorage.removeItem(STORAGE_KEY);
+			} catch {
+				// Ignore
+			}
+			renderDetailView();
+			renderLadder();
+		});
+
+		hfInput.value = currentModel.hfRepoId;
+		renderLadder();
+	}
+</script>

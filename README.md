@@ -2,7 +2,7 @@
 
 Personal multilingual website built with Astro and deployed to Cloudflare Workers.
 
-The site includes blog posts, ActivityPub notes, RSS feeds and a public `/reading` feed view, search, public tools for exchange rates (`/tools/exchange`), photography (`/tools/camera`, `/tools/lut-to-np3`), and network lookups (`ip.fdke.vin`, `/tools/network`), plus Cloudflare Access-protected dashboard and utility routes (`/dashboard/*`, `/tools/mail`, `/tools/access`).
+The site includes blog posts, ActivityPub notes, RSS feeds and a public `/reading` feed view, search, public tools for exchange rates (`/tools/exchange`), photography (`/tools/camera`, `/tools/lut-to-np3`), LLM GPU Roofline benchmarking (`/tools/gpu-ladder`), and network lookups (`ip.fdke.vin`, `/tools/network`), plus Cloudflare Access-protected dashboard and utility routes (`/dashboard/*`, `/tools/mail`, `/tools/access`).
 
 ## Quick start
 
