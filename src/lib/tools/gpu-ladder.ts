@@ -1,7 +1,7 @@
 export type GpuVendor = "NVIDIA" | "AMD" | "Apple" | "Huawei" | "Intel" | "Google";
 
 export type InterconnectType =
-	"nvlink" | "infinity_fabric" | "unified" | "hccs" | "xe_link" | "roce" | "pcie";
+	"nvlink" | "ici" | "infinity_fabric" | "unified" | "hccs" | "xe_link" | "roce" | "pcie";
 
 export type Precision = "fp16" | "fp8" | "int8" | "int4";
 
@@ -14,7 +14,6 @@ export interface GpuSpec {
 	id: string;
 	name: string;
 	vendor: GpuVendor;
-	category: "datacenter" | "consumer" | "unified";
 	architecture: string;
 	releaseYear: number;
 	vramGb: number;
@@ -37,9 +36,7 @@ export interface GpuSpec {
 }
 
 export interface DataSourceReference {
-	id: string;
 	name: string;
-	category: "hardware_specs" | "benchmarks" | "model_configs";
 	url: string;
 	license: string;
 	description: string;
@@ -49,13 +46,11 @@ export interface LlmModelSpec {
 	id: string;
 	name: string;
 	hfRepoId: string;
-	releaseDate?: string | undefined;
 	architecture: "dense" | "moe";
 	totalParamsB: number;
 	activeParamsB: number;
 	numLayers: number;
 	hiddenSize: number;
-	numAttentionHeads: number;
 	numKeyValueHeads: number;
 	headDim: number;
 	/** Compressed KV elements per token per layer (e.g. 576 for DeepSeek/Kimi MLA). Null for standard MHA/GQA. */
@@ -92,13 +87,11 @@ export interface TheoreticalEvaluation {
 	ttftMs: number;
 	decodeBytesPerStep: number;
 	decodeSingleTps: number;
-	decodeTotalTps: number;
 	tpotMs: number;
 	endToEndLatencySec: number;
 	ridgePointOpsPerByte: number;
 	decodeArithmeticIntensity: number;
 	bottleneck: "memory_bandwidth" | "compute" | "oom";
-	compositeScore: number;
 }
 
 export type InfraOptimizationTier =
@@ -110,28 +103,26 @@ export interface RealWorldSubmission {
 	gpuCount: number;
 	modelId: string;
 	modelName: string;
+	totalParamsB?: number | undefined;
+	activeParamsB?: number | undefined;
 	weightPrecision: Precision;
 	kvPrecision: Precision;
 	engine: string;
 	inputTokens: number;
 	outputTokens: number;
 	batchSize: number;
-	actualPrefillTps: number;
+	actualPrefillTps: number | null;
 	actualDecodeSingleTps: number;
-	submitter: string;
 	notes: string;
 	sourceUrl?: string | undefined;
-	createdAt: string;
 }
 
 export interface InfraEfficiencyReport {
 	mbuPct: number;
-	mfuPct: number;
+	mfuPct: number | null;
 	decodeCeilingPct: number;
-	prefillCeilingPct: number;
 	tier: InfraOptimizationTier;
 	tierLabel: string;
-	diagnosis: string;
 }
 
 export const PRECISION_BYTES: Record<Precision, number> = {
@@ -143,45 +134,35 @@ export const PRECISION_BYTES: Record<Precision, number> = {
 
 export const DATA_SOURCES_REGISTRY: DataSourceReference[] = [
 	{
-		id: "epoch-ai-hardware",
 		name: "Epoch AI Machine Learning Hardware Dataset (ml_hardware.csv)",
-		category: "hardware_specs",
 		url: "https://epoch.ai/data/machine-learning-hardware",
 		license: "CC-BY 4.0",
 		description:
 			"Primary dataset for AI accelerators, separating vector FP32/FP16 from Tensor-FP16/BF16, INT8, INT4, HBM bandwidth, intranode interconnect bandwidth, and official datasheet links.",
 	},
 	{
-		id: "dbgpu-techpowerup",
 		name: "dbgpu / TechPowerUp GPU Specs Database",
-		category: "hardware_specs",
 		url: "https://github.com/painebenjamin/dbgpu",
 		license: "MIT / Public Specs",
 		description:
 			"Consumer and workstation GPU memory bus widths, GDDR6X/GDDR7 memory bandwidth, die sizes, and TDP specifications.",
 	},
 	{
-		id: "vendor-whitepapers",
 		name: "NVIDIA / AMD / Intel / Apple Official Architecture Whitepapers",
-		category: "hardware_specs",
 		url: "https://resources.nvidia.com/en-us-blackwell-architecture",
 		license: "Vendor Datasheets",
 		description:
 			"Ground-truth calibration layer stripping 2:4 structured sparsity (50% dense ratio) and normalizing FP16 with FP32 accumulate.",
 	},
 	{
-		id: "semianalysis-inferencemax",
 		name: "SemiAnalysis InferenceMAX & vLLM Performance Dashboard",
-		category: "benchmarks",
 		url: "https://inferencex.semianalysis.com/",
 		license: "Open Benchmark",
 		description:
 			"Continuous datacenter inference benchmarks across B200, H200, H100, MI325X, and MI300X running vLLM, SGLang, and TensorRT-LLM.",
 	},
 	{
-		id: "llamacpp-bench",
 		name: "ggml-org/llama.cpp Official Hardware Benchmark Discussions (#4167 / #10879)",
-		category: "benchmarks",
 		url: "https://github.com/ggml-org/llama.cpp/discussions/4167",
 		license: "MIT",
 		description:
@@ -194,7 +175,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-b300-sxm-288gb",
 		name: "NVIDIA HGX B300 SXM 288GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Blackwell Ultra",
 		releaseYear: 2025,
 		vramGb: 288,
@@ -216,7 +196,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-b200-sxm-192gb",
 		name: "NVIDIA HGX B200 SXM 192GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Blackwell",
 		releaseYear: 2024,
 		vramGb: 192,
@@ -238,7 +217,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-h200-sxm-141gb",
 		name: "NVIDIA HGX H200 SXM 141GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Hopper",
 		releaseYear: 2024,
 		vramGb: 141,
@@ -260,7 +238,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-h100-sxm-80gb",
 		name: "NVIDIA HGX H100 SXM5 80GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Hopper",
 		releaseYear: 2022,
 		vramGb: 80,
@@ -282,7 +259,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-h100-pcie-80gb",
 		name: "NVIDIA H100 PCIe 80GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Hopper",
 		releaseYear: 2022,
 		vramGb: 80,
@@ -304,7 +280,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-h20-96gb",
 		name: "NVIDIA HGX H20 SXM 96GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Hopper",
 		releaseYear: 2024,
 		vramGb: 96,
@@ -326,7 +301,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-rtx-pro-6000-blackwell-96gb",
 		name: "NVIDIA RTX PRO 6000 Blackwell 96GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Blackwell",
 		releaseYear: 2025,
 		vramGb: 96,
@@ -348,7 +322,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-l40s-48gb",
 		name: "NVIDIA L40S 48GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Ada Lovelace",
 		releaseYear: 2023,
 		vramGb: 48,
@@ -370,7 +343,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-a100-sxm-80gb",
 		name: "NVIDIA A100 SXM4 80GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Ampere",
 		releaseYear: 2020,
 		vramGb: 80,
@@ -393,7 +365,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-a100-pcie-80gb",
 		name: "NVIDIA A100 PCIe 80GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Ampere",
 		releaseYear: 2020,
 		vramGb: 80,
@@ -415,7 +386,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-v100-sxm2-32gb",
 		name: "NVIDIA Tesla V100 SXM2 32GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Volta",
 		releaseYear: 2018,
 		vramGb: 32,
@@ -438,7 +408,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-t4-16gb",
 		name: "NVIDIA Tesla T4 16GB",
 		vendor: "NVIDIA",
-		category: "datacenter",
 		architecture: "Turing",
 		releaseYear: 2018,
 		vramGb: 16,
@@ -460,7 +429,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-rtx-5090-32gb",
 		name: "NVIDIA GeForce RTX 5090 32GB",
 		vendor: "NVIDIA",
-		category: "consumer",
 		architecture: "Blackwell",
 		releaseYear: 2025,
 		vramGb: 32,
@@ -482,7 +450,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-rtx-5080-16gb",
 		name: "NVIDIA GeForce RTX 5080 16GB",
 		vendor: "NVIDIA",
-		category: "consumer",
 		architecture: "Blackwell",
 		releaseYear: 2025,
 		vramGb: 16,
@@ -504,7 +471,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-rtx-4090-24gb",
 		name: "NVIDIA GeForce RTX 4090 24GB",
 		vendor: "NVIDIA",
-		category: "consumer",
 		architecture: "Ada Lovelace",
 		releaseYear: 2022,
 		vramGb: 24,
@@ -526,7 +492,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-rtx-4080-super-16gb",
 		name: "NVIDIA GeForce RTX 4080 SUPER 16GB",
 		vendor: "NVIDIA",
-		category: "consumer",
 		architecture: "Ada Lovelace",
 		releaseYear: 2024,
 		vramGb: 16,
@@ -548,7 +513,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-rtx-3090-24gb",
 		name: "NVIDIA GeForce RTX 3090 24GB",
 		vendor: "NVIDIA",
-		category: "consumer",
 		architecture: "Ampere",
 		releaseYear: 2020,
 		vramGb: 24,
@@ -570,7 +534,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "nvidia-rtx-3060-12gb",
 		name: "NVIDIA GeForce RTX 3060 12GB",
 		vendor: "NVIDIA",
-		category: "consumer",
 		architecture: "Ampere",
 		releaseYear: 2021,
 		vramGb: 12,
@@ -592,7 +555,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "amd-mi355x-288gb",
 		name: "AMD Instinct MI355X 288GB",
 		vendor: "AMD",
-		category: "datacenter",
 		architecture: "CDNA 4",
 		releaseYear: 2025,
 		vramGb: 288,
@@ -614,7 +576,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "amd-mi325x-256gb",
 		name: "AMD Instinct MI325X 256GB",
 		vendor: "AMD",
-		category: "datacenter",
 		architecture: "CDNA 3",
 		releaseYear: 2024,
 		vramGb: 256,
@@ -636,7 +597,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "amd-mi300x-192gb",
 		name: "AMD Instinct MI300X 192GB",
 		vendor: "AMD",
-		category: "datacenter",
 		architecture: "CDNA 3",
 		releaseYear: 2023,
 		vramGb: 192,
@@ -659,7 +619,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "amd-mi250x-128gb",
 		name: "AMD Instinct MI250X 128GB",
 		vendor: "AMD",
-		category: "datacenter",
 		architecture: "CDNA 2",
 		releaseYear: 2021,
 		vramGb: 128,
@@ -681,7 +640,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "amd-rx-7900-xtx-24gb",
 		name: "AMD Radeon RX 7900 XTX 24GB",
 		vendor: "AMD",
-		category: "consumer",
 		architecture: "RDNA 3",
 		releaseYear: 2022,
 		vramGb: 24,
@@ -703,7 +661,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "amd-ryzen-ai-max-395-128gb",
 		name: "AMD Ryzen AI Max+ 395 (Strix Halo 128GB)",
 		vendor: "AMD",
-		category: "unified",
 		architecture: "RDNA 3.5 Unified",
 		releaseYear: 2025,
 		vramGb: 128,
@@ -725,7 +682,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "apple-m3-ultra-512gb",
 		name: "Apple M3 Ultra 512GB (80-core GPU)",
 		vendor: "Apple",
-		category: "unified",
 		architecture: "Apple Silicon M3",
 		releaseYear: 2025,
 		vramGb: 512,
@@ -747,7 +703,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "apple-m4-max-128gb",
 		name: "Apple M4 Max 128GB (40-core GPU)",
 		vendor: "Apple",
-		category: "unified",
 		architecture: "Apple Silicon M4",
 		releaseYear: 2024,
 		vramGb: 128,
@@ -769,7 +724,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "apple-m2-ultra-192gb",
 		name: "Apple M2 Ultra 192GB (76-core GPU)",
 		vendor: "Apple",
-		category: "unified",
 		architecture: "Apple Silicon M2",
 		releaseYear: 2023,
 		vramGb: 192,
@@ -791,7 +745,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "apple-m4-pro-64gb",
 		name: "Apple M4 Pro 64GB (20-core GPU)",
 		vendor: "Apple",
-		category: "unified",
 		architecture: "Apple Silicon M4",
 		releaseYear: 2024,
 		vramGb: 64,
@@ -813,7 +766,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "huawei-ascend-910c-128gb",
 		name: "Huawei Ascend 910C 128GB",
 		vendor: "Huawei",
-		category: "datacenter",
 		architecture: "DaVinci Dual-Die",
 		releaseYear: 2025,
 		vramGb: 128,
@@ -835,7 +787,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "huawei-ascend-910b-64gb",
 		name: "Huawei Ascend 910B 64GB",
 		vendor: "Huawei",
-		category: "datacenter",
 		architecture: "DaVinci",
 		releaseYear: 2023,
 		vramGb: 64,
@@ -857,7 +808,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "intel-gaudi-3-128gb",
 		name: "Intel Gaudi 3 OAM 128GB",
 		vendor: "Intel",
-		category: "datacenter",
 		architecture: "Gaudi 3",
 		releaseYear: 2024,
 		vramGb: 128,
@@ -880,7 +830,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "intel-max-1550-128gb",
 		name: "Intel Data Center GPU Max 1550 128GB",
 		vendor: "Intel",
-		category: "datacenter",
 		architecture: "Xe-HPC (Ponte Vecchio)",
 		releaseYear: 2023,
 		vramGb: 128,
@@ -903,7 +852,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "intel-gaudi-2-96gb",
 		name: "Intel Gaudi 2 OAM 96GB",
 		vendor: "Intel",
-		category: "datacenter",
 		architecture: "Gaudi 2",
 		releaseYear: 2022,
 		vramGb: 96,
@@ -927,7 +875,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "intel-arc-pro-b60-24gb",
 		name: "Intel Arc Pro B60 24GB",
 		vendor: "Intel",
-		category: "consumer",
 		architecture: "Xe2 Battlemage Workstation",
 		releaseYear: 2025,
 		vramGb: 24,
@@ -951,7 +898,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "intel-arc-a770-16gb",
 		name: "Intel Arc A770 Limited Edition 16GB",
 		vendor: "Intel",
-		category: "consumer",
 		architecture: "Xe-HPG Alchemist",
 		releaseYear: 2022,
 		vramGb: 16,
@@ -974,7 +920,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "intel-arc-b580-12gb",
 		name: "Intel Arc B580 12GB",
 		vendor: "Intel",
-		category: "consumer",
 		architecture: "Xe2 Battlemage",
 		releaseYear: 2024,
 		vramGb: 12,
@@ -998,7 +943,6 @@ export const GPU_CATALOG: GpuSpec[] = [
 		id: "google-tpu-v6e-32gb",
 		name: "Google Cloud TPU v6e (Trillium) 32GB",
 		vendor: "Google",
-		category: "datacenter",
 		architecture: "Trillium (TPU v6e)",
 		releaseYear: 2024,
 		vramGb: 32,
@@ -1009,7 +953,7 @@ export const GPU_CATALOG: GpuSpec[] = [
 		fp8Tflops: null,
 		int8Tflops: 1836,
 		int4Tflops: null,
-		interconnect: "nvlink",
+		interconnect: "ici",
 		interconnectBandwidthGbs: 800,
 		tdpWatts: 300,
 		sourceName: "Google Cloud TPU v6e Documentation + Epoch AI",
@@ -1023,13 +967,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "qwen3-32b",
 		name: "Qwen3-32B (Dense)",
 		hfRepoId: "Qwen/Qwen3-32B",
-		releaseDate: "2025-05",
 		architecture: "dense",
 		totalParamsB: 32.8,
 		activeParamsB: 32.8,
 		numLayers: 64,
 		hiddenSize: 5120,
-		numAttentionHeads: 64,
 		numKeyValueHeads: 8,
 		headDim: 128,
 	},
@@ -1037,13 +979,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "qwen3-30b-a3b",
 		name: "Qwen3-30B-A3B (MoE)",
 		hfRepoId: "Qwen/Qwen3-30B-A3B-Instruct-2507",
-		releaseDate: "2025-07",
 		architecture: "moe",
 		totalParamsB: 30.5,
 		activeParamsB: 3.3,
 		numLayers: 48,
 		hiddenSize: 2048,
-		numAttentionHeads: 32,
 		numKeyValueHeads: 4,
 		headDim: 128,
 	},
@@ -1051,13 +991,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "qwen3-8b",
 		name: "Qwen3-8B (Dense)",
 		hfRepoId: "Qwen/Qwen3-8B",
-		releaseDate: "2025-05",
 		architecture: "dense",
 		totalParamsB: 8.2,
 		activeParamsB: 8.2,
 		numLayers: 36,
 		hiddenSize: 4096,
-		numAttentionHeads: 32,
 		numKeyValueHeads: 8,
 		headDim: 128,
 	},
@@ -1065,13 +1003,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "gpt-oss-20b",
 		name: "OpenAI gpt-oss-20b (MoE)",
 		hfRepoId: "openai/gpt-oss-20b",
-		releaseDate: "2025-08",
 		architecture: "moe",
 		totalParamsB: 20.9,
 		activeParamsB: 3.6,
 		numLayers: 24,
 		hiddenSize: 2880,
-		numAttentionHeads: 32,
 		numKeyValueHeads: 8,
 		headDim: 96,
 		defaultPrecision: "int4",
@@ -1080,13 +1016,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "gpt-oss-120b",
 		name: "OpenAI gpt-oss-120b (MoE)",
 		hfRepoId: "openai/gpt-oss-120b",
-		releaseDate: "2025-08",
 		architecture: "moe",
 		totalParamsB: 117.0,
 		activeParamsB: 5.1,
 		numLayers: 36,
 		hiddenSize: 4096,
-		numAttentionHeads: 32,
 		numKeyValueHeads: 8,
 		headDim: 128,
 		defaultPrecision: "int4",
@@ -1095,13 +1029,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "gemma-3-27b",
 		name: "Gemma-3-27B-IT (Dense)",
 		hfRepoId: "google/gemma-3-27b-it",
-		releaseDate: "2025-03",
 		architecture: "dense",
 		totalParamsB: 27.4,
 		activeParamsB: 27.4,
 		numLayers: 62,
 		hiddenSize: 5376,
-		numAttentionHeads: 32,
 		numKeyValueHeads: 16,
 		headDim: 128,
 	},
@@ -1109,13 +1041,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "llama-3.3-70b",
 		name: "Llama-3.3-70B-Instruct (Dense)",
 		hfRepoId: "meta-llama/Llama-3.3-70B-Instruct",
-		releaseDate: "2024-12",
 		architecture: "dense",
 		totalParamsB: 70.55,
 		activeParamsB: 70.55,
 		numLayers: 80,
 		hiddenSize: 8192,
-		numAttentionHeads: 64,
 		numKeyValueHeads: 8,
 		headDim: 128,
 	},
@@ -1123,13 +1053,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "llama-4-scout-109b-a17b",
 		name: "Llama-4-Scout-17B-16E (109B MoE)",
 		hfRepoId: "meta-llama/Llama-4-Scout-17B-16E-Instruct",
-		releaseDate: "2025-04",
 		architecture: "moe",
 		totalParamsB: 109.0,
 		activeParamsB: 17.0,
 		numLayers: 48,
 		hiddenSize: 5120,
-		numAttentionHeads: 40,
 		numKeyValueHeads: 8,
 		headDim: 128,
 	},
@@ -1137,13 +1065,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "llama-4-maverick-400b-a17b",
 		name: "Llama-4-Maverick-17B-128E (400B MoE)",
 		hfRepoId: "meta-llama/Llama-4-Maverick-17B-128E-Instruct",
-		releaseDate: "2025-04",
 		architecture: "moe",
 		totalParamsB: 400.0,
 		activeParamsB: 17.0,
 		numLayers: 48,
 		hiddenSize: 5120,
-		numAttentionHeads: 40,
 		numKeyValueHeads: 8,
 		headDim: 128,
 	},
@@ -1151,13 +1077,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "glm-4.5-air-106b-a12b",
 		name: "GLM-4.5-Air (106B-A12B MoE)",
 		hfRepoId: "zai-org/GLM-4.5-Air",
-		releaseDate: "2025-07",
 		architecture: "moe",
 		totalParamsB: 106.0,
 		activeParamsB: 12.0,
 		numLayers: 46,
 		hiddenSize: 4096,
-		numAttentionHeads: 32,
 		numKeyValueHeads: 8,
 		headDim: 128,
 	},
@@ -1165,13 +1089,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "qwen3-235b-a22b",
 		name: "Qwen3-235B-A22B (MoE)",
 		hfRepoId: "Qwen/Qwen3-235B-A22B",
-		releaseDate: "2025-05",
 		architecture: "moe",
 		totalParamsB: 235.1,
 		activeParamsB: 22.2,
 		numLayers: 94,
 		hiddenSize: 4096,
-		numAttentionHeads: 64,
 		numKeyValueHeads: 4,
 		headDim: 128,
 	},
@@ -1179,13 +1101,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "glm-4.5-355b-a32b",
 		name: "GLM-4.5 (355B-A32B MoE)",
 		hfRepoId: "zai-org/GLM-4.5",
-		releaseDate: "2025-07",
 		architecture: "moe",
 		totalParamsB: 355.0,
 		activeParamsB: 32.0,
 		numLayers: 92,
 		hiddenSize: 5120,
-		numAttentionHeads: 40,
 		numKeyValueHeads: 8,
 		headDim: 128,
 	},
@@ -1193,13 +1113,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "deepseek-r1-671b",
 		name: "DeepSeek-V3.1 / R1-0528 (671B-A37B MLA)",
 		hfRepoId: "deepseek-ai/DeepSeek-V3.1",
-		releaseDate: "2025-08",
 		architecture: "moe",
 		totalParamsB: 671.0,
 		activeParamsB: 37.0,
 		numLayers: 61,
 		hiddenSize: 7168,
-		numAttentionHeads: 128,
 		numKeyValueHeads: 128,
 		headDim: 128,
 		mlaKvElementsPerLayer: 576,
@@ -1209,13 +1127,11 @@ export const MODEL_CATALOG: LlmModelSpec[] = [
 		id: "kimi-k2-1t-a32b",
 		name: "Kimi-K2-Instruct (1T-A32B MLA)",
 		hfRepoId: "moonshotai/Kimi-K2-Instruct-0905",
-		releaseDate: "2025-09",
 		architecture: "moe",
 		totalParamsB: 1000.0,
 		activeParamsB: 32.0,
 		numLayers: 61,
 		hiddenSize: 7168,
-		numAttentionHeads: 64,
 		numKeyValueHeads: 64,
 		headDim: 128,
 		mlaKvElementsPerLayer: 576,
@@ -1238,10 +1154,8 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 24600,
 		actualDecodeSingleTps: 93.5,
-		submitter: "dgx-b200-early",
 		notes: "8 TB/s HBM3e hits 83% MBU on single-stream FP8 decode (InferenceMAX reference)",
 		sourceUrl: "https://inferencex.semianalysis.com/",
-		createdAt: "2026-11-15",
 	},
 	{
 		id: "sub-h200-llama70b-fp8",
@@ -1257,10 +1171,8 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 11200,
 		actualDecodeSingleTps: 55.8,
-		submitter: "cloud-gpu-team",
 		notes: "4.8 TB/s HBM3e fits full 70B + 64K KV on 1x GPU",
 		sourceUrl: "https://inferencex.semianalysis.com/",
-		createdAt: "2026-11-08",
 	},
 	{
 		id: "sub-h100-llama70b-fp8",
@@ -1276,10 +1188,8 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 10850,
 		actualDecodeSingleTps: 38.4,
-		submitter: "infra-lab-sh",
 		notes: "FP8 W8A8 with FP8 KV cache, custom CUDA graphs enabled",
 		sourceUrl: "https://docs.vllm.ai/en/stable/benchmarking/dashboard/",
-		createdAt: "2026-10-12",
 	},
 	{
 		id: "sub-h100-gpt-oss-120b",
@@ -1295,10 +1205,8 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 29500,
 		actualDecodeSingleTps: 420.0,
-		submitter: "vllm-ci-bench",
 		notes: "5.1B active parameters in MXFP4 fits on 1x 80GB H100 with blazing decode speed",
 		sourceUrl: "https://huggingface.co/openai/gpt-oss-120b",
-		createdAt: "2026-11-12",
 	},
 	{
 		id: "sub-h20-deepseek-r1-fp8",
@@ -1314,9 +1222,7 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 18200,
 		actualDecodeSingleTps: 49.2,
-		submitter: "cluster-ops",
 		notes: "Single-node 8x H20 with NVLink + FlashMLA kernel",
-		createdAt: "2026-11-10",
 	},
 	{
 		id: "sub-a100-llama70b-int4",
@@ -1332,9 +1238,7 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 3420,
 		actualDecodeSingleTps: 39.8,
-		submitter: "ai-platform",
 		notes: "Marlin W4A16 kernel achieves ~78% MBU on Ampere HBM2e",
-		createdAt: "2026-10-25",
 	},
 	{
 		id: "sub-5090-qwen3-32b-int4",
@@ -1350,9 +1254,7 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 9850,
 		actualDecodeSingleTps: 74.6,
-		submitter: "workstation-lab",
 		notes: "GDDR7 1792 GB/s runs Qwen3-32B 4-bit comfortably on a single consumer GPU",
-		createdAt: "2026-11-16",
 	},
 	{
 		id: "sub-4090-qwen3-8b-int4",
@@ -1368,9 +1270,7 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 15800,
 		actualDecodeSingleTps: 164.0,
-		submitter: "fdkevin-bench",
 		notes: "Marlin INT4 kernel hits >80% effective memory bandwidth on Ada AD102",
-		createdAt: "2026-11-02",
 	},
 	{
 		id: "sub-4090-qwen3-30b-a3b-int4",
@@ -1386,10 +1286,8 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 18400,
 		actualDecodeSingleTps: 245.0,
-		submitter: "localllama-bench",
 		notes: "30.5B total weights fit in 24GB VRAM at Q4 while only reading 3.3B active per token",
 		sourceUrl: "https://github.com/ggml-org/llama.cpp/discussions/10879",
-		createdAt: "2026-11-14",
 	},
 	{
 		id: "sub-4090x4-llama70b-int4",
@@ -1405,9 +1303,7 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 5200,
 		actualDecodeSingleTps: 41.0,
-		submitter: "homelab-builder",
 		notes: "PCIe all-reduce latency limits TP=4 scaling; P2P driver patch can improve +28%",
-		createdAt: "2026-11-14",
 	},
 	{
 		id: "sub-3090-qwen3-8b-int4",
@@ -1423,9 +1319,7 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 6600,
 		actualDecodeSingleTps: 141.5,
-		submitter: "local-llm-enthusiast",
 		notes: "Highly tuned EXL2 kernel on GA102 GDDR6X (936 GB/s)",
-		createdAt: "2026-10-19",
 	},
 	{
 		id: "sub-mi300x-llama70b-fp8",
@@ -1441,10 +1335,8 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 12100,
 		actualDecodeSingleTps: 53.2,
-		submitter: "rocm-bench",
 		notes: "5.3 TB/s HBM3 with AMD AITER kernel tuning (InferenceMAX verified)",
 		sourceUrl: "https://inferencex.semianalysis.com/",
-		createdAt: "2026-11-05",
 	},
 	{
 		id: "sub-m3ultra-deepseek-int4",
@@ -1460,10 +1352,8 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 420,
 		actualDecodeSingleTps: 29.5,
-		submitter: "mac-studio-cluster",
 		notes: "512GB unified memory runs full 671B MoE on a single desktop at 160W",
 		sourceUrl: "https://github.com/ggml-org/llama.cpp/discussions/4167",
-		createdAt: "2026-11-11",
 	},
 	{
 		id: "sub-m4max-qwen3-30b-a3b-int4",
@@ -1479,10 +1369,8 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 1950,
 		actualDecodeSingleTps: 158.0,
-		submitter: "macbook-pro-m4max",
 		notes: "546 GB/s unified memory streams 3.3B active parameters effortlessly",
 		sourceUrl: "https://github.com/ggml-org/llama.cpp/discussions/4167",
-		createdAt: "2026-11-13",
 	},
 	{
 		id: "sub-910b-qwen3-235b-int8",
@@ -1498,9 +1386,7 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 6800,
 		actualDecodeSingleTps: 78.5,
-		submitter: "ascend-infra",
 		notes: "HCCS interconnect with Ascend Transformer Boost (ATB) fused MoE operators",
-		createdAt: "2026-11-09",
 	},
 	{
 		id: "sub-gaudi3-llama70b-fp8",
@@ -1516,11 +1402,9 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 9400,
 		actualDecodeSingleTps: 41.5,
-		submitter: "hl-gaudi-bench",
 		notes: "3.7 TB/s HBM2e + 8 MMEs on single OAM card running FP8 W8A8",
 		sourceUrl:
 			"https://www.intel.com/content/dam/www/central-libraries/us/en/documents/2024-04/gaudi-3-ai-accelerator-white-paper.pdf",
-		createdAt: "2026-11-11",
 	},
 	{
 		id: "sub-arc-pro-b60-qwen3-30b-a3b-int4",
@@ -1536,9 +1420,7 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 2150,
 		actualDecodeSingleTps: 66.0,
-		submitter: "intel-arc-lab",
 		notes: "24GB GDDR6 fits full 30B-A3B Q4_K_M + 32K context on a single 200W Battlemage Pro card",
-		createdAt: "2026-11-16",
 	},
 	{
 		id: "sub-arc-a770-qwen3-8b-int4",
@@ -1554,10 +1436,8 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 1850,
 		actualDecodeSingleTps: 68.5,
-		submitter: "arc-alchemist-user",
 		notes:
 			"560 GB/s 256-bit GDDR6 bus delivers high MBU for 16GB budget card with SYCL XMX kernels",
-		createdAt: "2026-11-04",
 	},
 	{
 		id: "sub-arc-b580-qwen3-8b-int4",
@@ -1573,9 +1453,7 @@ export const INITIAL_COMMUNITY_SUBMISSIONS: RealWorldSubmission[] = [
 		batchSize: 1,
 		actualPrefillTps: 1920,
 		actualDecodeSingleTps: 58.2,
-		submitter: "battlemage-bench",
 		notes: "192-bit GDDR6 (456 GB/s) on Xe2 Battlemage consumer GPU",
-		createdAt: "2026-11-07",
 	},
 ];
 
@@ -1587,11 +1465,21 @@ export function parseHuggingFaceModelRef(input: string): string | null {
 	const trimmed = input.trim();
 	if (!trimmed) return null;
 
-	let pathPart = trimmed;
+	const normalizedInput = /^(?:www\.)?(?:huggingface|hf)\.co(?:\/|$)/iu.test(trimmed)
+		? `https://${trimmed}`
+		: trimmed;
+
+	let pathPart = normalizedInput;
 	try {
-		if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-			const url = new URL(trimmed);
-			if (url.hostname !== "huggingface.co" && url.hostname !== "hf.co") {
+		if (normalizedInput.startsWith("http://") || normalizedInput.startsWith("https://")) {
+			const url = new URL(normalizedInput);
+			const host = url.hostname.toLowerCase();
+			if (
+				host !== "huggingface.co" &&
+				host !== "www.huggingface.co" &&
+				host !== "hf.co" &&
+				host !== "www.hf.co"
+			) {
 				return null;
 			}
 			pathPart = url.pathname.replace(/^\/+/u, "");
@@ -1604,11 +1492,20 @@ export function parseHuggingFaceModelRef(input: string): string | null {
 	if (segments.length < 2) return null;
 
 	const [org, repo] = segments;
-	if (!org || !repo) return null;
-	if (!/^[A-Za-z0-9_.-]+$/u.test(org) || !/^[A-Za-z0-9_.-]+$/u.test(repo)) {
+	const validSegment = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/u;
+	if (
+		!org ||
+		!repo ||
+		!validSegment.test(org) ||
+		!validSegment.test(repo) ||
+		org.includes("..") ||
+		repo.includes("..")
+	) {
 		return null;
 	}
-	return `${org}/${repo}`;
+	const cleanRepo = repo.replace(/\.git$/iu, "");
+	if (!cleanRepo) return null;
+	return `${org}/${cleanRepo}`;
 }
 
 function asPositiveNumber(value: unknown): number | null {
@@ -1732,7 +1629,6 @@ export function parseHuggingFaceConfig(
 		activeParamsB: Math.max(0.1, activeParamsB),
 		numLayers,
 		hiddenSize,
-		numAttentionHeads,
 		numKeyValueHeads,
 		headDim,
 		mlaKvElementsPerLayer,
@@ -1741,28 +1637,55 @@ export function parseHuggingFaceConfig(
 }
 
 /**
- * Infers an `LlmModelSpec` from a HuggingFace `<org>/<repo>` identifier when the repository
- * matches the preset catalog or follows standard naming conventions (e.g. `70B`, `235B-A22B`,
- * `17B-16E`, `8x22B`, `-AWQ`, `-FP8`), providing a fallback for gated repositories.
+ * Builds a custom `LlmModelSpec` with layer counts and hidden dimensions scaled to active/total parameters.
  */
-export function inferModelSpecFromRepoId(repoId: string): LlmModelSpec | null {
+export function buildCustomModelSpec(options: {
+	id?: string | undefined;
+	name?: string | undefined;
+	hfRepoId?: string | undefined;
+	totalParamsB: number;
+	activeParamsB: number;
+	defaultPrecision?: Precision | undefined;
+}): LlmModelSpec {
+	const totalB = Math.max(0.1, Number(options.totalParamsB.toFixed(2)));
+	const activeB = Math.min(totalB, Math.max(0.1, Number(options.activeParamsB.toFixed(2))));
+	const isMoe = activeB < totalB * 0.95;
+	const numLayers =
+		totalB >= 300 ? 96 : totalB >= 65 ? 80 : totalB >= 25 ? 64 : totalB >= 12 ? 48 : 32;
+	const hiddenSize = activeB >= 65 ? 8192 : activeB >= 25 ? 5120 : 4096;
+	const validRepo = options.hfRepoId ? (parseHuggingFaceModelRef(options.hfRepoId) ?? "") : "";
+	const defaultId = isMoe ? `custom:${totalB}b-a${activeB}b` : `custom:${totalB}b`;
+	const defaultName = isMoe ? `Custom ${totalB}B-A${activeB}B` : `Custom ${totalB}B`;
+	return {
+		id: options.id ?? defaultId,
+		name: options.name?.trim() || defaultName,
+		hfRepoId: validRepo,
+		architecture: isMoe ? "moe" : "dense",
+		totalParamsB: totalB,
+		activeParamsB: activeB,
+		numLayers,
+		hiddenSize,
+		numKeyValueHeads: 8,
+		headDim: 128,
+		mlaKvElementsPerLayer: null,
+		defaultPrecision: options.defaultPrecision,
+	};
+}
+
+/**
+ * Infers an `LlmModelSpec` from a HuggingFace `<org>/<repo>` identifier (and optional Safetensors
+ * total parameter count) when `config.json` is unavailable or gated.
+ */
+export function inferModelSpecFromRepoId(
+	repoId: string,
+	safetensorsTotalParams?: number | null,
+): LlmModelSpec | null {
 	const normalized = parseHuggingFaceModelRef(repoId) ?? repoId.trim();
 	if (!normalized) return null;
 
 	const lower = normalized.toLowerCase();
 	const exactMatch = MODEL_CATALOG.find((m) => m.hfRepoId.toLowerCase() === lower);
-	if (exactMatch) return exactMatch;
-
-	// Alias match for DeepSeek-R1 / V3
-	if (lower.includes("deepseek-r1") || lower.includes("deepseek-v3")) {
-		const ds = MODEL_CATALOG.find((m) => m.id === "deepseek-r1-671b");
-		if (ds) return ds;
-	}
-	// Alias match for Kimi-K2
-	if (lower.includes("kimi-k2")) {
-		const kimi = MODEL_CATALOG.find((m) => m.id === "kimi-k2-1t-a32b");
-		if (kimi) return kimi;
-	}
+	if (exactMatch) return { ...exactMatch };
 
 	const detectQuant = (text: string): Precision | undefined => {
 		if (/(?:awq|gptq|int4|w4a16|q4_k|4bit|mxfp4|nvfp4)/iu.test(text)) return "int4";
@@ -1788,7 +1711,6 @@ export function inferModelSpecFromRepoId(repoId: string): LlmModelSpec | null {
 			activeParamsB,
 			numLayers: totalParamsB > 100 ? 94 : 48,
 			hiddenSize: totalParamsB > 100 ? 4096 : 2048,
-			numAttentionHeads: 64,
 			numKeyValueHeads: 4,
 			headDim: 128,
 			defaultPrecision: detectedPrecision,
@@ -1810,7 +1732,6 @@ export function inferModelSpecFromRepoId(repoId: string): LlmModelSpec | null {
 			activeParamsB,
 			numLayers: 48,
 			hiddenSize: 5120,
-			numAttentionHeads: 40,
 			numKeyValueHeads: 8,
 			headDim: 128,
 			defaultPrecision: detectedPrecision,
@@ -1833,15 +1754,14 @@ export function inferModelSpecFromRepoId(repoId: string): LlmModelSpec | null {
 			activeParamsB,
 			numLayers: expertB >= 20 ? 56 : 32,
 			hiddenSize: expertB >= 20 ? 6144 : 4096,
-			numAttentionHeads: expertB >= 20 ? 48 : 32,
 			numKeyValueHeads: 8,
 			headDim: 128,
 			defaultPrecision: detectedPrecision,
 		};
 	}
 
-	// Pattern 4: Standard Dense <N>B (e.g. Llama-3.3-70B-Instruct-AWQ, Qwen3-32B)
-	const denseMatch = repoName.match(/(?:^|[-_ ])(\d+(?:\.\d+)?)b(?:$|[-_ ])/iu);
+	// Pattern 4: Standard Dense <N>B (e.g. Llama-3.3-70B-Instruct-AWQ, DeepSeek-R1-Distill-Qwen-32B-GGUF)
+	const denseMatch = repoName.match(/(?:^|[-_ ])(\d+(?:\.\d+)?)b(?:$|[-_ .])/iu);
 	if (denseMatch) {
 		const paramsB = Number(denseMatch[1]);
 		const numLayers =
@@ -1856,11 +1776,50 @@ export function inferModelSpecFromRepoId(repoId: string): LlmModelSpec | null {
 			activeParamsB: paramsB,
 			numLayers,
 			hiddenSize,
-			numAttentionHeads: Math.round(hiddenSize / 128),
 			numKeyValueHeads: 8,
 			headDim: 128,
 			defaultPrecision: detectedPrecision,
 		};
+	}
+
+	// Family aliases only when explicit parameter counts were not named and not a distilled checkpoint
+	if (!lower.includes("distill")) {
+		if (lower.includes("deepseek-r1") || lower.includes("deepseek-v3")) {
+			const ds = MODEL_CATALOG.find((m) => m.id === "deepseek-r1-671b");
+			if (ds) {
+				return {
+					...ds,
+					id: `hf:${lower}`,
+					name: repoName,
+					hfRepoId: normalized,
+					defaultPrecision: detectedPrecision ?? ds.defaultPrecision,
+				};
+			}
+		}
+		if (lower.includes("kimi-k2")) {
+			const kimi = MODEL_CATALOG.find((m) => m.id === "kimi-k2-1t-a32b");
+			if (kimi) {
+				return {
+					...kimi,
+					id: `hf:${lower}`,
+					name: repoName,
+					hfRepoId: normalized,
+					defaultPrecision: detectedPrecision ?? kimi.defaultPrecision,
+				};
+			}
+		}
+	}
+
+	if (safetensorsTotalParams && safetensorsTotalParams > 1e6) {
+		const paramsB = Math.max(0.1, Number((safetensorsTotalParams / 1e9).toFixed(2)));
+		return buildCustomModelSpec({
+			id: `hf:${lower}`,
+			name: repoName,
+			hfRepoId: normalized,
+			totalParamsB: paramsB,
+			activeParamsB: paramsB,
+			defaultPrecision: detectedPrecision,
+		});
 	}
 
 	return null;
@@ -1868,9 +1827,8 @@ export function inferModelSpecFromRepoId(repoId: string): LlmModelSpec | null {
 
 /**
  * Resolves peak effective TFLOPS per GPU for a given weight precision.
- * Note: Weight-only quantization (e.g. W4A16 on Hopper or W8A16 on Ampere) still executes
- * matrix multiplications at FP16/BF16 Tensor Core rates unless native lower-precision
- * Tensor Cores exist and are used.
+ * Uses native lower-precision matrix/tensor core rates when available on the accelerator
+ * (e.g. Blackwell NVFP4 / CDNA 4 FP4), falling back to FP16 when absent.
  */
 export function getEffectivePeakTflops(gpu: GpuSpec, precision: Precision): number {
 	switch (precision) {
@@ -1881,7 +1839,7 @@ export function getEffectivePeakTflops(gpu: GpuSpec, precision: Precision): numb
 		case "int8":
 			return gpu.int8Tflops;
 		case "int4":
-			return gpu.int4Tflops ? Math.min(gpu.int4Tflops, gpu.fp16Tflops * 2) : gpu.fp16Tflops;
+			return gpu.int4Tflops ?? gpu.fp16Tflops;
 	}
 }
 
@@ -1900,6 +1858,7 @@ export function getMultiGpuScaling(
 		case "unified":
 			return { computeEfficiency: 0.98, bandwidthEfficiency: 0.98, allReduceLatencyUs: 2 };
 		case "nvlink":
+		case "ici":
 		case "infinity_fabric":
 			return {
 				computeEfficiency: Number((0.93 ** hops).toFixed(4)),
@@ -1997,7 +1956,6 @@ export function evaluateGpuPerformance(
 	const stepTimeSec = Math.max(memStepTimeSec, computeStepTimeSec);
 	const tpotMs = stepTimeSec * 1000;
 	const decodeSingleTps = 1 / stepTimeSec;
-	const decodeTotalTps = batchSize / stepTimeSec;
 	const endToEndLatencySec = ttftMs / 1000 + outputTokens * stepTimeSec;
 
 	const ridgePointOpsPerByte = (effectiveTflopsPerGpu * 1e12) / (gpu.memBandwidthGbs * 1e9);
@@ -2009,12 +1967,6 @@ export function evaluateGpuPerformance(
 			: computeStepTimeSec > memStepTimeSec
 				? "compute"
 				: "memory_bandwidth";
-
-	// Composite score: zero if OOM; otherwise weighted blend of single-stream decode TPS and prefill TPS
-	const compositeScore =
-		vramStatus === "oom"
-			? 0
-			: Number((decodeSingleTps * 0.7 + (prefillTps / 100) * 0.3).toFixed(1));
 
 	return {
 		gpu,
@@ -2042,13 +1994,11 @@ export function evaluateGpuPerformance(
 		ttftMs: Number(ttftMs.toFixed(1)),
 		decodeBytesPerStep,
 		decodeSingleTps: Number(decodeSingleTps.toFixed(1)),
-		decodeTotalTps: Number(decodeTotalTps.toFixed(1)),
 		tpotMs: Number(tpotMs.toFixed(2)),
 		endToEndLatencySec: Number(endToEndLatencySec.toFixed(2)),
 		ridgePointOpsPerByte: Number(ridgePointOpsPerByte.toFixed(1)),
 		decodeArithmeticIntensity: Number(decodeArithmeticIntensity.toFixed(2)),
 		bottleneck,
-		compositeScore,
 	};
 }
 
@@ -2059,7 +2009,7 @@ export function evaluateGpuPerformance(
  */
 export function evaluateUserSubmission(
 	theoretical: TheoreticalEvaluation,
-	actualPrefillTps: number,
+	actualPrefillTps: number | null,
 	actualDecodeSingleTps: number,
 ): InfraEfficiencyReport {
 	const rawHardwareBandwidthBytesPerSec =
@@ -2067,18 +2017,22 @@ export function evaluateUserSubmission(
 	const rawHardwareFlopsPerSec = theoretical.gpuCount * theoretical.effectiveTflopsPerGpu * 1e12;
 
 	const actualBandwidthBytesPerSec = actualDecodeSingleTps * theoretical.decodeBytesPerStep;
-	const actualFlopsPerSec = actualPrefillTps * theoretical.prefillFlopsPerToken;
-
 	const mbuPct = Number(
 		((actualBandwidthBytesPerSec / rawHardwareBandwidthBytesPerSec) * 100).toFixed(1),
 	);
-	const mfuPct = Number(((actualFlopsPerSec / rawHardwareFlopsPerSec) * 100).toFixed(1));
+
+	const mfuPct =
+		actualPrefillTps != null && actualPrefillTps > 0
+			? Number(
+					(
+						((actualPrefillTps * theoretical.prefillFlopsPerToken) / rawHardwareFlopsPerSec) *
+						100
+					).toFixed(1),
+				)
+			: null;
 
 	const decodeCeilingPct = Number(
 		((actualDecodeSingleTps / Math.max(0.1, theoretical.decodeSingleTps)) * 100).toFixed(1),
-	);
-	const prefillCeilingPct = Number(
-		((actualPrefillTps / Math.max(0.1, theoretical.prefillTps)) * 100).toFixed(1),
 	);
 
 	if (mbuPct > 100 || decodeCeilingPct > 105) {
@@ -2086,11 +2040,8 @@ export function evaluateUserSubmission(
 			mbuPct,
 			mfuPct,
 			decodeCeilingPct,
-			prefillCeilingPct,
 			tier: "speculative_boost",
 			tierLabel: "Speculative boost (>100% ceiling)",
-			diagnosis:
-				"Exceeds single-token memory bandwidth wall via Speculative Decoding (MTP / EAGLE / Lookahead) or prompt caching.",
 		};
 	}
 
@@ -2099,10 +2050,8 @@ export function evaluateUserSubmission(
 			mbuPct,
 			mfuPct,
 			decodeCeilingPct,
-			prefillCeilingPct,
 			tier: "extreme",
 			tierLabel: "Near hardware ceiling",
-			diagnosis: `Achieves ${decodeCeilingPct}% of multi-GPU theoretical ceiling (MBU ${mbuPct}%, MFU ${mfuPct}%). Kernel fusion, KV paging, and memory controllers are near physical saturation.`,
 		};
 	}
 
@@ -2111,10 +2060,8 @@ export function evaluateUserSubmission(
 			mbuPct,
 			mfuPct,
 			decodeCeilingPct,
-			prefillCeilingPct,
 			tier: "production",
 			tierLabel: "Production-tuned",
-			diagnosis: `Solid production throughput (${decodeCeilingPct}% of theoretical ceiling). Enabling CUDA Graphs, FP8 KV cache, or Marlin/FlashMLA kernels can squeeze another 15–25%.`,
 		};
 	}
 
@@ -2123,10 +2070,8 @@ export function evaluateUserSubmission(
 			mbuPct,
 			mfuPct,
 			decodeCeilingPct,
-			prefillCeilingPct,
 			tier: "suboptimal",
 			tierLabel: "Headroom available",
-			diagnosis: `Reaches ${decodeCeilingPct}% of theoretical ceiling. Check for PCIe P2P disabled across GPUs, unoptimized dequantization overhead, or missing FlashAttention/CUDA Graph.`,
 		};
 	}
 
@@ -2134,10 +2079,8 @@ export function evaluateUserSubmission(
 		mbuPct,
 		mfuPct,
 		decodeCeilingPct,
-		prefillCeilingPct,
 		tier: "bottlenecked",
 		tierLabel: "Host or interconnect bound",
-		diagnosis: `Only ${decodeCeilingPct}% of theoretical ceiling (MBU ${mbuPct}%). Likely bottlenecked by CPU/PCIe offloading, slow interconnect All-Reduce, or naive PyTorch eager execution.`,
 	};
 }
 
@@ -2167,18 +2110,6 @@ export function gpuSupportsHardwarePrecision(
 }
 
 /**
- * Returns the list of hardware precisions natively supported by the GPU.
- */
-export function getSupportedPrecisionsList(gpu: GpuSpec): HardwarePrecision[] {
-	const list: HardwarePrecision[] = ["fp32", "fp16"];
-	if (gpu.bf16Tflops) list.push("bf16");
-	if (gpu.fp8Tflops) list.push("fp8");
-	if (gpu.int8Tflops) list.push("int8");
-	if (gpu.int4Tflops) list.push("int4");
-	return list;
-}
-
-/**
  * Returns peak hardware TFLOPS per GPU for the selected capability filter (defaults to FP16 when "all").
  */
 export function getHardwareTflopsByCapability(
@@ -2204,18 +2135,47 @@ export function getHardwareTflopsByCapability(
 
 export interface ResolvedActualBenchmark {
 	actualDecodeTps: number | null;
-	actualPrefillTps: number | null;
 	mbuPct: number | null;
 	isDirectMatch: boolean;
-	engine: string | null;
-	submissionCount: number;
+}
+
+/**
+ * Reconstructs the `LlmModelSpec` corresponding to a saved or built-in benchmark submission.
+ */
+export function resolveSubmissionModelSpec(
+	submission: Pick<
+		RealWorldSubmission,
+		"modelId" | "modelName" | "totalParamsB" | "activeParamsB" | "weightPrecision"
+	>,
+	activeModel?: LlmModelSpec,
+): LlmModelSpec | null {
+	const catalogMatch = MODEL_CATALOG.find((m) => m.id === submission.modelId);
+	if (catalogMatch) return catalogMatch;
+
+	if (activeModel && activeModel.id === submission.modelId) {
+		return activeModel;
+	}
+
+	if (submission.totalParamsB != null && submission.activeParamsB != null) {
+		return buildCustomModelSpec({
+			id: submission.modelId,
+			name: submission.modelName,
+			totalParamsB: submission.totalParamsB,
+			activeParamsB: submission.activeParamsB,
+			defaultPrecision: submission.weightPrecision,
+		});
+	}
+
+	const repoHint = submission.modelId.startsWith("hf:")
+		? submission.modelId.slice(3)
+		: submission.modelName;
+	return inferModelSpecFromRepoId(repoHint);
 }
 
 /**
  * Resolves the best real-world benchmark for a GPU under the given theoretical evaluation.
- * If an exact submission exists for `(gpu.id, model.id)`, uses that direct measurement;
- * otherwise, if the GPU has verified submissions on other models and the current config fits in VRAM,
- * projects empirical TPS using the GPU's measured MBU ratio.
+ * If an exact submission exists for `(gpu.id, model.id, gpuCount, weightPrecision, batchSize, inputTokens, outputTokens)`,
+ * uses that direct measurement; otherwise, projects empirical TPS using the GPU's measured MBU ratio.
  */
 export function resolveActualBenchmarkForGpu(
 	gpu: GpuSpec,
@@ -2226,16 +2186,19 @@ export function resolveActualBenchmarkForGpu(
 	if (gpuSubs.length === 0 || theoretical.vramStatus === "oom") {
 		return {
 			actualDecodeTps: null,
-			actualPrefillTps: null,
 			mbuPct: null,
 			isDirectMatch: false,
-			engine: null,
-			submissionCount: gpuSubs.length,
 		};
 	}
 
 	const exactMatch = gpuSubs.find(
-		(s) => s.modelId === theoretical.model.id && s.gpuCount === theoretical.gpuCount,
+		(s) =>
+			s.modelId === theoretical.model.id &&
+			s.gpuCount === theoretical.gpuCount &&
+			s.weightPrecision === theoretical.workload.weightPrecision &&
+			s.batchSize === theoretical.workload.batchSize &&
+			s.inputTokens === theoretical.workload.inputTokens &&
+			s.outputTokens === theoretical.workload.outputTokens,
 	);
 	if (exactMatch) {
 		const rep = evaluateUserSubmission(
@@ -2245,11 +2208,8 @@ export function resolveActualBenchmarkForGpu(
 		);
 		return {
 			actualDecodeTps: exactMatch.actualDecodeSingleTps,
-			actualPrefillTps: exactMatch.actualPrefillTps,
 			mbuPct: rep.mbuPct,
 			isDirectMatch: true,
-			engine: exactMatch.engine,
-			submissionCount: gpuSubs.length,
 		};
 	}
 
@@ -2258,17 +2218,11 @@ export function resolveActualBenchmarkForGpu(
 	if (!refSub) {
 		return {
 			actualDecodeTps: null,
-			actualPrefillTps: null,
 			mbuPct: null,
 			isDirectMatch: false,
-			engine: null,
-			submissionCount: 0,
 		};
 	}
-	const refModel =
-		MODEL_CATALOG.find((m) => m.id === refSub.modelId) ??
-		inferModelSpecFromRepoId(refSub.modelName) ??
-		theoretical.model;
+	const refModel = resolveSubmissionModelSpec(refSub, theoretical.model) ?? theoretical.model;
 	const refTheo = evaluateGpuPerformance(gpu, refModel, {
 		gpuCount: refSub.gpuCount,
 		weightPrecision: refSub.weightPrecision,
@@ -2283,19 +2237,83 @@ export function resolveActualBenchmarkForGpu(
 		refSub.actualDecodeSingleTps,
 	);
 	const decodeRatio = Math.min(0.92, Math.max(0.45, refReport.decodeCeilingPct / 100));
-	const prefillRatio = Math.min(0.88, Math.max(0.4, refReport.prefillCeilingPct / 100));
 	const projectedDecode = Number((theoretical.decodeSingleTps * decodeRatio).toFixed(1));
-	const projectedPrefill = Number((theoretical.prefillTps * prefillRatio).toFixed(0));
-	const projectedRep = evaluateUserSubmission(theoretical, projectedPrefill, projectedDecode);
+	const projectedRep = evaluateUserSubmission(theoretical, null, projectedDecode);
 
 	return {
 		actualDecodeTps: projectedDecode,
-		actualPrefillTps: projectedPrefill,
 		mbuPct: projectedRep.mbuPct,
 		isDirectMatch: false,
-		engine: refSub.engine,
-		submissionCount: gpuSubs.length,
 	};
+}
+
+/**
+ * Formats an interconnect identifier for hardware specification display.
+ */
+export function formatInterconnectName(interconnect: InterconnectType): string {
+	switch (interconnect) {
+		case "nvlink":
+			return "NVLink";
+		case "ici":
+			return "ICI";
+		case "infinity_fabric":
+			return "Infinity Fabric";
+		case "unified":
+			return "Unified";
+		case "hccs":
+			return "HCCS";
+		case "xe_link":
+			return "Xe Link";
+		case "roce":
+			return "RoCEv2";
+		case "pcie":
+			return "PCIe";
+	}
+}
+
+/**
+ * Checks that a URL uses an allowed http(s) scheme before placing it in an anchor `href`.
+ */
+export function isSafeHttpUrl(value: string): boolean {
+	try {
+		const url = new URL(value);
+		return url.protocol === "https:" || url.protocol === "http:";
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Validates that an untrusted parsed JSON value conforms to `RealWorldSubmission`.
+ */
+export function isValidUserSubmission(value: unknown): value is RealWorldSubmission {
+	if (!value || typeof value !== "object") return false;
+	const v = value as Record<string, unknown>;
+	const isNonEmptyStr = (x: unknown): x is string => typeof x === "string" && x.trim().length > 0;
+	const isPositiveNum = (x: unknown): x is number =>
+		typeof x === "number" && Number.isFinite(x) && x > 0;
+	const isValidPrecision = (x: unknown): x is Precision =>
+		x === "fp16" || x === "fp8" || x === "int8" || x === "int4";
+
+	return (
+		isNonEmptyStr(v.id) &&
+		isNonEmptyStr(v.gpuId) &&
+		isNonEmptyStr(v.modelId) &&
+		isNonEmptyStr(v.modelName) &&
+		(v.totalParamsB === undefined || isPositiveNum(v.totalParamsB)) &&
+		(v.activeParamsB === undefined || isPositiveNum(v.activeParamsB)) &&
+		isNonEmptyStr(v.engine) &&
+		isValidPrecision(v.weightPrecision) &&
+		isValidPrecision(v.kvPrecision) &&
+		isPositiveNum(v.gpuCount) &&
+		isPositiveNum(v.inputTokens) &&
+		isPositiveNum(v.outputTokens) &&
+		isPositiveNum(v.batchSize) &&
+		isPositiveNum(v.actualDecodeSingleTps) &&
+		(v.actualPrefillTps === null || isPositiveNum(v.actualPrefillTps)) &&
+		typeof v.notes === "string" &&
+		(v.sourceUrl === undefined || (typeof v.sourceUrl === "string" && isSafeHttpUrl(v.sourceUrl)))
+	);
 }
 
 /**
@@ -2314,6 +2332,6 @@ export function formatGpuShortName(gpu: GpuSpec): string {
 /**
  * Strips trailing parenthetical architecture tags from a model name for compact selectors and tables.
  */
-export function formatModelShortName(model: LlmModelSpec): string {
+export function formatModelShortName(model: Pick<LlmModelSpec, "name">): string {
 	return model.name.replace(/\s*\([^)]*\)\s*$/u, "").trim();
 }

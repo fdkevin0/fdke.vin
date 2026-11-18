@@ -98,7 +98,7 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 
 			<!-- Progressive Disclosure: Custom HuggingFace & Sequence Drawer -->
 			<div id="gl-customize-panel" class="gl-drawer hidden space-y-3" data-customize-panel>
-				<div class="flex flex-wrap items-center gap-2">
+				<form class="flex flex-wrap items-center gap-2" data-hf-form>
 					<input
 						class="gl-input min-w-0 flex-1"
 						type="text"
@@ -108,8 +108,8 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 						spellcheck="false"
 						data-hf-input
 					/>
-					<button type="button" class="gl-btn-subtle shrink-0" data-hf-fetch>Load</button>
-				</div>
+					<button type="submit" class="gl-btn-subtle shrink-0" data-hf-fetch>Load</button>
+				</form>
 				<p class="gl-status hidden text-xs" data-hf-status aria-live="polite" role="status"></p>
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
 					<label class="gl-field">
@@ -311,7 +311,7 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 		<!-- Depth 1: Horizon Ledger -->
 		<div class="space-y-2">
 			<div class="gl-subbar">
-				<span data-result-count>29 configurations</span>
+				<span data-result-count>31 configurations</span>
 				<div class="gl-legend" data-bar-legend>
 					<span class="gl-legend-item">
 						<span class="gl-swatch gl-swatch-actual" aria-hidden="true"></span>
@@ -1259,9 +1259,11 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 
 <script>
 	import {
+		buildCustomModelSpec,
 		evaluateGpuPerformance,
 		evaluateUserSubmission,
 		formatGpuShortName,
+		formatInterconnectName,
 		formatModelShortName,
 		GPU_CATALOG,
 		getHardwareTflopsByCapability,
@@ -1271,6 +1273,8 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 		type HardwarePrecision,
 		INITIAL_COMMUNITY_SUBMISSIONS,
 		inferModelSpecFromRepoId,
+		isSafeHttpUrl,
+		isValidUserSubmission,
 		type LadderSortMetric,
 		type LlmModelSpec,
 		MODEL_CATALOG,
@@ -1279,6 +1283,7 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 		parseHuggingFaceModelRef,
 		type RealWorldSubmission,
 		resolveActualBenchmarkForGpu,
+		resolveSubmissionModelSpec,
 		type TheoreticalEvaluation,
 		type WorkloadConfig,
 	} from "@/lib/tools/gpu-ladder";
@@ -1323,6 +1328,7 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 		const customizeToggle = root.querySelector("[data-customize-toggle]") as HTMLButtonElement;
 		const customizePanel = root.querySelector("[data-customize-panel]") as HTMLElement;
 
+		const hfForm = root.querySelector("[data-hf-form]") as HTMLFormElement;
 		const hfInput = root.querySelector("[data-hf-input]") as HTMLInputElement;
 		const hfFetchBtn = root.querySelector("[data-hf-fetch]") as HTMLButtonElement;
 		const hfStatus = root.querySelector("[data-hf-status]") as HTMLElement;
@@ -1353,6 +1359,8 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 		}
 
 		let currentModel: LlmModelSpec = { ...defaultModel };
+		let customMoeLocked = currentModel.architecture === "moe";
+		let customMoeActiveB = currentModel.activeParamsB;
 		let weightPrecision: Precision = "int4";
 		let gpuCount = 1;
 		let sortMetric: LadderSortMetric = "decodeSingleTps";
@@ -1401,6 +1409,9 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 		};
 
 		const createExternalLink = (label: string, href: string, className = "cactus-link") => {
+			if (!isSafeHttpUrl(href)) {
+				return el("span", undefined, label);
+			}
 			const link = el("a", className, `${label} ↗`);
 			link.href = href;
 			link.target = "_blank";
@@ -1412,9 +1423,12 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			try {
 				const raw = localStorage.getItem(STORAGE_KEY);
 				if (!raw) return [];
-				const parsed = JSON.parse(raw) as RealWorldSubmission[];
+				const parsed = JSON.parse(raw) as unknown;
 				if (!Array.isArray(parsed)) return [];
-				return parsed.filter((item) => item && !BUILTIN_SUBMISSION_IDS.has(item.id));
+				return parsed.filter(
+					(item): item is RealWorldSubmission =>
+						isValidUserSubmission(item) && !BUILTIN_SUBMISSION_IDS.has(item.id),
+				);
 			} catch {
 				return [];
 			}
@@ -1469,9 +1483,12 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			const hasAnyFilter = activeFilterCount > 0 || gpuSearchInput.value.trim().length > 0;
 			filterResetBtn.classList.toggle("hidden", !hasAnyFilter);
 
+			const shortModelLabel = formatModelShortName(currentModel);
 			customOption.textContent =
-				currentModel.id === "custom" || currentModel.id.startsWith("hf:")
-					? `Custom · ${formatModelShortName(currentModel)}`
+				currentModel.id.startsWith("custom") || currentModel.id.startsWith("hf:")
+					? shortModelLabel.startsWith("Custom ")
+						? shortModelLabel
+						: `Custom · ${shortModelLabel}`
 					: "Custom / HuggingFace repo…";
 		};
 
@@ -1490,7 +1507,10 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 
 			const query = params.toString();
 			const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
-			window.history.replaceState(null, "", nextUrl);
+			const currentUrl = `${window.location.pathname}${window.location.search}`;
+			if (nextUrl !== currentUrl) {
+				window.history.replaceState(null, "", nextUrl);
+			}
 		};
 
 		const hydrateFromUrl = () => {
@@ -1499,6 +1519,8 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			const foundModel = MODEL_CATALOG.find((m) => m.id === modelParam);
 			if (foundModel) {
 				currentModel = { ...foundModel };
+				customMoeLocked = currentModel.architecture === "moe";
+				customMoeActiveB = currentModel.activeParamsB;
 				modelSelect.value = foundModel.id;
 			}
 
@@ -1545,7 +1567,10 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			if (document.activeElement !== paramTotalInput) {
 				paramTotalInput.value = String(currentModel.totalParamsB);
 			}
-			if (document.activeElement !== paramActiveInput) {
+			if (
+				document.activeElement !== paramActiveInput &&
+				!(customMoeLocked && document.activeElement === paramTotalInput)
+			) {
 				paramActiveInput.value = String(currentModel.activeParamsB);
 			}
 
@@ -1757,8 +1782,8 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 						...workload,
 						gpuCount: subCount,
 					});
-					const report = evaluateUserSubmission(formTheo, pf > 0 ? pf : 0, dec > 0 ? dec : 0);
-					const mfuPart = pf > 0 ? `${report.mfuPct}%` : "—";
+					const report = evaluateUserSubmission(formTheo, pf > 0 ? pf : null, dec > 0 ? dec : 0);
+					const mfuPart = report.mfuPct != null ? `${report.mfuPct}%` : "—";
 					liveDiag.textContent = `MBU ${report.mbuPct}% · MFU ${mfuPart} · ${report.decodeCeilingPct}% of ceiling — ${report.tierLabel}`;
 				};
 
@@ -1785,7 +1810,8 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 					event.preventDefault();
 					const actualDecode = Number(decodeInput.value);
 					if (!(actualDecode > 0)) return;
-					const actualPrefill = Math.max(1, Number(prefillInput.value) || 1);
+					const rawPrefill = Number(prefillInput.value);
+					const actualPrefill = rawPrefill > 0 ? rawPrefill : null;
 					const subCount = Math.max(1, Number(countSel.value) || 1);
 
 					const newEntry: RealWorldSubmission = {
@@ -1794,6 +1820,8 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 						gpuCount: subCount,
 						modelId: currentModel.id,
 						modelName: formatModelShortName(currentModel),
+						totalParamsB: currentModel.totalParamsB,
+						activeParamsB: currentModel.activeParamsB,
 						weightPrecision: workload.weightPrecision,
 						kvPrecision: workload.kvPrecision,
 						engine: engineInput.value.trim() || "Custom runtime",
@@ -1802,9 +1830,7 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 						batchSize: workload.batchSize,
 						actualPrefillTps: actualPrefill,
 						actualDecodeSingleTps: actualDecode,
-						submitter: "local",
 						notes: notesInput.value.trim() || "Local benchmark entry",
-						createdAt: new Date().toISOString().slice(0, 10),
 					};
 
 					saveUserSubmissions([newEntry, ...loadUserSubmissions()]);
@@ -1842,10 +1868,7 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 
 			const list = el("div", "gl-bench-list");
 			for (const sub of gpuSubs) {
-				const mSpec =
-					MODEL_CATALOG.find((m) => m.id === sub.modelId) ??
-					inferModelSpecFromRepoId(sub.modelName) ??
-					currentModel;
+				const mSpec = resolveSubmissionModelSpec(sub, currentModel) ?? currentModel;
 				const subTheo = evaluateGpuPerformance(gpu, mSpec, {
 					gpuCount: sub.gpuCount,
 					weightPrecision: sub.weightPrecision,
@@ -1871,7 +1894,7 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 				} else {
 					engLine.textContent = engTitle;
 				}
-				const modName = sub.modelName.replace(/\s*\([^)]*\)\s*$/u, "").trim();
+				const modName = formatModelShortName({ name: sub.modelName });
 				const modLine = el(
 					"div",
 					"gl-muted-text text-[11px] tabular-nums mt-0.5",
@@ -1901,10 +1924,11 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 						` (${rep.decodeCeilingPct}% of ${subTheo.decodeSingleTps.toFixed(1)})`,
 					),
 				);
+				const mfuSegment = rep.mfuPct != null ? `MFU ${rep.mfuPct}%` : "MFU —";
 				const effLine = el(
 					"div",
 					"gl-muted-text text-[11px] mt-0.5",
-					`MBU ${rep.mbuPct}% · MFU ${rep.mfuPct}% · ${rep.tierLabel}`,
+					`MBU ${rep.mbuPct}% · ${mfuSegment} · ${rep.tierLabel}`,
 				);
 				append(stats, decLine, effLine);
 				right.appendChild(stats);
@@ -2018,7 +2042,7 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			appendDlRow(
 				dlSpec,
 				"Interconnect",
-				`${gpu.interconnect.toUpperCase()} · ${gpu.interconnectBandwidthGbs.toLocaleString()} GB/s`,
+				`${formatInterconnectName(gpu.interconnect)} · ${gpu.interconnectBandwidthGbs.toLocaleString()} GB/s`,
 			);
 			appendDlRow(dlSpec, "Power", `${gpu.tdpWatts} W TDP`);
 			appendDlRow(dlSpec, "Spec source", createExternalLink(gpu.sourceName, gpu.sourceUrl));
@@ -2028,13 +2052,14 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			right.appendChild(el("h3", "gl-dl-section-title", "Roofline math"));
 			const dlMath = el("dl", "gl-dl-list");
 			const clusterPrefix = workload.gpuCount > 1 ? `${workload.gpuCount}× · ` : "";
+			const workloadLabel = `${clusterPrefix}${formatModelShortName(currentModel)} · ${workload.weightPrecision.toUpperCase()}`;
+			const validRepo = parseHuggingFaceModelRef(currentModel.hfRepoId);
 			appendDlRow(
 				dlMath,
 				"Active workload",
-				createExternalLink(
-					`${clusterPrefix}${formatModelShortName(currentModel)} · ${workload.weightPrecision.toUpperCase()}`,
-					`https://huggingface.co/${currentModel.hfRepoId}`,
-				),
+				validRepo
+					? createExternalLink(workloadLabel, `https://huggingface.co/${validRepo}`)
+					: workloadLabel,
 			);
 			appendDlRow(
 				dlMath,
@@ -2155,6 +2180,7 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			const isExpanded = expandedGpuId === gpu.id;
 
 			const entry = el("div", "gl-entry");
+			entry.setAttribute("role", "listitem");
 			entry.dataset.gpuId = gpu.id;
 			entry.dataset.expanded = String(isExpanded);
 
@@ -2359,16 +2385,79 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 				return;
 			}
 
+			const appendZeroFitState = (
+				oomSourceItems: LadderRowItem[],
+				candidateItems: LadderRowItem[],
+				workloadCfg: WorkloadConfig,
+			) => {
+				const minReqGb = Math.min(...oomSourceItems.map((i) => i.theo.totalVramGb));
+				const zeroBox = el("div", "gl-empty-state");
+				const capWord =
+					workloadCfg.gpuCount === 1
+						? "1× single-device"
+						: `${workloadCfg.gpuCount}× configuration`;
+				zeroBox.appendChild(
+					el(
+						"span",
+						"gl-muted-text",
+						`Requires ${minReqGb.toFixed(1)} GB VRAM — exceeds ${capWord} capacity.`,
+					),
+				);
+
+				const actions = el("div", "flex flex-wrap items-center gap-2");
+				const suggestedCount = GPU_COUNT_OPTIONS.find(
+					(n) =>
+						n > workloadCfg.gpuCount &&
+						candidateItems.some(
+							(i) =>
+								evaluateGpuPerformance(i.gpu, currentModel, { ...workloadCfg, gpuCount: n })
+									.vramStatus !== "oom",
+						),
+				);
+				if (suggestedCount) {
+					const scaleBtn = el("button", "gl-btn-subtle", `Switch to ${suggestedCount}× GPUs`);
+					scaleBtn.type = "button";
+					scaleBtn.addEventListener("click", () => {
+						gpuCount = suggestedCount;
+						render();
+					});
+					actions.appendChild(scaleBtn);
+				}
+
+				if (workloadCfg.weightPrecision !== "int4") {
+					const int4Btn = el("button", "gl-btn-subtle", "Use INT4");
+					int4Btn.type = "button";
+					int4Btn.addEventListener("click", () => {
+						weightPrecision = "int4";
+						render();
+					});
+					actions.appendChild(int4Btn);
+				}
+
+				zeroBox.appendChild(actions);
+				ladderRegion.appendChild(zeroBox);
+			};
+
 			if (isHardwareRawSort) {
-				filteredItems.sort((a, b) => b.metricValue - a.metricValue);
-				const maxVal = Math.max(1, ...filteredItems.map((i) => i.metricValue));
-				resultCountEl.textContent = `${filteredItems.length} ${
-					filteredItems.length === 1 ? "accelerator" : "accelerators"
+				const rawItems = hideOom
+					? filteredItems.filter((i) => i.theo.vramStatus !== "oom")
+					: filteredItems;
+				if (rawItems.length === 0) {
+					barLegendEl.classList.add("hidden");
+					resultCountEl.textContent = "0 accelerators";
+					appendZeroFitState(filteredItems, filteredItems, workload);
+					restoreFocus();
+					return;
+				}
+				rawItems.sort((a, b) => b.metricValue - a.metricValue);
+				const maxVal = Math.max(1, ...rawItems.map((i) => i.metricValue));
+				resultCountEl.textContent = `${rawItems.length} ${
+					rawItems.length === 1 ? "accelerator" : "accelerators"
 				}`;
 
 				const ledger = el("div", "gl-ledger");
 				ledger.setAttribute("role", "list");
-				for (const [idx, item] of filteredItems.entries()) {
+				for (const [idx, item] of rawItems.entries()) {
 					ledger.appendChild(
 						buildLedgerEntry(item, String(idx + 1), workload, maxVal, false, submissions, userSubs),
 					);
@@ -2402,50 +2491,7 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			}
 
 			if (fittingItems.length === 0) {
-				const minReqGb = Math.min(...oomItems.map((i) => i.theo.totalVramGb));
-				const zeroBox = el("div", "gl-empty-state");
-				const capWord =
-					workload.gpuCount === 1 ? "1× single-device" : `${workload.gpuCount}× configuration`;
-				zeroBox.appendChild(
-					el(
-						"span",
-						"gl-muted-text",
-						`Requires ${minReqGb.toFixed(1)} GB VRAM — exceeds ${capWord} capacity.`,
-					),
-				);
-
-				const actions = el("div", "flex flex-wrap items-center gap-2");
-				const suggestedCount = GPU_COUNT_OPTIONS.find(
-					(n) =>
-						n > workload.gpuCount &&
-						filteredItems.some(
-							(i) =>
-								evaluateGpuPerformance(i.gpu, currentModel, { ...workload, gpuCount: n })
-									.vramStatus !== "oom",
-						),
-				);
-				if (suggestedCount) {
-					const scaleBtn = el("button", "gl-btn-subtle", `Switch to ${suggestedCount}× GPUs`);
-					scaleBtn.type = "button";
-					scaleBtn.addEventListener("click", () => {
-						gpuCount = suggestedCount;
-						render();
-					});
-					actions.appendChild(scaleBtn);
-				}
-
-				if (workload.weightPrecision !== "int4") {
-					const int4Btn = el("button", "gl-btn-subtle", "Use INT4");
-					int4Btn.type = "button";
-					int4Btn.addEventListener("click", () => {
-						weightPrecision = "int4";
-						render();
-					});
-					actions.appendChild(int4Btn);
-				}
-
-				zeroBox.appendChild(actions);
-				ladderRegion.appendChild(zeroBox);
+				appendZeroFitState(oomItems, filteredItems, workload);
 			} else {
 				const maxScale =
 					sortMetric === "decodeSingleTps" || sortMetric === "actualDecodeTps"
@@ -2573,7 +2619,10 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			const preset = MODEL_CATALOG.find((m) => m.id === modelSelect.value);
 			if (preset) {
 				currentModel = { ...preset };
+				customMoeLocked = currentModel.architecture === "moe";
+				customMoeActiveB = currentModel.activeParamsB;
 				hfInput.value = preset.hfRepoId;
+				setHfStatus("");
 				if (preset.defaultPrecision) {
 					weightPrecision = preset.defaultPrecision;
 				}
@@ -2581,34 +2630,62 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			}
 		});
 
-		const onCustomParamEdit = () => {
+		paramTotalInput.addEventListener("input", () => {
+			const totalB = Number(paramTotalInput.value);
+			if (!(totalB > 0)) return;
+			if (!currentModel.id.startsWith("custom")) {
+				hfInput.value = "";
+			}
+			setHfStatus("");
 			modelSelect.value = "custom";
-			const totalB = Math.max(0.1, Number(paramTotalInput.value) || 7);
-			const activeB = Math.min(totalB, Math.max(0.1, Number(paramActiveInput.value) || totalB));
-			currentModel = {
-				...currentModel,
-				id: "custom",
-				name: hfInput.value.trim() || `Custom ${totalB}B`,
-				architecture: activeB < totalB * 0.95 ? "moe" : "dense",
+			const activeB = customMoeLocked ? Math.min(totalB, Math.max(0.1, customMoeActiveB)) : totalB;
+			if (!customMoeLocked) {
+				customMoeActiveB = activeB;
+				paramActiveInput.value = String(activeB);
+			}
+			const customLabel = parseHuggingFaceModelRef(hfInput.value) ?? hfInput.value.trim();
+			currentModel = buildCustomModelSpec({
+				name: customLabel || undefined,
+				hfRepoId: hfInput.value,
 				totalParamsB: totalB,
 				activeParamsB: activeB,
-			};
+			});
 			render();
-		};
+		});
 
-		paramTotalInput.addEventListener("input", onCustomParamEdit);
-		paramActiveInput.addEventListener("input", onCustomParamEdit);
+		paramTotalInput.addEventListener("change", () => {
+			customMoeActiveB = currentModel.activeParamsB;
+			customMoeLocked = currentModel.architecture === "moe";
+			paramTotalInput.value = String(currentModel.totalParamsB);
+			paramActiveInput.value = String(currentModel.activeParamsB);
+		});
 
-		for (const inputEl of [
-			inputTokensInput,
-			outputTokensInput,
-			batchSizeInput,
-			gpuSearchInput,
-			hideOomCheckbox,
-		]) {
+		paramActiveInput.addEventListener("input", () => {
+			const rawActive = Number(paramActiveInput.value);
+			if (!(rawActive > 0)) return;
+			if (!currentModel.id.startsWith("custom")) {
+				hfInput.value = "";
+			}
+			setHfStatus("");
+			modelSelect.value = "custom";
+			const totalB = Math.max(0.1, Number(paramTotalInput.value) || rawActive);
+			const activeB = Math.min(totalB, rawActive);
+			customMoeLocked = activeB < totalB * 0.95;
+			customMoeActiveB = activeB;
+			const customLabel = parseHuggingFaceModelRef(hfInput.value) ?? hfInput.value.trim();
+			currentModel = buildCustomModelSpec({
+				name: customLabel || undefined,
+				hfRepoId: hfInput.value,
+				totalParamsB: totalB,
+				activeParamsB: activeB,
+			});
+			render();
+		});
+
+		for (const inputEl of [inputTokensInput, outputTokensInput, batchSizeInput, gpuSearchInput]) {
 			inputEl.addEventListener("input", render);
-			inputEl.addEventListener("change", render);
 		}
+		hideOomCheckbox.addEventListener("change", render);
 
 		const setHfStatus = (msg: string, isError = false) => {
 			hfStatus.textContent = msg;
@@ -2616,7 +2693,8 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 			hfStatus.classList.toggle("gl-status--error", isError);
 		};
 
-		hfFetchBtn.addEventListener("click", async () => {
+		hfForm.addEventListener("submit", async (event) => {
+			event.preventDefault();
 			const repoId = parseHuggingFaceModelRef(hfInput.value);
 			if (!repoId) {
 				setHfStatus("Enter org/repo or a huggingface.co repository URL.", true);
@@ -2628,8 +2706,12 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 
 			try {
 				const [apiRes, configRes] = await Promise.allSettled([
-					fetch(`https://huggingface.co/api/models/${repoId}`),
-					fetch(`https://huggingface.co/${repoId}/resolve/main/config.json`),
+					fetch(`https://huggingface.co/api/models/${repoId}`, {
+						signal: AbortSignal.timeout(8000),
+					}),
+					fetch(`https://huggingface.co/${repoId}/resolve/main/config.json`, {
+						signal: AbortSignal.timeout(8000),
+					}),
 				]);
 
 				let safetensorsTotal: number | null = null;
@@ -2644,6 +2726,8 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 					const rawConfig = (await configRes.value.json()) as Record<string, unknown>;
 					const parsed = parseHuggingFaceConfig(repoId, rawConfig, safetensorsTotal);
 					currentModel = parsed;
+					customMoeLocked = currentModel.architecture === "moe";
+					customMoeActiveB = currentModel.activeParamsB;
 					modelSelect.value = "custom";
 					if (parsed.defaultPrecision) {
 						weightPrecision = parsed.defaultPrecision;
@@ -2655,10 +2739,14 @@ const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
 					return;
 				}
 
-				const inferred = inferModelSpecFromRepoId(repoId);
+				const inferred = inferModelSpecFromRepoId(repoId, safetensorsTotal);
 				if (inferred) {
 					currentModel = inferred;
-					modelSelect.value = "custom";
+					customMoeLocked = currentModel.architecture === "moe";
+					customMoeActiveB = currentModel.activeParamsB;
+					modelSelect.value = MODEL_CATALOG.some((m) => m.id === inferred.id)
+						? inferred.id
+						: "custom";
 					if (inferred.defaultPrecision) {
 						weightPrecision = inferred.defaultPrecision;
 					}
