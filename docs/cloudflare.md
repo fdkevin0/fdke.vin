@@ -27,6 +27,7 @@ Use this guide for Workers runtime code, bindings, authentication, utility tools
 - **Mail viewer** (`/tools/mail`, `/tools/mail/email/[key]`): Access-protected R2 email reader ([email.ts](../src/lib/api/email.ts)) that lists and parses raw `.eml` objects stored under `emails/` in `EMAIL_BUCKET` (`email-storage`).
 - **Access diagnostics** (`/tools/access`): Access-protected inspector ([tools/access/index.astro](../src/pages/tools/access/index.astro)) showing verified Access JWT claims and querying `${CLOUDFLARE_TEAM_DOMAIN}/cdn-cgi/access/get-identity` for WARP/Gateway posture and device sessions.
 - **Photography calculators** (`/tools/camera`, `/tools/lut-to-np3`, `POST /api/tools/lut-to-np3`): Public tools for hyperfocal distance and sensor format equivalence ([optics.ts](../src/lib/tools/optics.ts)) and converting display-referred 3D `.cube` LUTs (up to 2 MB, domain `0..1`) into Nikon Flexible Color `.NP3` binary files ([lut-to-np3.ts](../src/lib/tools/lut-to-np3.ts)).
+- **LLM GPU performance ladder** (`/tools/gpu-ladder`): Public Roofline calculator and AI Infra MBU/MFU efficiency evaluator ([gpu-ladder.ts](../src/lib/tools/gpu-ladder.ts)) for ranking multi-vendor GPUs across preset or HuggingFace `config.json` LLM architectures.
 
 ## Database changes
 

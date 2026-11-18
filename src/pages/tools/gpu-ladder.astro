@@ -1,0 +1,2772 @@
+---
+import PageLayout from "@/layouts/Base.astro";
+import { DATA_SOURCES_REGISTRY, formatModelShortName, MODEL_CATALOG } from "@/lib/tools/gpu-ladder";
+
+const denseModels = MODEL_CATALOG.filter((model) => model.architecture === "dense");
+const moeModels = MODEL_CATALOG.filter((model) => model.architecture === "moe");
+---
+
+<PageLayout
+	meta={{
+		title: "GPU Ladder",
+		description:
+			"LLM Roofline throughput ceilings and empirical GPU efficiency across AI accelerators.",
+	}}
+>
+	<section class="gl-root space-y-6" data-gpu-ladder>
+		<header class="space-y-2">
+			<a href="/tools/" class="cactus-link text-xs">Tools</a>
+			<h1 class="title">GPU ladder</h1>
+		</header>
+
+		<!-- Depth 0: Primary Workload Controls -->
+		<div class="space-y-2.5">
+			<div class="gl-workload-bar">
+				<select class="gl-select gl-model-select" aria-label="Model" data-model-select>
+					<optgroup label="Dense">
+						{
+							denseModels.map((model) => (
+								<option value={model.id} selected={model.id === "qwen3-32b"}>
+									{formatModelShortName(model)} · {model.totalParamsB}B
+								</option>
+							))
+						}
+					</optgroup>
+					<optgroup label="Mixture of Experts">
+						{
+							moeModels.map((model) => (
+								<option value={model.id}>
+									{formatModelShortName(model)} · {model.totalParamsB}B ({model.activeParamsB}B
+									active)
+								</option>
+							))
+						}
+					</optgroup>
+					<optgroup label="Custom">
+						<option value="custom" data-custom-option>Custom / HuggingFace repo…</option>
+					</optgroup>
+				</select>
+
+				<div class="gl-seg" role="radiogroup" aria-label="Weight precision" data-precision-group>
+					<button type="button" role="radio" aria-checked="false" data-precision="fp16">
+						FP16
+					</button>
+					<button type="button" role="radio" aria-checked="false" data-precision="fp8">
+						FP8
+					</button>
+					<button type="button" role="radio" aria-checked="false" data-precision="int8">
+						INT8
+					</button>
+					<button type="button" role="radio" aria-checked="true" data-precision="int4">
+						INT4
+					</button>
+				</div>
+
+				<div class="gl-seg" role="radiogroup" aria-label="GPU count" data-gpu-count-group>
+					<button type="button" role="radio" aria-checked="true" data-gpu-count="1">1×</button>
+					<button type="button" role="radio" aria-checked="false" data-gpu-count="2">2×</button>
+					<button type="button" role="radio" aria-checked="false" data-gpu-count="4">4×</button>
+					<button type="button" role="radio" aria-checked="false" data-gpu-count="8">8×</button>
+					<button type="button" role="radio" aria-checked="false" data-gpu-count="16">16×</button>
+				</div>
+			</div>
+
+			<div class="gl-context-row">
+				<p class="gl-summary tabular-nums" data-workload-summary>
+					32.8B dense · 21.0 GB · 2,048→512 tok
+				</p>
+				<button
+					type="button"
+					class="gl-disclosure-btn"
+					aria-expanded="false"
+					aria-controls="gl-customize-panel"
+					data-customize-toggle
+				>
+					<span>Customize</span>
+					<svg
+						aria-hidden="true"
+						class="gl-chevron"
+						viewBox="0 0 12 12"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.5"
+					>
+						<path d="M3 4.5L6 7.5L9 4.5" stroke-linecap="round" stroke-linejoin="round"></path>
+					</svg>
+				</button>
+			</div>
+
+			<!-- Progressive Disclosure: Custom HuggingFace & Sequence Drawer -->
+			<div id="gl-customize-panel" class="gl-drawer hidden space-y-3" data-customize-panel>
+				<form class="flex flex-wrap items-center gap-2" data-hf-form>
+					<input
+						class="gl-input min-w-0 flex-1"
+						type="text"
+						aria-label="HuggingFace repository"
+						placeholder="org/repo or huggingface.co/..."
+						autocomplete="off"
+						spellcheck="false"
+						data-hf-input
+					/>
+					<button type="submit" class="gl-btn-subtle shrink-0" data-hf-fetch>Load</button>
+				</form>
+				<p class="gl-status hidden text-xs" data-hf-status aria-live="polite" role="status"></p>
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+					<label class="gl-field">
+						<span>Total B</span>
+						<input
+							class="gl-input tabular-nums"
+							type="number"
+							min="0.1"
+							step="0.1"
+							value="32.8"
+							data-param-total
+						/>
+					</label>
+					<label class="gl-field">
+						<span>Active B</span>
+						<input
+							class="gl-input tabular-nums"
+							type="number"
+							min="0.1"
+							step="0.1"
+							value="32.8"
+							data-param-active
+						/>
+					</label>
+					<label class="gl-field">
+						<span>Prompt tok</span>
+						<input
+							class="gl-input tabular-nums"
+							type="number"
+							min="16"
+							step="64"
+							value="2048"
+							data-input-tokens
+						/>
+					</label>
+					<label class="gl-field">
+						<span>Output tok</span>
+						<input
+							class="gl-input tabular-nums"
+							type="number"
+							min="16"
+							step="64"
+							value="512"
+							data-output-tokens
+						/>
+					</label>
+					<label class="gl-field">
+						<span>Batch</span>
+						<input
+							class="gl-input tabular-nums"
+							type="number"
+							min="1"
+							step="1"
+							value="1"
+							data-batch-size
+						/>
+					</label>
+				</div>
+			</div>
+		</div>
+
+		<!-- Metric Axis & On-Demand Filter Bar -->
+		<div class="space-y-0">
+			<div class="gl-axis-bar">
+				<div class="gl-axis-tabs" role="tablist" aria-label="Ranking metric">
+					<button
+						type="button"
+						role="tab"
+						aria-selected="true"
+						class="gl-axis-tab"
+						data-sort-metric="decodeSingleTps"
+					>
+						Decode
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected="false"
+						class="gl-axis-tab"
+						data-sort-metric="actualDecodeTps"
+					>
+						Measured
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected="false"
+						class="gl-axis-tab"
+						data-sort-metric="prefillTps"
+					>
+						Prefill
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected="false"
+						class="gl-axis-tab"
+						data-sort-metric="memBandwidthGbs"
+					>
+						Bandwidth
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected="false"
+						class="gl-axis-tab"
+						data-sort-metric="computeTflops"
+					>
+						Compute
+					</button>
+				</div>
+
+				<div class="gl-axis-tools">
+					<input
+						class="gl-search"
+						type="search"
+						placeholder="Search…"
+						aria-label="Search GPUs"
+						autocomplete="off"
+						data-gpu-search
+					/>
+					<button
+						type="button"
+						class="gl-filter-toggle"
+						aria-expanded="false"
+						aria-controls="gl-filter-panel"
+						data-filter-toggle
+					>
+						Filter
+					</button>
+				</div>
+			</div>
+
+			<!-- Progressive Disclosure: Vendor & Precision Filter Drawer -->
+			<div id="gl-filter-panel" class="gl-drawer hidden space-y-2.5" data-filter-panel>
+				<div class="gl-filter-row">
+					<span class="gl-filter-label">Vendor</span>
+					<div class="gl-chip-group" role="group" aria-label="Vendor">
+						<button type="button" class="gl-chip" aria-pressed="true" data-vendor-filter="all">
+							All
+						</button>
+						<button type="button" class="gl-chip" aria-pressed="false" data-vendor-filter="NVIDIA">
+							NVIDIA
+						</button>
+						<button type="button" class="gl-chip" aria-pressed="false" data-vendor-filter="AMD">
+							AMD
+						</button>
+						<button type="button" class="gl-chip" aria-pressed="false" data-vendor-filter="Apple">
+							Apple
+						</button>
+						<button type="button" class="gl-chip" aria-pressed="false" data-vendor-filter="Huawei">
+							Huawei
+						</button>
+						<button type="button" class="gl-chip" aria-pressed="false" data-vendor-filter="Intel">
+							Intel
+						</button>
+						<button type="button" class="gl-chip" aria-pressed="false" data-vendor-filter="Google">
+							Google
+						</button>
+					</div>
+				</div>
+
+				<div class="gl-filter-row">
+					<span class="gl-filter-label">Hardware</span>
+					<div class="flex flex-1 flex-wrap items-center justify-between gap-2">
+						<div class="gl-chip-group" role="group" aria-label="Native precision">
+							<button type="button" class="gl-chip" aria-pressed="true" data-cap-filter="all">
+								All
+							</button>
+							<button type="button" class="gl-chip" aria-pressed="false" data-cap-filter="fp8">
+								FP8
+							</button>
+							<button type="button" class="gl-chip" aria-pressed="false" data-cap-filter="int4">
+								INT4
+							</button>
+							<button type="button" class="gl-chip" aria-pressed="false" data-cap-filter="bf16">
+								BF16
+							</button>
+							<button type="button" class="gl-chip" aria-pressed="false" data-cap-filter="fp16">
+								FP16
+							</button>
+							<button type="button" class="gl-chip" aria-pressed="false" data-cap-filter="int8">
+								INT8
+							</button>
+						</div>
+
+						<div class="flex items-center gap-3 text-xs">
+							<label class="flex cursor-pointer items-center gap-1.5 select-none">
+								<input type="checkbox" class="accent-accent" data-hide-oom />
+								<span class="gl-muted-text">Fit in VRAM</span>
+							</label>
+							<button type="button" class="gl-link-btn hidden" data-filter-reset>Reset</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Depth 1: Horizon Ledger -->
+		<div class="space-y-2">
+			<div class="gl-subbar">
+				<span data-result-count>31 configurations</span>
+				<div class="gl-legend" data-bar-legend>
+					<span class="gl-legend-item">
+						<span class="gl-swatch gl-swatch-actual" aria-hidden="true"></span>
+						<span>measured</span>
+					</span>
+					<span class="gl-legend-item">
+						<span class="gl-swatch gl-swatch-ceiling" aria-hidden="true"></span>
+						<span>ceiling</span>
+					</span>
+				</div>
+			</div>
+
+			<div data-ladder-region></div>
+		</div>
+
+		<!-- Colophon -->
+		<details class="gl-colophon">
+			<summary class="gl-colophon-summary">
+				<span>Methodology &amp; primary sources</span>
+				<svg
+					aria-hidden="true"
+					class="gl-chevron"
+					viewBox="0 0 12 12"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+				>
+					<path d="M3 4.5L6 7.5L9 4.5" stroke-linecap="round" stroke-linejoin="round"></path>
+				</svg>
+			</summary>
+			<div class="gl-colophon-body space-y-3">
+				<p class="gl-muted-text text-xs leading-relaxed">
+					Vendor datasheets often report 2:4 structured sparsity peaks or vector FLOPs. Every
+					accelerator here is normalized to dense Tensor or Matrix Core throughput and compared
+					against analytical memory-bandwidth and compute Roofline ceilings.
+				</p>
+				<ul class="space-y-2 text-xs">
+					{
+						DATA_SOURCES_REGISTRY.map((src) => (
+							<li class="space-y-0.5">
+								<div class="flex flex-wrap items-baseline gap-x-2">
+									<a
+										href={src.url}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="cactus-link font-medium"
+									>
+										{src.name} ↗
+									</a>
+									<span class="gl-muted-text text-[11px]">{src.license}</span>
+								</div>
+								<p class="gl-muted-text text-[11px] leading-snug">{src.description}</p>
+							</li>
+						))
+					}
+				</ul>
+			</div>
+		</details>
+	</section>
+</PageLayout>
+
+<style is:global>
+	.gl-root {
+		--gl-ink: var(--color-accent-2);
+		--gl-body: var(--color-global-text);
+		--gl-muted: color-mix(in oklab, var(--color-global-text) 56%, var(--color-global-bg));
+		--gl-line: color-mix(in oklab, var(--color-global-text) 12%, var(--color-global-bg));
+		--gl-line-strong: color-mix(in oklab, var(--color-global-text) 24%, var(--color-global-bg));
+		--gl-surface: color-mix(in oklab, var(--color-global-text) 3%, var(--color-global-bg));
+		--gl-surface-hover: color-mix(in oklab, var(--color-global-text) 5.5%, var(--color-global-bg));
+		--gl-bar-track: color-mix(in oklab, var(--color-global-text) 6%, transparent);
+		--gl-bar-ceiling: color-mix(in oklab, var(--color-global-text) 15%, var(--color-global-bg));
+		--gl-bar-cap: color-mix(in oklab, var(--color-global-text) 42%, var(--color-global-bg));
+		--gl-bar-fill: color-mix(in oklab, var(--color-global-text) 62%, var(--color-global-bg));
+	}
+
+	[data-theme="dark"] .gl-root {
+		--gl-bar-ceiling: color-mix(in oklab, var(--color-global-text) 20%, var(--color-global-bg));
+		--gl-bar-cap: color-mix(in oklab, var(--color-global-text) 52%, var(--color-global-bg));
+	}
+
+	.gl-root .gl-muted-text {
+		color: var(--gl-muted);
+	}
+
+	/* Primary Workload Strip */
+	.gl-root .gl-workload-bar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: stretch;
+		gap: 0.5rem;
+	}
+
+	.gl-root .gl-select,
+	.gl-root .gl-input,
+	.gl-root .gl-search {
+		border: 1px solid var(--gl-line-strong);
+		border-radius: 3px;
+		background-color: var(--color-global-bg);
+		color: var(--gl-ink);
+		font-size: 0.75rem;
+		line-height: 1.2;
+		transition: border-color 120ms ease;
+	}
+
+	.gl-root .gl-select {
+		height: 2.125rem;
+		padding: 0 0.5rem;
+	}
+
+	.gl-root .gl-model-select {
+		flex: 1 1 15rem;
+		min-width: 0;
+		font-weight: 500;
+	}
+
+	.gl-root .gl-input {
+		width: 100%;
+		height: 2rem;
+		padding: 0 0.5rem;
+	}
+
+	.gl-root .gl-select:hover,
+	.gl-root .gl-input:hover,
+	.gl-root .gl-search:hover {
+		border-color: var(--gl-muted);
+	}
+
+	.gl-root .gl-seg {
+		display: inline-flex;
+		height: 2.125rem;
+		border: 1px solid var(--gl-line-strong);
+		border-radius: 3px;
+		overflow: hidden;
+		background-color: var(--color-global-bg);
+	}
+
+	.gl-root .gl-seg button {
+		padding: 0 0.55rem;
+		font-size: 0.75rem;
+		color: var(--gl-muted);
+		border-right: 1px solid var(--gl-line);
+		white-space: nowrap;
+		cursor: pointer;
+		transition:
+			color 120ms ease,
+			background-color 120ms ease;
+	}
+
+	.gl-root .gl-seg button:last-child {
+		border-right: 0;
+	}
+
+	.gl-root .gl-seg button:hover {
+		color: var(--gl-ink);
+	}
+
+	.gl-root .gl-seg button[aria-checked="true"] {
+		background-color: color-mix(in oklab, var(--color-global-text) 9%, var(--color-global-bg));
+		color: var(--gl-ink);
+		font-weight: 600;
+	}
+
+	.gl-root .gl-context-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.375rem 1rem;
+		font-size: 0.75rem;
+	}
+
+	.gl-root .gl-summary {
+		color: var(--gl-muted);
+	}
+
+	.gl-root .gl-disclosure-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		font-size: 0.75rem;
+		color: var(--gl-muted);
+		cursor: pointer;
+		transition: color 120ms ease;
+	}
+
+	.gl-root .gl-disclosure-btn:hover,
+	.gl-root .gl-disclosure-btn[aria-expanded="true"] {
+		color: var(--gl-ink);
+	}
+
+	.gl-root .gl-chevron {
+		width: 0.75rem;
+		height: 0.75rem;
+		flex: none;
+		transition: transform 140ms ease;
+	}
+
+	.gl-root [aria-expanded="true"] .gl-chevron,
+	.gl-root details[open] > summary .gl-chevron {
+		transform: rotate(180deg);
+	}
+
+	.gl-root .gl-drawer {
+		background-color: var(--gl-surface);
+		border-top: 1px solid var(--gl-line);
+		border-bottom: 1px solid var(--gl-line);
+		padding: 0.75rem;
+	}
+
+	.gl-root .gl-field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		font-size: 0.6875rem;
+		color: var(--gl-muted);
+	}
+
+	.gl-root .gl-btn-subtle {
+		height: 2rem;
+		padding: 0 0.75rem;
+		border: 1px solid var(--gl-line-strong);
+		border-radius: 3px;
+		background-color: var(--color-global-bg);
+		color: var(--gl-ink);
+		font-size: 0.75rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition:
+			border-color 120ms ease,
+			color 120ms ease;
+	}
+
+	.gl-root .gl-btn-subtle:hover {
+		border-color: var(--color-accent);
+		color: var(--color-accent);
+	}
+
+	.gl-root .gl-btn-subtle:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
+	}
+
+	.gl-root .gl-status {
+		color: var(--gl-muted);
+	}
+
+	.gl-root .gl-status--error {
+		color: #dc2626;
+	}
+
+	[data-theme="dark"] .gl-root .gl-status--error {
+		color: #f87171;
+	}
+
+	/* Metric Axis & Filter Bar */
+	.gl-root .gl-axis-bar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 0.5rem 1rem;
+		border-bottom: 1px solid var(--gl-line-strong);
+	}
+
+	.gl-root .gl-axis-tabs {
+		display: flex;
+		align-items: center;
+		gap: 0.125rem;
+		margin-bottom: -1px;
+		overflow-x: auto;
+		overflow-y: hidden;
+		scrollbar-width: none;
+		max-width: 100%;
+	}
+
+	.gl-root .gl-axis-tabs::-webkit-scrollbar {
+		display: none;
+	}
+
+	.gl-root .gl-axis-tab {
+		padding: 0.45rem 0.55rem;
+		border-bottom: 2px solid transparent;
+		font-size: 0.75rem;
+		color: var(--gl-muted);
+		white-space: nowrap;
+		cursor: pointer;
+		transition:
+			color 120ms ease,
+			border-color 120ms ease;
+	}
+
+	.gl-root .gl-axis-tab:hover {
+		color: var(--gl-ink);
+	}
+
+	.gl-root .gl-axis-tab[aria-selected="true"] {
+		color: var(--gl-ink);
+		border-bottom-color: var(--color-accent);
+		font-weight: 600;
+	}
+
+	.gl-root .gl-axis-tools {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding-bottom: 0.375rem;
+	}
+
+	.gl-root .gl-search {
+		height: 1.75rem;
+		width: 7.5rem;
+		padding: 0 0.45rem;
+		border-color: var(--gl-line);
+	}
+
+	.gl-root .gl-filter-toggle {
+		height: 1.75rem;
+		padding: 0 0.5rem;
+		border: 1px solid var(--gl-line);
+		border-radius: 3px;
+		font-size: 0.75rem;
+		color: var(--gl-muted);
+		white-space: nowrap;
+		cursor: pointer;
+		transition:
+			border-color 120ms ease,
+			color 120ms ease;
+	}
+
+	.gl-root .gl-filter-toggle:hover,
+	.gl-root .gl-filter-toggle[aria-expanded="true"],
+	.gl-root .gl-filter-toggle[data-active="true"] {
+		border-color: var(--gl-line-strong);
+		color: var(--gl-ink);
+	}
+
+	.gl-root .gl-filter-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.375rem 0.75rem;
+		font-size: 0.75rem;
+	}
+
+	.gl-root .gl-filter-label {
+		width: 4.5rem;
+		flex: none;
+		font-size: 0.6875rem;
+		color: var(--gl-muted);
+	}
+
+	.gl-root .gl-chip-group {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+	}
+
+	.gl-root .gl-chip {
+		padding: 0.15rem 0.45rem;
+		border: 1px solid transparent;
+		border-radius: 3px;
+		font-size: 0.75rem;
+		color: var(--gl-muted);
+		cursor: pointer;
+		transition:
+			color 120ms ease,
+			border-color 120ms ease,
+			background-color 120ms ease;
+	}
+
+	.gl-root .gl-chip:hover {
+		color: var(--gl-ink);
+	}
+
+	.gl-root .gl-chip[aria-pressed="true"] {
+		border-color: var(--gl-line-strong);
+		background-color: var(--color-global-bg);
+		color: var(--gl-ink);
+		font-weight: 600;
+	}
+
+	.gl-root .gl-link-btn {
+		font-size: 0.75rem;
+		color: var(--gl-muted);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		cursor: pointer;
+	}
+
+	.gl-root .gl-link-btn:hover {
+		color: var(--color-accent);
+	}
+
+	/* Sub-bar & Legend */
+	.gl-root .gl-subbar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		font-size: 0.6875rem;
+		color: var(--gl-muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.gl-root .gl-legend {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.875rem;
+	}
+
+	.gl-root .gl-legend-item {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+
+	.gl-root .gl-swatch {
+		display: inline-block;
+		width: 0.875rem;
+		height: 3px;
+		border-radius: 1px;
+	}
+
+	.gl-root .gl-swatch-actual {
+		background-color: var(--color-accent);
+	}
+
+	.gl-root .gl-swatch-ceiling {
+		background-color: var(--gl-bar-ceiling);
+		border-right: 1.5px solid var(--gl-bar-cap);
+	}
+
+	/* Depth 1: Horizon Ledger */
+	.gl-root .gl-ledger {
+		border-top: 1px solid var(--gl-line);
+	}
+
+	.gl-root .gl-entry {
+		border-bottom: 1px solid var(--gl-line);
+	}
+
+	.gl-root .gl-entry[data-expanded="true"] {
+		background-color: var(--gl-surface);
+	}
+
+	.gl-root .gl-row {
+		display: block;
+		width: 100%;
+		padding: 0.625rem 0.25rem;
+		text-align: left;
+		cursor: pointer;
+		transition: background-color 120ms ease;
+	}
+
+	.gl-root .gl-row:hover {
+		background-color: var(--gl-surface-hover);
+	}
+
+	.gl-root .gl-row-top {
+		display: grid;
+		grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+		align-items: baseline;
+		gap: 0.625rem;
+	}
+
+	.gl-root .gl-rank {
+		text-align: right;
+		font-size: 0.75rem;
+		color: var(--gl-muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.gl-root .gl-identity {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.1rem 0.5rem;
+		min-width: 0;
+	}
+
+	.gl-root .gl-name {
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: var(--gl-ink);
+	}
+
+	.gl-root .gl-meta {
+		font-size: 0.6875rem;
+		color: var(--gl-muted);
+		white-space: nowrap;
+	}
+
+	.gl-root .gl-metrics {
+		display: flex;
+		align-items: baseline;
+		gap: 0.625rem;
+		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.gl-root .gl-sub-val {
+		font-size: 0.6875rem;
+		color: var(--gl-muted);
+	}
+
+	.gl-root .gl-main-val {
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: var(--gl-ink);
+	}
+
+	.gl-root .gl-unit {
+		font-size: 0.6875rem;
+		font-weight: 400;
+		color: var(--gl-muted);
+	}
+
+	.gl-root .gl-row .gl-chevron {
+		color: var(--gl-muted);
+		align-self: center;
+	}
+
+	/* Horizon Proportional Bar */
+	.gl-root .gl-bar-track {
+		position: relative;
+		height: 3px;
+		margin-top: 0.4rem;
+		margin-left: 2.125rem;
+		background-color: var(--gl-bar-track);
+		border-radius: 1px;
+		overflow: hidden;
+	}
+
+	.gl-root .gl-bar-ceiling {
+		position: absolute;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		background-color: var(--gl-bar-ceiling);
+		z-index: 1;
+	}
+
+	.gl-root .gl-bar-tick {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: 1.5px;
+		background-color: var(--gl-bar-cap);
+		z-index: 3;
+	}
+
+	.gl-root .gl-bar-actual {
+		position: absolute;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		background-color: var(--color-accent);
+		z-index: 2;
+	}
+
+	.gl-root .gl-bar-single {
+		position: absolute;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		background-color: var(--gl-bar-fill);
+		transition: background-color 120ms ease;
+	}
+
+	.gl-root .gl-row:hover .gl-bar-single,
+	.gl-root .gl-entry[data-expanded="true"] .gl-bar-single {
+		background-color: var(--color-accent);
+	}
+
+	/* Zero-Fit & OOM Grouping */
+	.gl-root .gl-empty-state {
+		border-top: 1px solid var(--gl-line);
+		border-bottom: 1px solid var(--gl-line);
+		padding: 1rem 0.25rem;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		font-size: 0.75rem;
+	}
+
+	.gl-root .gl-oom-details {
+		margin-top: 0.75rem;
+	}
+
+	.gl-root .gl-oom-summary {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.375rem 0;
+		font-size: 0.75rem;
+		color: var(--gl-muted);
+		cursor: pointer;
+		list-style: none;
+		user-select: none;
+	}
+
+	.gl-root .gl-oom-summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.gl-root .gl-oom-summary:hover {
+		color: var(--gl-ink);
+	}
+
+	.gl-root .gl-row--oom .gl-name {
+		font-weight: 500;
+		color: var(--gl-body);
+	}
+
+	/* Depth 2: In-Place GPU Dossier */
+	.gl-root .gl-dossier {
+		border-top: 1px solid var(--gl-line);
+		padding: 0.875rem 0.75rem 1rem 2.125rem;
+	}
+
+	.gl-root .gl-telemetry {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		border-top: 1px solid var(--gl-line);
+		border-bottom: 1px solid var(--gl-line);
+	}
+
+	.gl-root .gl-telemetry-cell {
+		padding: 0.625rem 0.75rem 0.625rem 0;
+		min-width: 0;
+	}
+
+	.gl-root .gl-telemetry-cell:nth-child(2n) {
+		padding-left: 0.75rem;
+		padding-right: 0;
+		border-left: 1px solid var(--gl-line);
+	}
+
+	.gl-root .gl-telemetry-cell:nth-child(-n + 2) {
+		border-bottom: 1px solid var(--gl-line);
+	}
+
+	@media (min-width: 640px) {
+		.gl-root .gl-telemetry {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+		}
+
+		.gl-root .gl-telemetry-cell {
+			padding: 0.625rem 0.75rem;
+			border-bottom: 0 !important;
+			border-left: 1px solid var(--gl-line);
+		}
+
+		.gl-root .gl-telemetry-cell:first-child {
+			padding-left: 0;
+			border-left: 0;
+		}
+
+		.gl-root .gl-telemetry-cell:last-child {
+			padding-right: 0;
+		}
+	}
+
+	.gl-root .gl-k-label {
+		font-size: 0.6875rem;
+		color: var(--gl-muted);
+	}
+
+	.gl-root .gl-k-val {
+		margin-top: 0.2rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--gl-ink);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.gl-root .gl-k-sub {
+		margin-top: 0.15rem;
+		font-size: 0.6875rem;
+		color: var(--gl-muted);
+		font-variant-numeric: tabular-nums;
+		line-height: 1.35;
+	}
+
+	.gl-root .gl-vram-bar {
+		display: flex;
+		height: 3px;
+		margin-top: 0.3rem;
+		background-color: var(--gl-bar-track);
+		border-radius: 1px;
+		overflow: hidden;
+		gap: 1px;
+	}
+
+	.gl-root .gl-vram-wt {
+		background-color: var(--gl-ink);
+	}
+
+	.gl-root .gl-vram-kv {
+		background-color: var(--color-accent);
+	}
+
+	.gl-root .gl-vram-sys {
+		background-color: var(--gl-muted);
+	}
+
+	.gl-root .gl-dossier-nav {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 0.5rem;
+		margin-top: 0.875rem;
+		border-bottom: 1px solid var(--gl-line);
+	}
+
+	.gl-root .gl-dossier-tabs {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		margin-bottom: -1px;
+	}
+
+	.gl-root .gl-dossier-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding-bottom: 0.45rem;
+		font-size: 0.75rem;
+	}
+
+	.gl-root .gl-dossier-actions .gl-link-btn {
+		text-decoration: none;
+		font-weight: 500;
+	}
+
+	.gl-root .gl-dossier-actions .gl-link-btn:hover {
+		text-decoration: underline;
+	}
+
+	.gl-root .gl-bench-list {
+		margin-top: 0.5rem;
+	}
+
+	.gl-root .gl-bench-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 0.5rem 1rem;
+		padding: 0.625rem 0;
+		border-bottom: 1px solid var(--gl-line);
+	}
+
+	.gl-root .gl-bench-row:last-child {
+		border-bottom: 0;
+	}
+
+	.gl-root .gl-bench-main {
+		min-width: 0;
+		flex: 1 1 13rem;
+	}
+
+	.gl-root .gl-bench-right {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		margin-left: auto;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* Dossier Form & Tables */
+	.gl-root .gl-log-form {
+		margin-top: 0.75rem;
+		padding: 0.75rem;
+		background-color: var(--color-global-bg);
+		border: 1px solid var(--gl-line);
+		border-radius: 3px;
+	}
+
+	.gl-root .gl-table-wrap {
+		margin-top: 0.75rem;
+		overflow-x: auto;
+	}
+
+	.gl-root .gl-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.75rem;
+	}
+
+	.gl-root .gl-table th {
+		padding: 0.4rem 0.5rem;
+		border-bottom: 1px solid var(--gl-line-strong);
+		font-size: 0.6875rem;
+		font-weight: 500;
+		color: var(--gl-muted);
+		white-space: nowrap;
+	}
+
+	.gl-root .gl-table th:first-child,
+	.gl-root .gl-table td:first-child {
+		padding-left: 0;
+	}
+
+	.gl-root .gl-table th:last-child,
+	.gl-root .gl-table td:last-child {
+		padding-right: 0;
+	}
+
+	.gl-root .gl-table td {
+		padding: 0.5rem;
+		border-bottom: 1px solid var(--gl-line);
+		vertical-align: top;
+	}
+
+	.gl-root .gl-table tr:last-child td {
+		border-bottom: 0;
+	}
+
+	.gl-root .gl-dl {
+		margin-top: 0.75rem;
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 1.25rem 2rem;
+	}
+
+	@media (min-width: 640px) {
+		.gl-root .gl-dl {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	.gl-root .gl-dl-section-title {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		color: var(--gl-muted);
+		padding-bottom: 0.35rem;
+		border-bottom: 1px solid var(--gl-line);
+	}
+
+	.gl-root .gl-dl-list > div {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.375rem 0;
+		border-bottom: 1px solid var(--gl-line);
+		font-size: 0.75rem;
+	}
+
+	.gl-root .gl-dl-list > div:last-child {
+		border-bottom: 0;
+	}
+
+	.gl-root .gl-dl-list dt {
+		color: var(--gl-muted);
+		flex: none;
+	}
+
+	.gl-root .gl-dl-list dd {
+		color: var(--gl-ink);
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+		overflow-wrap: anywhere;
+	}
+
+	.gl-root .gl-remove-btn {
+		color: var(--gl-muted);
+		padding: 0 0.25rem;
+		line-height: 1;
+		cursor: pointer;
+	}
+
+	.gl-root .gl-remove-btn:hover {
+		color: var(--color-accent);
+	}
+
+	/* Colophon */
+	.gl-root .gl-colophon {
+		border-top: 1px solid var(--gl-line);
+		padding-top: 0.75rem;
+	}
+
+	.gl-root .gl-colophon-summary {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.75rem;
+		color: var(--gl-muted);
+		cursor: pointer;
+		list-style: none;
+		user-select: none;
+	}
+
+	.gl-root .gl-colophon-summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.gl-root .gl-colophon-summary:hover {
+		color: var(--gl-ink);
+	}
+
+	.gl-root .gl-colophon-body {
+		margin-top: 0.75rem;
+	}
+
+	/* Accessible Keyboard Focus */
+	.gl-root button:focus-visible,
+	.gl-root select:focus-visible,
+	.gl-root input:focus-visible,
+	.gl-root summary:focus-visible,
+	.gl-root a:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 2px;
+	}
+
+	@media (max-width: 540px) {
+		.gl-root .gl-axis-tab {
+			padding: 0.45rem 0.4rem;
+		}
+
+		.gl-root .gl-sub-val {
+			display: none;
+		}
+
+		.gl-root .gl-dossier {
+			padding-left: 0.75rem;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.gl-root *,
+		.gl-root *::before,
+		.gl-root *::after {
+			transition-duration: 0.001ms !important;
+		}
+	}
+</style>
+
+<script>
+	import {
+		buildCustomModelSpec,
+		evaluateGpuPerformance,
+		evaluateUserSubmission,
+		formatGpuShortName,
+		formatInterconnectName,
+		formatModelShortName,
+		GPU_CATALOG,
+		getHardwareTflopsByCapability,
+		type GpuSpec,
+		type GpuVendor,
+		gpuSupportsHardwarePrecision,
+		type HardwarePrecision,
+		INITIAL_COMMUNITY_SUBMISSIONS,
+		inferModelSpecFromRepoId,
+		isSafeHttpUrl,
+		isValidUserSubmission,
+		type LadderSortMetric,
+		type LlmModelSpec,
+		MODEL_CATALOG,
+		type Precision,
+		parseHuggingFaceConfig,
+		parseHuggingFaceModelRef,
+		type RealWorldSubmission,
+		resolveActualBenchmarkForGpu,
+		resolveSubmissionModelSpec,
+		type TheoreticalEvaluation,
+		type WorkloadConfig,
+	} from "@/lib/tools/gpu-ladder";
+
+	type DossierTab = "submissions" | "models-matrix" | "hw-specs";
+
+	interface LadderRowItem {
+		gpu: GpuSpec;
+		theo: TheoreticalEvaluation;
+		actual: ReturnType<typeof resolveActualBenchmarkForGpu>;
+		totalBandwidthGbs: number;
+		totalComputeTflops: number;
+		metricValue: number;
+	}
+
+	const STORAGE_KEY = "fdkevin:gpu-ladder:submissions:v2";
+	const BUILTIN_SUBMISSION_IDS = new Set(INITIAL_COMMUNITY_SUBMISSIONS.map((s) => s.id));
+	const GPU_COUNT_OPTIONS = [1, 2, 4, 8, 16] as const;
+	const PRECISIONS: readonly Precision[] = ["fp16", "fp8", "int8", "int4"];
+	const SORT_METRICS: readonly LadderSortMetric[] = [
+		"decodeSingleTps",
+		"actualDecodeTps",
+		"prefillTps",
+		"memBandwidthGbs",
+		"computeTflops",
+	];
+	const VENDORS: readonly GpuVendor[] = ["NVIDIA", "AMD", "Apple", "Huawei", "Intel", "Google"];
+	const CAPABILITIES: readonly HardwarePrecision[] = ["fp8", "int4", "bf16", "fp16", "int8"];
+
+	const root = document.querySelector("[data-gpu-ladder]");
+	if (root instanceof HTMLElement) {
+		const modelSelect = root.querySelector("[data-model-select]") as unknown as HTMLSelectElement;
+		const customOption = root.querySelector("[data-custom-option]") as HTMLOptionElement;
+		const precisionButtons = Array.from(
+			root.querySelectorAll<HTMLButtonElement>("[data-precision]"),
+		);
+		const gpuCountButtons = Array.from(
+			root.querySelectorAll<HTMLButtonElement>("[data-gpu-count]"),
+		);
+
+		const workloadSummary = root.querySelector("[data-workload-summary]") as HTMLElement;
+		const customizeToggle = root.querySelector("[data-customize-toggle]") as HTMLButtonElement;
+		const customizePanel = root.querySelector("[data-customize-panel]") as HTMLElement;
+
+		const hfForm = root.querySelector("[data-hf-form]") as HTMLFormElement;
+		const hfInput = root.querySelector("[data-hf-input]") as HTMLInputElement;
+		const hfFetchBtn = root.querySelector("[data-hf-fetch]") as HTMLButtonElement;
+		const hfStatus = root.querySelector("[data-hf-status]") as HTMLElement;
+		const paramTotalInput = root.querySelector("[data-param-total]") as HTMLInputElement;
+		const paramActiveInput = root.querySelector("[data-param-active]") as HTMLInputElement;
+		const inputTokensInput = root.querySelector("[data-input-tokens]") as HTMLInputElement;
+		const outputTokensInput = root.querySelector("[data-output-tokens]") as HTMLInputElement;
+		const batchSizeInput = root.querySelector("[data-batch-size]") as HTMLInputElement;
+
+		const sortButtons = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-sort-metric]"));
+		const gpuSearchInput = root.querySelector("[data-gpu-search]") as HTMLInputElement;
+		const filterToggle = root.querySelector("[data-filter-toggle]") as HTMLButtonElement;
+		const filterPanel = root.querySelector("[data-filter-panel]") as HTMLElement;
+		const vendorButtons = Array.from(
+			root.querySelectorAll<HTMLButtonElement>("[data-vendor-filter]"),
+		);
+		const capButtons = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-cap-filter]"));
+		const hideOomCheckbox = root.querySelector("[data-hide-oom]") as HTMLInputElement;
+		const filterResetBtn = root.querySelector("[data-filter-reset]") as HTMLButtonElement;
+
+		const resultCountEl = root.querySelector("[data-result-count]") as HTMLElement;
+		const barLegendEl = root.querySelector("[data-bar-legend]") as HTMLElement;
+		const ladderRegion = root.querySelector("[data-ladder-region]") as HTMLElement;
+
+		const defaultModel = MODEL_CATALOG.find((m) => m.id === "qwen3-32b") ?? MODEL_CATALOG[0];
+		if (!defaultModel) {
+			throw new Error("MODEL_CATALOG must not be empty.");
+		}
+
+		let currentModel: LlmModelSpec = { ...defaultModel };
+		let customMoeLocked = currentModel.architecture === "moe";
+		let customMoeActiveB = currentModel.activeParamsB;
+		let weightPrecision: Precision = "int4";
+		let gpuCount = 1;
+		let sortMetric: LadderSortMetric = "decodeSingleTps";
+		let vendorFilter: GpuVendor | "all" = "all";
+		let capabilityFilter: HardwarePrecision | "all" = "all";
+		let expandedGpuId: string | null = null;
+		let activeDossierTab: DossierTab = "submissions";
+		let logFormOpen = false;
+		let draftDecodeValue = "";
+		let draftPrefillValue = "";
+		let draftEngineValue = "";
+		let draftNotesValue = "";
+		let draftGpuCount: number | null = null;
+
+		const el = <K extends keyof HTMLElementTagNameMap>(
+			tag: K,
+			className?: string,
+			text?: string,
+		): HTMLElementTagNameMap[K] => {
+			const node = document.createElement(tag);
+			if (className) node.className = className;
+			if (text !== undefined) node.textContent = text;
+			return node;
+		};
+
+		const append = (parent: Node, ...children: Node[]) => {
+			for (const child of children) {
+				parent.appendChild(child);
+			}
+		};
+
+		const createChevronSvg = (): SVGSVGElement => {
+			const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+			svg.setAttribute("aria-hidden", "true");
+			svg.setAttribute("class", "gl-chevron");
+			svg.setAttribute("viewBox", "0 0 12 12");
+			svg.setAttribute("fill", "none");
+			svg.setAttribute("stroke", "currentColor");
+			svg.setAttribute("stroke-width", "1.5");
+			const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			path.setAttribute("d", "M3 4.5L6 7.5L9 4.5");
+			path.setAttribute("stroke-linecap", "round");
+			path.setAttribute("stroke-linejoin", "round");
+			svg.appendChild(path);
+			return svg;
+		};
+
+		const createExternalLink = (label: string, href: string, className = "cactus-link") => {
+			if (!isSafeHttpUrl(href)) {
+				return el("span", undefined, label);
+			}
+			const link = el("a", className, `${label} ↗`);
+			link.href = href;
+			link.target = "_blank";
+			link.rel = "noopener noreferrer";
+			return link;
+		};
+
+		const loadUserSubmissions = (): RealWorldSubmission[] => {
+			try {
+				const raw = localStorage.getItem(STORAGE_KEY);
+				if (!raw) return [];
+				const parsed = JSON.parse(raw) as unknown;
+				if (!Array.isArray(parsed)) return [];
+				return parsed.filter(
+					(item): item is RealWorldSubmission =>
+						isValidUserSubmission(item) && !BUILTIN_SUBMISSION_IDS.has(item.id),
+				);
+			} catch {
+				return [];
+			}
+		};
+
+		const saveUserSubmissions = (customEntries: RealWorldSubmission[]) => {
+			try {
+				if (customEntries.length === 0) {
+					localStorage.removeItem(STORAGE_KEY);
+				} else {
+					localStorage.setItem(STORAGE_KEY, JSON.stringify(customEntries));
+				}
+			} catch {
+				// Ignore storage quota errors
+			}
+		};
+
+		const readWorkload = (overrideGpuCount?: number): WorkloadConfig => ({
+			gpuCount: overrideGpuCount ?? gpuCount,
+			weightPrecision,
+			kvPrecision: weightPrecision === "fp16" ? "fp16" : "fp8",
+			inputTokens: Math.max(16, Number(inputTokensInput.value) || 2048),
+			outputTokens: Math.max(16, Number(outputTokensInput.value) || 512),
+			batchSize: Math.max(1, Number(batchSizeInput.value) || 1),
+		});
+
+		const syncControlsUi = () => {
+			for (const btn of precisionButtons) {
+				btn.setAttribute("aria-checked", String(btn.dataset.precision === weightPrecision));
+			}
+			for (const btn of gpuCountButtons) {
+				btn.setAttribute("aria-checked", String(Number(btn.dataset.gpuCount) === gpuCount));
+			}
+			for (const btn of sortButtons) {
+				btn.setAttribute("aria-selected", String(btn.dataset.sortMetric === sortMetric));
+			}
+			for (const btn of vendorButtons) {
+				btn.setAttribute("aria-pressed", String(btn.dataset.vendorFilter === vendorFilter));
+			}
+			for (const btn of capButtons) {
+				btn.setAttribute("aria-pressed", String(btn.dataset.capFilter === capabilityFilter));
+			}
+
+			const activeFilterCount =
+				(vendorFilter !== "all" ? 1 : 0) +
+				(capabilityFilter !== "all" ? 1 : 0) +
+				(hideOomCheckbox.checked ? 1 : 0);
+
+			filterToggle.textContent = activeFilterCount > 0 ? `Filter · ${activeFilterCount}` : "Filter";
+			filterToggle.dataset.active = String(activeFilterCount > 0);
+
+			const hasAnyFilter = activeFilterCount > 0 || gpuSearchInput.value.trim().length > 0;
+			filterResetBtn.classList.toggle("hidden", !hasAnyFilter);
+
+			const shortModelLabel = formatModelShortName(currentModel);
+			customOption.textContent =
+				currentModel.id.startsWith("custom") || currentModel.id.startsWith("hf:")
+					? shortModelLabel.startsWith("Custom ")
+						? shortModelLabel
+						: `Custom · ${shortModelLabel}`
+					: "Custom / HuggingFace repo…";
+		};
+
+		const syncUrlState = () => {
+			const params = new URLSearchParams();
+			if (currentModel.id !== "qwen3-32b" && MODEL_CATALOG.some((m) => m.id === currentModel.id)) {
+				params.set("model", currentModel.id);
+			}
+			if (weightPrecision !== "int4") params.set("q", weightPrecision);
+			if (gpuCount !== 1) params.set("n", String(gpuCount));
+			if (sortMetric !== "decodeSingleTps") params.set("sort", sortMetric);
+			if (vendorFilter !== "all") params.set("vendor", vendorFilter);
+			if (capabilityFilter !== "all") params.set("cap", capabilityFilter);
+			if (hideOomCheckbox.checked) params.set("fit", "1");
+			if (expandedGpuId) params.set("gpu", expandedGpuId);
+
+			const query = params.toString();
+			const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+			const currentUrl = `${window.location.pathname}${window.location.search}`;
+			if (nextUrl !== currentUrl) {
+				window.history.replaceState(null, "", nextUrl);
+			}
+		};
+
+		const hydrateFromUrl = () => {
+			const params = new URLSearchParams(window.location.search);
+			const modelParam = params.get("model");
+			const foundModel = MODEL_CATALOG.find((m) => m.id === modelParam);
+			if (foundModel) {
+				currentModel = { ...foundModel };
+				customMoeLocked = currentModel.architecture === "moe";
+				customMoeActiveB = currentModel.activeParamsB;
+				modelSelect.value = foundModel.id;
+			}
+
+			const qParam = params.get("q") as Precision | null;
+			if (qParam && PRECISIONS.includes(qParam)) {
+				weightPrecision = qParam;
+			}
+
+			const nParam = Number(params.get("n"));
+			if (GPU_COUNT_OPTIONS.includes(nParam as (typeof GPU_COUNT_OPTIONS)[number])) {
+				gpuCount = nParam;
+			}
+
+			const sortParam = params.get("sort") as LadderSortMetric | null;
+			if (sortParam && SORT_METRICS.includes(sortParam)) {
+				sortMetric = sortParam;
+			}
+
+			const vendorParam = params.get("vendor") as GpuVendor | null;
+			if (vendorParam && VENDORS.includes(vendorParam)) {
+				vendorFilter = vendorParam;
+			}
+
+			const capParam = params.get("cap") as HardwarePrecision | null;
+			if (capParam && CAPABILITIES.includes(capParam)) {
+				capabilityFilter = capParam;
+			}
+
+			if (params.get("fit") === "1") {
+				hideOomCheckbox.checked = true;
+			}
+
+			const gpuParam = params.get("gpu");
+			if (gpuParam && GPU_CATALOG.some((g) => g.id === gpuParam)) {
+				expandedGpuId = gpuParam;
+			}
+		};
+
+		const syncSummaryLine = (workload: WorkloadConfig) => {
+			const refGpu = GPU_CATALOG[0];
+			const requiredGb = refGpu
+				? evaluateGpuPerformance(refGpu, currentModel, workload).totalVramGb
+				: 0;
+			if (document.activeElement !== paramTotalInput) {
+				paramTotalInput.value = String(currentModel.totalParamsB);
+			}
+			if (
+				document.activeElement !== paramActiveInput &&
+				!(customMoeLocked && document.activeElement === paramTotalInput)
+			) {
+				paramActiveInput.value = String(currentModel.activeParamsB);
+			}
+
+			const archSummary =
+				currentModel.architecture === "moe"
+					? `${currentModel.totalParamsB}B (${currentModel.activeParamsB}B active) MoE`
+					: `${currentModel.totalParamsB}B dense`;
+			const batchPart = workload.batchSize > 1 ? ` · batch ${workload.batchSize}` : "";
+			workloadSummary.textContent = `${archSummary} · ${requiredGb.toFixed(1)} GB · ${workload.inputTokens.toLocaleString()}→${workload.outputTokens.toLocaleString()} tok${batchPart}`;
+		};
+
+		const formatDenseComputeSummary = (gpu: GpuSpec): string => {
+			const parts = [`FP16 ${gpu.fp16Tflops.toLocaleString()}`];
+			if (gpu.bf16Tflops) parts.push(`BF16 ${gpu.bf16Tflops.toLocaleString()}`);
+			if (gpu.fp8Tflops) parts.push(`FP8 ${gpu.fp8Tflops.toLocaleString()}`);
+			if (gpu.int8Tflops) parts.push(`INT8 ${gpu.int8Tflops.toLocaleString()}`);
+			if (gpu.int4Tflops) parts.push(`INT4 ${gpu.int4Tflops.toLocaleString()}`);
+			return `${parts.join(" · ")} TFLOPS`;
+		};
+
+		const appendDlRow = (dl: HTMLElement, label: string, content: string | Node) => {
+			const row = el("div");
+			const dt = el("dt", undefined, label);
+			const dd = el("dd");
+			if (typeof content === "string") {
+				dd.textContent = content;
+			} else {
+				dd.appendChild(content);
+			}
+			append(row, dt, dd);
+			dl.appendChild(row);
+		};
+
+		const buildTelemetryStrip = (
+			theo: TheoreticalEvaluation,
+			actual: ReturnType<typeof resolveActualBenchmarkForGpu>,
+		): HTMLElement => {
+			const strip = el("div", "gl-telemetry");
+			const isOom = theo.vramStatus === "oom";
+
+			// 1. Decode ceiling
+			const cDecode = el("div", "gl-telemetry-cell");
+			append(
+				cDecode,
+				el("div", "gl-k-label", "Decode ceiling"),
+				el(
+					"div",
+					"gl-k-val",
+					isOom ? "Insufficient VRAM" : `${theo.decodeSingleTps.toFixed(1)} tok/s`,
+				),
+				el(
+					"div",
+					"gl-k-sub",
+					isOom
+						? `Needs ${theo.totalVramGb.toFixed(1)} GB`
+						: `${theo.tpotMs.toFixed(2)} ms/tok · ${theo.bottleneck === "compute" ? "compute-bound" : "memory-bound"}`,
+				),
+			);
+
+			// 2. Prefill ceiling
+			const cPrefill = el("div", "gl-telemetry-cell");
+			append(
+				cPrefill,
+				el("div", "gl-k-label", "Prefill ceiling"),
+				el(
+					"div",
+					"gl-k-val",
+					isOom ? "—" : `${Math.round(theo.prefillTps).toLocaleString()} tok/s`,
+				),
+				el(
+					"div",
+					"gl-k-sub",
+					isOom
+						? `${Math.round(theo.prefillTps).toLocaleString()} tok/s compute`
+						: `TTFT ${theo.ttftMs.toFixed(0)} ms`,
+				),
+			);
+
+			// 3. Memory + miniature breakdown bar
+			const cMem = el("div", "gl-telemetry-cell");
+			const vramTotalScale = Math.max(theo.availableVramGb, theo.totalVramGb, 1);
+			const memBar = el("div", "gl-vram-bar");
+			const wtSeg = el("div", "gl-vram-wt");
+			wtSeg.style.width = `${(theo.weightsVramGb / vramTotalScale) * 100}%`;
+			const kvSeg = el("div", "gl-vram-kv");
+			kvSeg.style.width = `${(theo.kvCacheVramGb / vramTotalScale) * 100}%`;
+			const sysSeg = el("div", "gl-vram-sys");
+			sysSeg.style.width = `${(theo.overheadVramGb / vramTotalScale) * 100}%`;
+			append(memBar, wtSeg, kvSeg, sysSeg);
+
+			append(
+				cMem,
+				el("div", "gl-k-label", "Memory"),
+				el("div", "gl-k-val", `${theo.totalVramGb.toFixed(1)} / ${theo.availableVramGb} GB`),
+				memBar,
+				el(
+					"div",
+					"gl-k-sub",
+					`${theo.vramUtilizationPct}% (${theo.weightsVramGb}G wt · ${theo.kvCacheVramGb}G kv)`,
+				),
+			);
+
+			// 4. Empirical
+			const cActual = el("div", "gl-telemetry-cell");
+			append(
+				cActual,
+				el("div", "gl-k-label", "Empirical"),
+				el(
+					"div",
+					"gl-k-val",
+					actual.actualDecodeTps != null
+						? `${actual.actualDecodeTps.toFixed(1)} tok/s`
+						: "Unmeasured",
+				),
+				el(
+					"div",
+					"gl-k-sub",
+					actual.actualDecodeTps != null
+						? `${actual.mbuPct}% MBU · ${actual.isDirectMatch ? "verified" : "projected"}`
+						: "No benchmark logged",
+				),
+			);
+
+			append(strip, cDecode, cPrefill, cMem, cActual);
+			return strip;
+		};
+
+		const buildSubmissionsPanel = (
+			gpu: GpuSpec,
+			theo: TheoreticalEvaluation,
+			workload: WorkloadConfig,
+			gpuSubs: RealWorldSubmission[],
+		): HTMLElement => {
+			const panel = el("div");
+
+			if (logFormOpen) {
+				const form = el("form", "gl-log-form space-y-3");
+				const grid = el("div", "grid grid-cols-2 gap-2.5 sm:grid-cols-4");
+
+				const countLabel = el("label", "gl-field");
+				countLabel.appendChild(el("span", undefined, "GPUs"));
+				const countSel = el("select", "gl-select");
+				const activeSubCount = draftGpuCount ?? workload.gpuCount;
+				for (const n of GPU_COUNT_OPTIONS) {
+					const opt = new Option(`${n}×`, String(n), false, n === activeSubCount);
+					countSel.appendChild(opt);
+				}
+				countLabel.appendChild(countSel);
+
+				const decodeLabel = el("label", "gl-field");
+				decodeLabel.appendChild(el("span", undefined, "Decode (tok/s)"));
+				const decodeInput = el("input", "gl-input tabular-nums");
+				decodeInput.type = "number";
+				decodeInput.min = "0.1";
+				decodeInput.step = "0.1";
+				decodeInput.required = true;
+				decodeInput.value = draftDecodeValue;
+				decodeInput.placeholder =
+					theo.vramStatus === "oom" ? "40.0" : (theo.decodeSingleTps * 0.78).toFixed(1);
+				decodeLabel.appendChild(decodeInput);
+
+				const prefillLabel = el("label", "gl-field");
+				prefillLabel.appendChild(el("span", undefined, "Prefill (tok/s)"));
+				const prefillInput = el("input", "gl-input tabular-nums");
+				prefillInput.type = "number";
+				prefillInput.min = "1";
+				prefillInput.step = "1";
+				prefillInput.value = draftPrefillValue;
+				prefillInput.placeholder =
+					theo.vramStatus === "oom" ? "5000" : String(Math.round(theo.prefillTps * 0.72));
+				prefillLabel.appendChild(prefillInput);
+
+				const engineLabel = el("label", "gl-field");
+				engineLabel.appendChild(el("span", undefined, "Engine"));
+				const engineInput = el("input", "gl-input");
+				engineInput.type = "text";
+				engineInput.required = true;
+				engineInput.value = draftEngineValue;
+				engineInput.placeholder = "vLLM, SGLang, llama.cpp…";
+				engineLabel.appendChild(engineInput);
+
+				append(grid, countLabel, decodeLabel, prefillLabel, engineLabel);
+
+				const bottomRow = el("div", "flex flex-wrap items-end gap-2.5");
+				const notesLabel = el("label", "gl-field min-w-0 flex-1");
+				notesLabel.appendChild(el("span", undefined, "Notes"));
+				const notesInput = el("input", "gl-input");
+				notesInput.type = "text";
+				notesInput.value = draftNotesValue;
+				notesInput.placeholder = "Kernel, quant, or interconnect notes";
+				notesLabel.appendChild(notesInput);
+
+				const saveBtn = el("button", "gl-btn-subtle shrink-0", "Save locally");
+				saveBtn.type = "submit";
+				append(bottomRow, notesLabel, saveBtn);
+
+				const liveDiag = el("p", "gl-muted-text text-[11px] tabular-nums");
+
+				const refreshLiveDiag = () => {
+					const dec = Number(decodeInput.value);
+					const pf = Number(prefillInput.value);
+					if (!(dec > 0 || pf > 0)) {
+						liveDiag.textContent =
+							"Enter measured tok/s to compute MBU and MFU against Roofline limits.";
+						return;
+					}
+					const subCount = Math.max(1, Number(countSel.value) || 1);
+					const formTheo = evaluateGpuPerformance(gpu, currentModel, {
+						...workload,
+						gpuCount: subCount,
+					});
+					const report = evaluateUserSubmission(formTheo, pf > 0 ? pf : null, dec > 0 ? dec : 0);
+					const mfuPart = report.mfuPct != null ? `${report.mfuPct}%` : "—";
+					liveDiag.textContent = `MBU ${report.mbuPct}% · MFU ${mfuPart} · ${report.decodeCeilingPct}% of ceiling — ${report.tierLabel}`;
+				};
+
+				countSel.addEventListener("change", () => {
+					draftGpuCount = Number(countSel.value) || 1;
+					refreshLiveDiag();
+				});
+				decodeInput.addEventListener("input", () => {
+					draftDecodeValue = decodeInput.value;
+					refreshLiveDiag();
+				});
+				prefillInput.addEventListener("input", () => {
+					draftPrefillValue = prefillInput.value;
+					refreshLiveDiag();
+				});
+				engineInput.addEventListener("input", () => {
+					draftEngineValue = engineInput.value;
+				});
+				notesInput.addEventListener("input", () => {
+					draftNotesValue = notesInput.value;
+				});
+
+				form.addEventListener("submit", (event) => {
+					event.preventDefault();
+					const actualDecode = Number(decodeInput.value);
+					if (!(actualDecode > 0)) return;
+					const rawPrefill = Number(prefillInput.value);
+					const actualPrefill = rawPrefill > 0 ? rawPrefill : null;
+					const subCount = Math.max(1, Number(countSel.value) || 1);
+
+					const newEntry: RealWorldSubmission = {
+						id: `user-${Date.now()}`,
+						gpuId: gpu.id,
+						gpuCount: subCount,
+						modelId: currentModel.id,
+						modelName: formatModelShortName(currentModel),
+						totalParamsB: currentModel.totalParamsB,
+						activeParamsB: currentModel.activeParamsB,
+						weightPrecision: workload.weightPrecision,
+						kvPrecision: workload.kvPrecision,
+						engine: engineInput.value.trim() || "Custom runtime",
+						inputTokens: workload.inputTokens,
+						outputTokens: workload.outputTokens,
+						batchSize: workload.batchSize,
+						actualPrefillTps: actualPrefill,
+						actualDecodeSingleTps: actualDecode,
+						notes: notesInput.value.trim() || "Local benchmark entry",
+					};
+
+					saveUserSubmissions([newEntry, ...loadUserSubmissions()]);
+					draftDecodeValue = "";
+					draftPrefillValue = "";
+					draftEngineValue = "";
+					draftNotesValue = "";
+					draftGpuCount = null;
+					logFormOpen = false;
+					render();
+				});
+
+				refreshLiveDiag();
+				append(form, grid, bottomRow, liveDiag);
+				panel.appendChild(form);
+			}
+
+			if (gpuSubs.length === 0) {
+				const empty = el("div", "mt-3 flex flex-wrap items-center gap-2 text-xs");
+				empty.appendChild(
+					el("span", "gl-muted-text", "No empirical runs recorded for this accelerator yet."),
+				);
+				if (!logFormOpen) {
+					const openBtn = el("button", "gl-link-btn", "Log a measurement");
+					openBtn.type = "button";
+					openBtn.addEventListener("click", () => {
+						logFormOpen = true;
+						render();
+					});
+					empty.appendChild(openBtn);
+				}
+				panel.appendChild(empty);
+				return panel;
+			}
+
+			const list = el("div", "gl-bench-list");
+			for (const sub of gpuSubs) {
+				const mSpec = resolveSubmissionModelSpec(sub, currentModel) ?? currentModel;
+				const subTheo = evaluateGpuPerformance(gpu, mSpec, {
+					gpuCount: sub.gpuCount,
+					weightPrecision: sub.weightPrecision,
+					kvPrecision: sub.kvPrecision,
+					inputTokens: sub.inputTokens,
+					outputTokens: sub.outputTokens,
+					batchSize: sub.batchSize,
+				});
+				const rep = evaluateUserSubmission(
+					subTheo,
+					sub.actualPrefillTps,
+					sub.actualDecodeSingleTps,
+				);
+
+				const row = el("div", "gl-bench-row");
+
+				// Left column: engine, model & notes
+				const main = el("div", "gl-bench-main");
+				const engLine = el("div", "font-medium text-[var(--gl-ink)] text-xs");
+				const engTitle = `${sub.gpuCount}× · ${sub.engine}`;
+				if (sub.sourceUrl) {
+					engLine.appendChild(createExternalLink(engTitle, sub.sourceUrl));
+				} else {
+					engLine.textContent = engTitle;
+				}
+				const modName = formatModelShortName({ name: sub.modelName });
+				const modLine = el(
+					"div",
+					"gl-muted-text text-[11px] tabular-nums mt-0.5",
+					`${modName} · ${sub.weightPrecision.toUpperCase()} / KV ${sub.kvPrecision.toUpperCase()} · ${sub.inputTokens}→${sub.outputTokens}`,
+				);
+				main.appendChild(engLine);
+				main.appendChild(modLine);
+				if (sub.notes.trim()) {
+					main.appendChild(el("div", "gl-muted-text text-[11px] mt-0.5", sub.notes));
+				}
+
+				// Right column: decode ceiling & efficiency + optional delete
+				const right = el("div", "gl-bench-right");
+				const stats = el("div");
+				const decLine = el("div", "text-xs");
+				decLine.appendChild(
+					el(
+						"span",
+						"font-semibold text-[var(--gl-ink)]",
+						`${sub.actualDecodeSingleTps.toFixed(1)} tok/s`,
+					),
+				);
+				decLine.appendChild(
+					el(
+						"span",
+						"gl-muted-text text-[11px]",
+						` (${rep.decodeCeilingPct}% of ${subTheo.decodeSingleTps.toFixed(1)})`,
+					),
+				);
+				const mfuSegment = rep.mfuPct != null ? `MFU ${rep.mfuPct}%` : "MFU —";
+				const effLine = el(
+					"div",
+					"gl-muted-text text-[11px] mt-0.5",
+					`MBU ${rep.mbuPct}% · ${mfuSegment} · ${rep.tierLabel}`,
+				);
+				append(stats, decLine, effLine);
+				right.appendChild(stats);
+
+				if (!BUILTIN_SUBMISSION_IDS.has(sub.id)) {
+					const rmBtn = el("button", "gl-remove-btn", "×");
+					rmBtn.type = "button";
+					rmBtn.setAttribute("aria-label", "Remove benchmark");
+					rmBtn.addEventListener("click", () => {
+						const remaining = loadUserSubmissions().filter((item) => item.id !== sub.id);
+						saveUserSubmissions(remaining);
+						render();
+					});
+					right.appendChild(rmBtn);
+				}
+
+				append(row, main, right);
+				list.appendChild(row);
+			}
+
+			panel.appendChild(list);
+			return panel;
+		};
+
+		const buildModelsMatrixPanel = (gpu: GpuSpec, workload: WorkloadConfig): HTMLElement => {
+			const wrap = el("div", "gl-table-wrap");
+			const table = el("table", "gl-table");
+			const thead = el("thead");
+			const hRow = el("tr");
+			for (const [title, align] of [
+				["Model", "text-left"],
+				["Params", "text-left"],
+				["VRAM", "text-right"],
+				["Prefill", "text-right"],
+				["Decode", "text-right"],
+			] as const) {
+				hRow.appendChild(el("th", align, title));
+			}
+			thead.appendChild(hRow);
+
+			const tbody = el("tbody");
+			for (const model of MODEL_CATALOG) {
+				const ev = evaluateGpuPerformance(gpu, model, workload);
+				const isOom = ev.vramStatus === "oom";
+				const tr = el("tr", isOom ? "opacity-55" : undefined);
+
+				const tdName = el("td");
+				tdName.appendChild(
+					createExternalLink(
+						formatModelShortName(model),
+						`https://huggingface.co/${model.hfRepoId}`,
+						"cactus-link font-medium",
+					),
+				);
+
+				const tdParams = el(
+					"td",
+					"gl-muted-text tabular-nums whitespace-nowrap",
+					model.architecture === "moe"
+						? `${model.totalParamsB}B / ${model.activeParamsB}B`
+						: `${model.totalParamsB}B`,
+				);
+
+				const tdVram = el(
+					"td",
+					"text-right tabular-nums whitespace-nowrap",
+					`${ev.totalVramGb.toFixed(1)} / ${ev.availableVramGb} GB`,
+				);
+
+				const tdPrefill = el(
+					"td",
+					"text-right tabular-nums whitespace-nowrap",
+					isOom ? "—" : `${Math.round(ev.prefillTps).toLocaleString()} tok/s`,
+				);
+
+				const tdDecode = el(
+					"td",
+					`text-right tabular-nums whitespace-nowrap ${isOom ? "gl-muted-text" : "font-semibold text-[var(--gl-ink)]"}`,
+					isOom
+						? `Short ${(ev.totalVramGb - ev.availableVramGb).toFixed(1)} GB`
+						: `${ev.decodeSingleTps.toFixed(1)} tok/s`,
+				);
+
+				append(tr, tdName, tdParams, tdVram, tdPrefill, tdDecode);
+				tbody.appendChild(tr);
+			}
+
+			append(table, thead, tbody);
+			wrap.appendChild(table);
+			return wrap;
+		};
+
+		const buildHardwarePanel = (
+			gpu: GpuSpec,
+			theo: TheoreticalEvaluation,
+			workload: WorkloadConfig,
+		): HTMLElement => {
+			const container = el("div", "gl-dl");
+
+			const left = el("div");
+			left.appendChild(el("h3", "gl-dl-section-title", "Specifications"));
+			const dlSpec = el("dl", "gl-dl-list");
+			appendDlRow(dlSpec, "Architecture", `${gpu.vendor} ${gpu.architecture} (${gpu.releaseYear})`);
+			appendDlRow(
+				dlSpec,
+				"Memory",
+				`${gpu.vramGb} GB · ${gpu.memBandwidthGbs.toLocaleString()} GB/s`,
+			);
+			appendDlRow(dlSpec, "Dense compute", formatDenseComputeSummary(gpu));
+			appendDlRow(dlSpec, "Vector FP32", `${gpu.fp32Tflops.toLocaleString()} TFLOPS`);
+			appendDlRow(
+				dlSpec,
+				"Interconnect",
+				`${formatInterconnectName(gpu.interconnect)} · ${gpu.interconnectBandwidthGbs.toLocaleString()} GB/s`,
+			);
+			appendDlRow(dlSpec, "Power", `${gpu.tdpWatts} W TDP`);
+			appendDlRow(dlSpec, "Spec source", createExternalLink(gpu.sourceName, gpu.sourceUrl));
+			left.appendChild(dlSpec);
+
+			const right = el("div");
+			right.appendChild(el("h3", "gl-dl-section-title", "Roofline math"));
+			const dlMath = el("dl", "gl-dl-list");
+			const clusterPrefix = workload.gpuCount > 1 ? `${workload.gpuCount}× · ` : "";
+			const workloadLabel = `${clusterPrefix}${formatModelShortName(currentModel)} · ${workload.weightPrecision.toUpperCase()}`;
+			const validRepo = parseHuggingFaceModelRef(currentModel.hfRepoId);
+			appendDlRow(
+				dlMath,
+				"Active workload",
+				validRepo
+					? createExternalLink(workloadLabel, `https://huggingface.co/${validRepo}`)
+					: workloadLabel,
+			);
+			appendDlRow(
+				dlMath,
+				"VRAM breakdown",
+				`${theo.weightsVramGb}G wt + ${theo.kvCacheVramGb}G kv + ${theo.overheadVramGb}G sys`,
+			);
+			appendDlRow(
+				dlMath,
+				"Decode traffic",
+				`${(theo.decodeBytesPerStep / 1e9).toFixed(2)} GB / token`,
+			);
+			appendDlRow(dlMath, "Ridge point", `${theo.ridgePointOpsPerByte} ops/byte`);
+			appendDlRow(dlMath, "Decode intensity", `${theo.decodeArithmeticIntensity} ops/byte`);
+			appendDlRow(
+				dlMath,
+				"Multi-GPU scaling",
+				`${Math.round(theo.multiGpuBandwidthEfficiency * 100)}% BW · ${Math.round(theo.multiGpuComputeEfficiency * 100)}% FLOPs`,
+			);
+			appendDlRow(
+				dlMath,
+				"E2E latency",
+				theo.vramStatus === "oom"
+					? "—"
+					: `${theo.endToEndLatencySec}s (${workload.outputTokens} tok)`,
+			);
+			appendDlRow(dlMath, "Calibration", gpu.calibrationNote);
+			right.appendChild(dlMath);
+
+			append(container, left, right);
+			return container;
+		};
+
+		const buildDossier = (
+			item: LadderRowItem,
+			workload: WorkloadConfig,
+			submissions: RealWorldSubmission[],
+			userSubs: RealWorldSubmission[],
+		): HTMLElement => {
+			const { gpu, theo, actual } = item;
+			const gpuSubs = submissions.filter((s) => s.gpuId === gpu.id);
+			const dossier = el("div", "gl-dossier");
+
+			dossier.appendChild(buildTelemetryStrip(theo, actual));
+
+			// Sub-tabs bar
+			const nav = el("div", "gl-dossier-nav");
+			const tabsWrap = el("div", "gl-dossier-tabs");
+			tabsWrap.setAttribute("role", "tablist");
+
+			const tabs: Array<{ id: DossierTab; label: string }> = [
+				{ id: "submissions", label: `Benchmarks (${gpuSubs.length})` },
+				{ id: "models-matrix", label: "All models" },
+				{ id: "hw-specs", label: "Hardware" },
+			];
+
+			for (const t of tabs) {
+				const btn = el("button", "gl-axis-tab", t.label);
+				btn.type = "button";
+				btn.setAttribute("role", "tab");
+				btn.setAttribute("aria-selected", String(activeDossierTab === t.id));
+				btn.dataset.focusId = `tab:${t.id}`;
+				btn.addEventListener("click", () => {
+					activeDossierTab = t.id;
+					render();
+				});
+				tabsWrap.appendChild(btn);
+			}
+			nav.appendChild(tabsWrap);
+
+			if (activeDossierTab === "submissions") {
+				const actions = el("div", "gl-dossier-actions");
+				const toggleLog = el("button", "gl-link-btn", "+ Log run");
+				toggleLog.type = "button";
+				toggleLog.setAttribute("aria-expanded", String(logFormOpen));
+				toggleLog.dataset.focusId = "toggle-log";
+				toggleLog.addEventListener("click", () => {
+					logFormOpen = !logFormOpen;
+					render();
+				});
+				actions.appendChild(toggleLog);
+
+				if (userSubs.length > 0) {
+					const resetBtn = el("button", "gl-link-btn", "Reset custom");
+					resetBtn.type = "button";
+					resetBtn.addEventListener("click", () => {
+						saveUserSubmissions([]);
+						render();
+					});
+					actions.appendChild(resetBtn);
+				}
+
+				nav.appendChild(actions);
+			}
+
+			dossier.appendChild(nav);
+
+			if (activeDossierTab === "submissions") {
+				dossier.appendChild(buildSubmissionsPanel(gpu, theo, workload, gpuSubs));
+			} else if (activeDossierTab === "models-matrix") {
+				dossier.appendChild(buildModelsMatrixPanel(gpu, workload));
+			} else {
+				dossier.appendChild(buildHardwarePanel(gpu, theo, workload));
+			}
+
+			return dossier;
+		};
+
+		const buildLedgerEntry = (
+			item: LadderRowItem,
+			rankLabel: string,
+			workload: WorkloadConfig,
+			maxScale: number,
+			isOomRow: boolean,
+			submissions: RealWorldSubmission[],
+			userSubs: RealWorldSubmission[],
+		): HTMLElement => {
+			const { gpu, theo, actual, totalBandwidthGbs, totalComputeTflops, metricValue } = item;
+			const isExpanded = expandedGpuId === gpu.id;
+
+			const entry = el("div", "gl-entry");
+			entry.setAttribute("role", "listitem");
+			entry.dataset.gpuId = gpu.id;
+			entry.dataset.expanded = String(isExpanded);
+
+			const rowBtn = el("button", isOomRow ? "gl-row gl-row--oom" : "gl-row");
+			rowBtn.type = "button";
+			rowBtn.setAttribute("aria-expanded", String(isExpanded));
+			rowBtn.dataset.focusId = `row:${gpu.id}`;
+			rowBtn.addEventListener("click", () => {
+				expandedGpuId = isExpanded ? null : gpu.id;
+				logFormOpen = false;
+				draftDecodeValue = "";
+				draftPrefillValue = "";
+				draftEngineValue = "";
+				draftNotesValue = "";
+				draftGpuCount = null;
+				render();
+			});
+
+			const top = el("div", "gl-row-top");
+			const rankEl = el("span", "gl-rank", rankLabel);
+
+			const identity = el("div", "gl-identity");
+			const prefix = workload.gpuCount > 1 ? `${workload.gpuCount}× ` : "";
+			append(
+				identity,
+				el("span", "gl-name", `${prefix}${formatGpuShortName(gpu)}`),
+				el("span", "gl-meta", `${gpu.vendor} · ${theo.availableVramGb} GB`),
+			);
+
+			const metrics = el("div", "gl-metrics");
+			const subSpan = el("span", "gl-sub-val");
+			const mainSpan = el("span", "gl-main-val");
+
+			const setMain = (val: string, unit?: string) => {
+				mainSpan.textContent = "";
+				mainSpan.appendChild(document.createTextNode(val));
+				if (unit) {
+					mainSpan.appendChild(document.createTextNode(" "));
+					mainSpan.appendChild(el("span", "gl-unit", unit));
+				}
+			};
+
+			if (isOomRow) {
+				subSpan.textContent = `${theo.totalVramGb.toFixed(1)} / ${theo.availableVramGb} GB`;
+				setMain(`short ${(theo.totalVramGb - theo.availableVramGb).toFixed(1)}`, "GB");
+			} else if (sortMetric === "memBandwidthGbs") {
+				subSpan.textContent =
+					theo.vramStatus === "oom" ? "OOM" : `${theo.decodeSingleTps.toFixed(1)} tok/s`;
+				setMain(totalBandwidthGbs.toLocaleString(), "GB/s");
+			} else if (sortMetric === "computeTflops") {
+				const capLabel = capabilityFilter === "all" ? "FP16" : capabilityFilter.toUpperCase();
+				subSpan.textContent = `${totalBandwidthGbs.toLocaleString()} GB/s`;
+				setMain(totalComputeTflops.toLocaleString(), `${capLabel} TFLOPS`);
+			} else if (sortMetric === "actualDecodeTps") {
+				subSpan.textContent = `ceiling ${theo.decodeSingleTps.toFixed(1)}`;
+				if (actual.actualDecodeTps != null) {
+					setMain(actual.actualDecodeTps.toFixed(1), "tok/s");
+				} else {
+					setMain("—", "tok/s");
+				}
+			} else if (sortMetric === "prefillTps") {
+				subSpan.textContent = `TTFT ${theo.ttftMs.toFixed(0)} ms`;
+				setMain(Math.round(theo.prefillTps).toLocaleString(), "tok/s");
+			} else {
+				subSpan.textContent =
+					actual.actualDecodeTps != null
+						? `${actual.actualDecodeTps.toFixed(1)} actual`
+						: `${theo.tpotMs.toFixed(1)} ms`;
+				setMain(theo.decodeSingleTps.toFixed(1), "tok/s");
+			}
+
+			append(metrics, subSpan, mainSpan, createChevronSvg());
+			append(top, rankEl, identity, metrics);
+			rowBtn.appendChild(top);
+
+			// Horizon proportional bar (omitted on OOM rows)
+			if (!isOomRow) {
+				const track = el("div", "gl-bar-track");
+				if (sortMetric === "decodeSingleTps" || sortMetric === "actualDecodeTps") {
+					const theoPct = Math.min(100, Math.max(2, (theo.decodeSingleTps / maxScale) * 100));
+					const ceilBar = el("div", "gl-bar-ceiling");
+					ceilBar.style.width = `${theoPct}%`;
+					const tick = el("div", "gl-bar-tick");
+					tick.style.left = `calc(${theoPct}% - 1.5px)`;
+					append(track, ceilBar, tick);
+
+					if (actual.actualDecodeTps != null) {
+						const actPct = Math.min(100, Math.max(1.5, (actual.actualDecodeTps / maxScale) * 100));
+						const actBar = el("div", "gl-bar-actual");
+						actBar.style.width = `${actPct}%`;
+						track.appendChild(actBar);
+					}
+				} else {
+					const pct = Math.min(100, Math.max(2, (metricValue / maxScale) * 100));
+					const fill = el("div", "gl-bar-single");
+					fill.style.width = `${pct}%`;
+					track.appendChild(fill);
+				}
+				rowBtn.appendChild(track);
+			}
+
+			entry.appendChild(rowBtn);
+
+			if (isExpanded) {
+				entry.appendChild(buildDossier(item, workload, submissions, userSubs));
+			}
+
+			return entry;
+		};
+
+		const resetAllFilters = () => {
+			vendorFilter = "all";
+			capabilityFilter = "all";
+			hideOomCheckbox.checked = false;
+			gpuSearchInput.value = "";
+			render();
+		};
+
+		const render = () => {
+			const activeFocusId =
+				document.activeElement instanceof HTMLElement &&
+				ladderRegion.contains(document.activeElement)
+					? document.activeElement.dataset.focusId
+					: undefined;
+			const restoreFocus = () => {
+				if (!activeFocusId) return;
+				const next = ladderRegion.querySelector<HTMLElement>(
+					`[data-focus-id="${CSS.escape(activeFocusId)}"]`,
+				);
+				next?.focus({ preventScroll: true });
+			};
+
+			syncControlsUi();
+			const workload = readWorkload();
+			syncSummaryLine(workload);
+			syncUrlState();
+
+			const userSubs = loadUserSubmissions();
+			const submissions = [...userSubs, ...INITIAL_COMMUNITY_SUBMISSIONS];
+			const query = gpuSearchInput.value.trim().toLowerCase();
+			const hideOom = hideOomCheckbox.checked;
+			const isHardwareRawSort = sortMetric === "memBandwidthGbs" || sortMetric === "computeTflops";
+
+			barLegendEl.classList.toggle(
+				"hidden",
+				sortMetric !== "decodeSingleTps" && sortMetric !== "actualDecodeTps",
+			);
+
+			const filteredItems: LadderRowItem[] = GPU_CATALOG.filter((gpu) => {
+				if (!gpuSupportsHardwarePrecision(gpu, capabilityFilter)) return false;
+				if (vendorFilter !== "all" && gpu.vendor !== vendorFilter) return false;
+				if (
+					query &&
+					!gpu.name.toLowerCase().includes(query) &&
+					!gpu.architecture.toLowerCase().includes(query) &&
+					!gpu.vendor.toLowerCase().includes(query)
+				) {
+					return false;
+				}
+				return true;
+			}).map((gpu) => {
+				const theo = evaluateGpuPerformance(gpu, currentModel, workload);
+				const actual = resolveActualBenchmarkForGpu(gpu, theo, submissions);
+				const totalBandwidthGbs = gpu.memBandwidthGbs * workload.gpuCount;
+				const totalComputeTflops =
+					getHardwareTflopsByCapability(gpu, capabilityFilter) * workload.gpuCount;
+
+				const metricValue =
+					sortMetric === "memBandwidthGbs"
+						? totalBandwidthGbs
+						: sortMetric === "computeTflops"
+							? totalComputeTflops
+							: theo.vramStatus === "oom"
+								? 0
+								: sortMetric === "actualDecodeTps"
+									? (actual.actualDecodeTps ?? 0)
+									: sortMetric === "prefillTps"
+										? theo.prefillTps
+										: theo.decodeSingleTps;
+
+				return {
+					gpu,
+					theo,
+					actual,
+					totalBandwidthGbs,
+					totalComputeTflops,
+					metricValue,
+				};
+			});
+
+			ladderRegion.replaceChildren();
+
+			if (filteredItems.length === 0) {
+				resultCountEl.textContent = "0 accelerators";
+				const empty = el("div", "gl-empty-state");
+				empty.appendChild(el("span", "gl-muted-text", "No accelerators match current filters."));
+				const resetBtn = el("button", "gl-link-btn", "Reset filters");
+				resetBtn.type = "button";
+				resetBtn.addEventListener("click", resetAllFilters);
+				empty.appendChild(resetBtn);
+				ladderRegion.appendChild(empty);
+				return;
+			}
+
+			const appendZeroFitState = (
+				oomSourceItems: LadderRowItem[],
+				candidateItems: LadderRowItem[],
+				workloadCfg: WorkloadConfig,
+			) => {
+				const minReqGb = Math.min(...oomSourceItems.map((i) => i.theo.totalVramGb));
+				const zeroBox = el("div", "gl-empty-state");
+				const capWord =
+					workloadCfg.gpuCount === 1
+						? "1× single-device"
+						: `${workloadCfg.gpuCount}× configuration`;
+				zeroBox.appendChild(
+					el(
+						"span",
+						"gl-muted-text",
+						`Requires ${minReqGb.toFixed(1)} GB VRAM — exceeds ${capWord} capacity.`,
+					),
+				);
+
+				const actions = el("div", "flex flex-wrap items-center gap-2");
+				const suggestedCount = GPU_COUNT_OPTIONS.find(
+					(n) =>
+						n > workloadCfg.gpuCount &&
+						candidateItems.some(
+							(i) =>
+								evaluateGpuPerformance(i.gpu, currentModel, { ...workloadCfg, gpuCount: n })
+									.vramStatus !== "oom",
+						),
+				);
+				if (suggestedCount) {
+					const scaleBtn = el("button", "gl-btn-subtle", `Switch to ${suggestedCount}× GPUs`);
+					scaleBtn.type = "button";
+					scaleBtn.addEventListener("click", () => {
+						gpuCount = suggestedCount;
+						render();
+					});
+					actions.appendChild(scaleBtn);
+				}
+
+				if (workloadCfg.weightPrecision !== "int4") {
+					const int4Btn = el("button", "gl-btn-subtle", "Use INT4");
+					int4Btn.type = "button";
+					int4Btn.addEventListener("click", () => {
+						weightPrecision = "int4";
+						render();
+					});
+					actions.appendChild(int4Btn);
+				}
+
+				zeroBox.appendChild(actions);
+				ladderRegion.appendChild(zeroBox);
+			};
+
+			if (isHardwareRawSort) {
+				const rawItems = hideOom
+					? filteredItems.filter((i) => i.theo.vramStatus !== "oom")
+					: filteredItems;
+				if (rawItems.length === 0) {
+					barLegendEl.classList.add("hidden");
+					resultCountEl.textContent = "0 accelerators";
+					appendZeroFitState(filteredItems, filteredItems, workload);
+					restoreFocus();
+					return;
+				}
+				rawItems.sort((a, b) => b.metricValue - a.metricValue);
+				const maxVal = Math.max(1, ...rawItems.map((i) => i.metricValue));
+				resultCountEl.textContent = `${rawItems.length} ${
+					rawItems.length === 1 ? "accelerator" : "accelerators"
+				}`;
+
+				const ledger = el("div", "gl-ledger");
+				ledger.setAttribute("role", "list");
+				for (const [idx, item] of rawItems.entries()) {
+					ledger.appendChild(
+						buildLedgerEntry(item, String(idx + 1), workload, maxVal, false, submissions, userSubs),
+					);
+				}
+				ladderRegion.appendChild(ledger);
+				restoreFocus();
+				return;
+			}
+
+			const fittingItems = filteredItems.filter((i) => i.theo.vramStatus !== "oom");
+			const oomItems = filteredItems.filter((i) => i.theo.vramStatus === "oom");
+
+			fittingItems.sort((a, b) => {
+				if (sortMetric === "actualDecodeTps") {
+					const aVal = a.actual.actualDecodeTps ?? -1;
+					const bVal = b.actual.actualDecodeTps ?? -1;
+					if (bVal !== aVal) return bVal - aVal;
+					return b.theo.decodeSingleTps - a.theo.decodeSingleTps;
+				}
+				return b.metricValue - a.metricValue;
+			});
+
+			oomItems.sort((a, b) => b.theo.availableVramGb - a.theo.availableVramGb);
+
+			resultCountEl.textContent = `${fittingItems.length} ${
+				fittingItems.length === 1 ? "configuration" : "configurations"
+			}`;
+
+			if (fittingItems.length === 0) {
+				barLegendEl.classList.add("hidden");
+			}
+
+			if (fittingItems.length === 0) {
+				appendZeroFitState(oomItems, filteredItems, workload);
+			} else {
+				const maxScale =
+					sortMetric === "decodeSingleTps" || sortMetric === "actualDecodeTps"
+						? Math.max(
+								1,
+								...fittingItems.map((i) =>
+									Math.max(i.theo.decodeSingleTps, i.actual.actualDecodeTps ?? 0),
+								),
+							)
+						: Math.max(1, ...fittingItems.map((i) => i.metricValue));
+
+				const ledger = el("div", "gl-ledger");
+				ledger.setAttribute("role", "list");
+				for (const [idx, item] of fittingItems.entries()) {
+					ledger.appendChild(
+						buildLedgerEntry(
+							item,
+							String(idx + 1),
+							workload,
+							maxScale,
+							false,
+							submissions,
+							userSubs,
+						),
+					);
+				}
+				ladderRegion.appendChild(ledger);
+			}
+
+			if (!hideOom && oomItems.length > 0) {
+				const firstOom = oomItems[0];
+				const reqGb = firstOom ? firstOom.theo.totalVramGb : 0;
+				const details = el("details", "gl-oom-details");
+				const hasExpandedOom = oomItems.some((i) => i.gpu.id === expandedGpuId);
+				if (fittingItems.length < 3 || hasExpandedOom) {
+					details.open = true;
+				}
+
+				const summary = el("summary", "gl-oom-summary");
+				append(
+					summary,
+					el(
+						"span",
+						undefined,
+						`Insufficient VRAM (${oomItems.length}) · needs ${reqGb.toFixed(1)} GB`,
+					),
+					createChevronSvg(),
+				);
+				details.appendChild(summary);
+
+				const oomLedger = el("div", "gl-ledger");
+				oomLedger.setAttribute("role", "list");
+				for (const item of oomItems) {
+					oomLedger.appendChild(
+						buildLedgerEntry(item, "—", workload, 1, true, submissions, userSubs),
+					);
+				}
+				details.appendChild(oomLedger);
+				ladderRegion.appendChild(details);
+			}
+			restoreFocus();
+		};
+
+		// Bind interactive controls
+		for (const btn of precisionButtons) {
+			btn.addEventListener("click", () => {
+				const next = btn.dataset.precision as Precision | undefined;
+				if (!next) return;
+				weightPrecision = next;
+				render();
+			});
+		}
+
+		for (const btn of gpuCountButtons) {
+			btn.addEventListener("click", () => {
+				const next = Number(btn.dataset.gpuCount);
+				if (!next) return;
+				gpuCount = next;
+				render();
+			});
+		}
+
+		customizeToggle.addEventListener("click", () => {
+			const open = customizePanel.classList.toggle("hidden");
+			customizeToggle.setAttribute("aria-expanded", String(!open));
+		});
+
+		filterToggle.addEventListener("click", () => {
+			const open = filterPanel.classList.toggle("hidden");
+			filterToggle.setAttribute("aria-expanded", String(!open));
+		});
+
+		filterResetBtn.addEventListener("click", resetAllFilters);
+
+		for (const btn of sortButtons) {
+			btn.addEventListener("click", () => {
+				const next = btn.dataset.sortMetric as LadderSortMetric | undefined;
+				if (!next) return;
+				sortMetric = next;
+				render();
+			});
+		}
+
+		for (const btn of vendorButtons) {
+			btn.addEventListener("click", () => {
+				vendorFilter = (btn.dataset.vendorFilter as GpuVendor | "all") ?? "all";
+				render();
+			});
+		}
+
+		for (const btn of capButtons) {
+			btn.addEventListener("click", () => {
+				capabilityFilter = (btn.dataset.capFilter as HardwarePrecision | "all") ?? "all";
+				render();
+			});
+		}
+
+		modelSelect.addEventListener("change", () => {
+			if (modelSelect.value === "custom") {
+				customizePanel.classList.remove("hidden");
+				customizeToggle.setAttribute("aria-expanded", "true");
+				hfInput.focus();
+				return;
+			}
+			const preset = MODEL_CATALOG.find((m) => m.id === modelSelect.value);
+			if (preset) {
+				currentModel = { ...preset };
+				customMoeLocked = currentModel.architecture === "moe";
+				customMoeActiveB = currentModel.activeParamsB;
+				hfInput.value = preset.hfRepoId;
+				setHfStatus("");
+				if (preset.defaultPrecision) {
+					weightPrecision = preset.defaultPrecision;
+				}
+				render();
+			}
+		});
+
+		paramTotalInput.addEventListener("input", () => {
+			const totalB = Number(paramTotalInput.value);
+			if (!(totalB > 0)) return;
+			if (!currentModel.id.startsWith("custom")) {
+				hfInput.value = "";
+			}
+			setHfStatus("");
+			modelSelect.value = "custom";
+			const activeB = customMoeLocked ? Math.min(totalB, Math.max(0.1, customMoeActiveB)) : totalB;
+			if (!customMoeLocked) {
+				customMoeActiveB = activeB;
+				paramActiveInput.value = String(activeB);
+			}
+			const customLabel = parseHuggingFaceModelRef(hfInput.value) ?? hfInput.value.trim();
+			currentModel = buildCustomModelSpec({
+				name: customLabel || undefined,
+				hfRepoId: hfInput.value,
+				totalParamsB: totalB,
+				activeParamsB: activeB,
+			});
+			render();
+		});
+
+		paramTotalInput.addEventListener("change", () => {
+			customMoeActiveB = currentModel.activeParamsB;
+			customMoeLocked = currentModel.architecture === "moe";
+			paramTotalInput.value = String(currentModel.totalParamsB);
+			paramActiveInput.value = String(currentModel.activeParamsB);
+		});
+
+		paramActiveInput.addEventListener("input", () => {
+			const rawActive = Number(paramActiveInput.value);
+			if (!(rawActive > 0)) return;
+			if (!currentModel.id.startsWith("custom")) {
+				hfInput.value = "";
+			}
+			setHfStatus("");
+			modelSelect.value = "custom";
+			const totalB = Math.max(0.1, Number(paramTotalInput.value) || rawActive);
+			const activeB = Math.min(totalB, rawActive);
+			customMoeLocked = activeB < totalB * 0.95;
+			customMoeActiveB = activeB;
+			const customLabel = parseHuggingFaceModelRef(hfInput.value) ?? hfInput.value.trim();
+			currentModel = buildCustomModelSpec({
+				name: customLabel || undefined,
+				hfRepoId: hfInput.value,
+				totalParamsB: totalB,
+				activeParamsB: activeB,
+			});
+			render();
+		});
+
+		for (const inputEl of [inputTokensInput, outputTokensInput, batchSizeInput, gpuSearchInput]) {
+			inputEl.addEventListener("input", render);
+		}
+		hideOomCheckbox.addEventListener("change", render);
+
+		const setHfStatus = (msg: string, isError = false) => {
+			hfStatus.textContent = msg;
+			hfStatus.classList.toggle("hidden", !msg);
+			hfStatus.classList.toggle("gl-status--error", isError);
+		};
+
+		hfForm.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			const repoId = parseHuggingFaceModelRef(hfInput.value);
+			if (!repoId) {
+				setHfStatus("Enter org/repo or a huggingface.co repository URL.", true);
+				return;
+			}
+
+			hfFetchBtn.disabled = true;
+			setHfStatus(`Loading ${repoId}…`);
+
+			try {
+				const [apiRes, configRes] = await Promise.allSettled([
+					fetch(`https://huggingface.co/api/models/${repoId}`, {
+						signal: AbortSignal.timeout(8000),
+					}),
+					fetch(`https://huggingface.co/${repoId}/resolve/main/config.json`, {
+						signal: AbortSignal.timeout(8000),
+					}),
+				]);
+
+				let safetensorsTotal: number | null = null;
+				if (apiRes.status === "fulfilled" && apiRes.value.ok) {
+					const meta = (await apiRes.value.json()) as {
+						safetensors?: { total?: number };
+					};
+					safetensorsTotal = meta.safetensors?.total ?? null;
+				}
+
+				if (configRes.status === "fulfilled" && configRes.value.ok) {
+					const rawConfig = (await configRes.value.json()) as Record<string, unknown>;
+					const parsed = parseHuggingFaceConfig(repoId, rawConfig, safetensorsTotal);
+					currentModel = parsed;
+					customMoeLocked = currentModel.architecture === "moe";
+					customMoeActiveB = currentModel.activeParamsB;
+					modelSelect.value = "custom";
+					if (parsed.defaultPrecision) {
+						weightPrecision = parsed.defaultPrecision;
+					}
+					setHfStatus(
+						`Loaded ${repoId}: ${parsed.architecture.toUpperCase()} ${parsed.totalParamsB}B (${parsed.activeParamsB}B active), ${parsed.numLayers} layers.`,
+					);
+					render();
+					return;
+				}
+
+				const inferred = inferModelSpecFromRepoId(repoId, safetensorsTotal);
+				if (inferred) {
+					currentModel = inferred;
+					customMoeLocked = currentModel.architecture === "moe";
+					customMoeActiveB = currentModel.activeParamsB;
+					modelSelect.value = MODEL_CATALOG.some((m) => m.id === inferred.id)
+						? inferred.id
+						: "custom";
+					if (inferred.defaultPrecision) {
+						weightPrecision = inferred.defaultPrecision;
+					}
+					setHfStatus(
+						`Inferred ${repoId}: ${inferred.totalParamsB}B total / ${inferred.activeParamsB}B active.`,
+					);
+					render();
+					return;
+				}
+
+				throw new Error(`Could not fetch or infer config for ${repoId}.`);
+			} catch (err) {
+				setHfStatus(err instanceof Error ? err.message : "Failed to load HuggingFace model.", true);
+			} finally {
+				hfFetchBtn.disabled = false;
+			}
+		});
+
+		hydrateFromUrl();
+		hfInput.value = currentModel.hfRepoId;
+		render();
+	}
+</script>
