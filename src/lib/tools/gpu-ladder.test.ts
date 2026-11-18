@@ -3,6 +3,8 @@ import {
 	DATA_SOURCES_REGISTRY,
 	evaluateGpuPerformance,
 	evaluateUserSubmission,
+	formatGpuShortName,
+	formatModelShortName,
 	GPU_CATALOG,
 	getHardwareTflopsByCapability,
 	getKvCacheBytesPerToken,
@@ -282,5 +284,27 @@ describe("hardware precision filters & actual benchmark resolution", () => {
 		);
 		expect(b60Actual.isDirectMatch).toBe(true);
 		expect(b60Actual.actualDecodeTps).toBe(66.0);
+	});
+});
+
+describe("short display name formatters", () => {
+	it("strips redundant vendor prefixes, VRAM tokens, and model tags cleanly", () => {
+		const b300 = requireGpu("nvidia-b300-sxm-288gb");
+		const m3Ultra = requireGpu("apple-m3-ultra-512gb");
+		const tpuV6e = requireGpu("google-tpu-v6e-32gb");
+		const strixHalo = requireGpu("amd-ryzen-ai-max-395-128gb");
+
+		expect(formatGpuShortName(b300)).toBe("HGX B300 SXM");
+		expect(formatGpuShortName(m3Ultra)).toBe("M3 Ultra (80-core GPU)");
+		expect(formatGpuShortName(tpuV6e)).toBe("Cloud TPU v6e (Trillium)");
+		expect(formatGpuShortName(strixHalo)).toBe("Ryzen AI Max+ 395 (Strix Halo)");
+
+		const qwen32b = requireModel("qwen3-32b");
+		const deepseek = requireModel("deepseek-r1-671b");
+		const kimi = requireModel("kimi-k2-1t-a32b");
+
+		expect(formatModelShortName(qwen32b)).toBe("Qwen3-32B");
+		expect(formatModelShortName(deepseek)).toBe("DeepSeek-V3.1 / R1-0528");
+		expect(formatModelShortName(kimi)).toBe("Kimi-K2-Instruct");
 	});
 });

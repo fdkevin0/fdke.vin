@@ -2088,7 +2088,7 @@ export function evaluateUserSubmission(
 			decodeCeilingPct,
 			prefillCeilingPct,
 			tier: "speculative_boost",
-			tierLabel: "Speculative / MTP Boost (>100% Roofline)",
+			tierLabel: "Speculative boost (>100% ceiling)",
 			diagnosis:
 				"Exceeds single-token memory bandwidth wall via Speculative Decoding (MTP / EAGLE / Lookahead) or prompt caching.",
 		};
@@ -2101,7 +2101,7 @@ export function evaluateUserSubmission(
 			decodeCeilingPct,
 			prefillCeilingPct,
 			tier: "extreme",
-			tierLabel: "S-Tier · Hardware Limit Saturation",
+			tierLabel: "Near hardware ceiling",
 			diagnosis: `Achieves ${decodeCeilingPct}% of multi-GPU theoretical ceiling (MBU ${mbuPct}%, MFU ${mfuPct}%). Kernel fusion, KV paging, and memory controllers are near physical saturation.`,
 		};
 	}
@@ -2113,7 +2113,7 @@ export function evaluateUserSubmission(
 			decodeCeilingPct,
 			prefillCeilingPct,
 			tier: "production",
-			tierLabel: "A-Tier · Production Optimized",
+			tierLabel: "Production-tuned",
 			diagnosis: `Solid production throughput (${decodeCeilingPct}% of theoretical ceiling). Enabling CUDA Graphs, FP8 KV cache, or Marlin/FlashMLA kernels can squeeze another 15–25%.`,
 		};
 	}
@@ -2125,7 +2125,7 @@ export function evaluateUserSubmission(
 			decodeCeilingPct,
 			prefillCeilingPct,
 			tier: "suboptimal",
-			tierLabel: "B-Tier · Tunable Headroom",
+			tierLabel: "Headroom available",
 			diagnosis: `Reaches ${decodeCeilingPct}% of theoretical ceiling. Check for PCIe P2P disabled across GPUs, unoptimized dequantization overhead, or missing FlashAttention/CUDA Graph.`,
 		};
 	}
@@ -2136,7 +2136,7 @@ export function evaluateUserSubmission(
 		decodeCeilingPct,
 		prefillCeilingPct,
 		tier: "bottlenecked",
-		tierLabel: "C-Tier · Severe Infra Bottleneck",
+		tierLabel: "Host or interconnect bound",
 		diagnosis: `Only ${decodeCeilingPct}% of theoretical ceiling (MBU ${mbuPct}%). Likely bottlenecked by CPU/PCIe offloading, slow interconnect All-Reduce, or naive PyTorch eager execution.`,
 	};
 }
@@ -2296,4 +2296,24 @@ export function resolveActualBenchmarkForGpu(
 		engine: refSub.engine,
 		submissionCount: gpuSubs.length,
 	};
+}
+
+/**
+ * Strips leading vendor prefix and memory capacity tokens from a GPU name for compact ledger display.
+ */
+export function formatGpuShortName(gpu: GpuSpec): string {
+	const withoutVendor = gpu.name.replace(new RegExp(`^${gpu.vendor}\\s+`, "iu"), "");
+	return withoutVendor
+		.replace(/\s*\b\d+\s*GB\b/giu, "")
+		.replace(/\(\s+/gu, "(")
+		.replace(/\s+\)/gu, ")")
+		.replace(/\s{2,}/gu, " ")
+		.trim();
+}
+
+/**
+ * Strips trailing parenthetical architecture tags from a model name for compact selectors and tables.
+ */
+export function formatModelShortName(model: LlmModelSpec): string {
+	return model.name.replace(/\s*\([^)]*\)\s*$/u, "").trim();
 }
